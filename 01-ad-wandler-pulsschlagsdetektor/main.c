@@ -101,6 +101,7 @@ void trace_scope(int channel, int16_t value) {
 #endif
 }
 #endif
+
 #ifdef COMPILER_EXPLORER
 void trace_scope(int mode, uint16_t value) {
   static int pos0 = 0;
