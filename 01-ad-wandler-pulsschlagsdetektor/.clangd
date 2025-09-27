@@ -1,6 +1,7 @@
 CompileFlags:
   Add:
     - -DCOMPILER_EXPLORER # Define the COMIPLER_EXPORER for the LSP
+    - -DMODE_SIM # Define the MODE_SIM for the LSP
     - -std=c99 # Language standard
     - -Wall # Usefull warnings
     - -Wextra # More usefull warnings
