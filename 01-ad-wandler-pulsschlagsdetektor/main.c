@@ -212,30 +212,81 @@ const uint16_t simuli[] = {
 /*****************************************************************************/
 /*   Ihr Programm                                                            */
 /*****************************************************************************/
+#define true 1
+#define false 0
 struct {
-  uint16_t ad_buf[128];
+  uint16_t ad_buf[256];
   int ad_idx;
-} herzschlag = {
+  int sum;
+  int avg;
+  int offset;
+  uint32_t lastBeat;
+  uint32_t begin;
+  uint32_t end;
+  _Bool onBeat;
+
+} h = {
     .ad_buf = {},
     .ad_idx = 0,
+    .sum = 0,
+    .avg = 0,
+    .offset = 50,
+    .lastBeat = 0,
+    .begin = 0,
+    .end = 0,
+    .onBeat = false,
 };
-int herzschlag_process(int32_t ad) {
-  // Hinweis: Im Detektor ist eine automatische Verstärkungsregelung (AGC)
-  // verbaut bei starken Änderung fährt dieser seine Verstärkung zurück, so dass
-  // im ausgegebenen Signal fast kein Herzschlag zu erkennen ist Mit der Zeit
-  // erhöht der Verstärker die Verstärkung, so dass erst dann ein Herzschlag im
-  // Signal zu erkennen ist. siehe auch Wikipedia: Automatische
-  // Verstärkungsregelung
-  herzschlag.ad_buf[herzschlag.ad_idx] = ad;
-  trace_scope(0, ad);
-  // Beispielhaft ein Marker in der Grafik setzen
-  trace_scope(1, (herzschlag.ad_idx & 7) == 0 ? 500 : 0);
-  // Systemzeit in ms
-  uint32_t time = systick_get_ms();
-  (void)time;
-  herzschlag.ad_idx = (herzschlag.ad_idx + 1) & 127;
 
-  return 0; //>0 ermittelter Herzschlag =0 kein neuer Herzschlag <0 Fehler
+//>0 ermittelter Herzschlag =0 kein neuer Herzschlag <0 Fehler
+int herzschlag_process(int32_t ad) {
+
+  trace_scope(0, ad);
+
+  h.sum += (ad - h.ad_buf[h.ad_idx]);
+  h.ad_buf[h.ad_idx] = ad;
+  h.ad_idx = (h.ad_idx + 1) & 255;
+  h.avg = (h.sum >> 8) + (h.avg >> 3);
+  trace_scope(1, h.avg);
+
+  // printf("ad: %d, avg: %d\n", ad, h.avg);
+  // TODO: some error handling
+
+  // Average not set
+  if (h.avg < 350) {
+    printf("+\n");
+    return 0;
+  }
+
+  // AGC error
+  if (ad > (h.avg << 1)) {
+    printf("+\n");
+    return 0;
+  }
+
+  if (ad > h.avg && !h.onBeat) {
+    printf("begin\n");
+    printf("sytime: %d\n", systick_get_ms());
+    h.begin = systick_get_ms();
+    h.onBeat = true;
+  }
+
+  if (ad < h.avg && h.onBeat) {
+    printf("end\n");
+    printf("sytime: %d\n", systick_get_ms());
+    h.end = systick_get_ms();
+    h.onBeat = false;
+    uint32_t timestamp = h.begin + ((h.end - h.begin) >> 1);
+    uint32_t t = timestamp - h.lastBeat;
+    h.lastBeat = timestamp;
+    printf("t: %d\n", t);
+    // trace_scope(1, 500);
+    // return (int)(hz * 60);
+    return (float)1000 / (float)t * 60;
+    ;
+  }
+
+  // trace_scope(1, 0);
+  return 0;
 }
 
 #ifdef NXT
@@ -576,8 +627,9 @@ int main(int argc, char *argv[]) {
     ad = herzschlag_process(ad);
     if (ad < 0)
       break;
-    else if (ad > 0)
-      printf("\e[31m>>> bpm=%d <<<\e[39m\n");
+    else if (ad > 0) {
+      printf("\e[31m>>> bpm=%d <<<\e[39m\n", ad);
+    }
   }
 }
 uint32_t systick_get_ms(void) { return simuli_idx * 8; }
