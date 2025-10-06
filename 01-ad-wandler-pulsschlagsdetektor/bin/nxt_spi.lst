@@ -961,30 +961,30 @@
  776              		.file 6 "./lib/isr.h"
 DEFINED SYMBOLS
                             *ABS*:00000000 nxt_spi.c
-     /tmp/ccKp8lxj.s:23     .bss:00000000 display
-     /tmp/ccKp8lxj.s:20     .bss:00000000 $d
-     /tmp/ccKp8lxj.s:28     .bss:00000004 dirty
-     /tmp/ccKp8lxj.s:33     .bss:00000005 page
-     /tmp/ccKp8lxj.s:39     .bss:00000008 data
-     /tmp/ccKp8lxj.s:45     .data:00000000 mode
-     /tmp/ccKp8lxj.s:48     .text.spi_set_mode:00000000 $a
-     /tmp/ccKp8lxj.s:52     .text.spi_set_mode:00000000 spi_set_mode
-     /tmp/ccKp8lxj.s:124    .text.spi_set_mode:0000008c $d
-     /tmp/ccKp8lxj.s:132    .text.spi_isr_C:00000000 $a
-     /tmp/ccKp8lxj.s:137    .text.spi_isr_C:00000000 spi_isr_C
-     /tmp/ccKp8lxj.s:234    .text.spi_isr_C:000000d8 $d
-     /tmp/ccKp8lxj.s:246    .text.nxt_spi_init:00000000 $a
-     /tmp/ccKp8lxj.s:251    .text.nxt_spi_init:00000000 nxt_spi_init
-     /tmp/ccKp8lxj.s:520    .text.nxt_spi_init:00000278 $d
-     /tmp/ccKp8lxj.s:555    .text.nxt_spi_write:00000000 $a
-     /tmp/ccKp8lxj.s:560    .text.nxt_spi_write:00000000 nxt_spi_write
-     /tmp/ccKp8lxj.s:651    .text.nxt_spi_write:000000c0 $d
-     /tmp/ccKp8lxj.s:658    .text.nxt_spi_set_display:00000000 $a
-     /tmp/ccKp8lxj.s:663    .text.nxt_spi_set_display:00000000 nxt_spi_set_display
-     /tmp/ccKp8lxj.s:701    .text.nxt_spi_set_display:0000003c $d
-     /tmp/ccKp8lxj.s:706    .text.nxt_spi_refresh:00000000 $a
-     /tmp/ccKp8lxj.s:711    .text.nxt_spi_refresh:00000000 nxt_spi_refresh
-     /tmp/ccKp8lxj.s:763    .text.nxt_spi_refresh:00000058 $d
+     /tmp/ccP7Hh5m.s:23     .bss:00000000 display
+     /tmp/ccP7Hh5m.s:20     .bss:00000000 $d
+     /tmp/ccP7Hh5m.s:28     .bss:00000004 dirty
+     /tmp/ccP7Hh5m.s:33     .bss:00000005 page
+     /tmp/ccP7Hh5m.s:39     .bss:00000008 data
+     /tmp/ccP7Hh5m.s:45     .data:00000000 mode
+     /tmp/ccP7Hh5m.s:48     .text.spi_set_mode:00000000 $a
+     /tmp/ccP7Hh5m.s:52     .text.spi_set_mode:00000000 spi_set_mode
+     /tmp/ccP7Hh5m.s:124    .text.spi_set_mode:0000008c $d
+     /tmp/ccP7Hh5m.s:132    .text.spi_isr_C:00000000 $a
+     /tmp/ccP7Hh5m.s:137    .text.spi_isr_C:00000000 spi_isr_C
+     /tmp/ccP7Hh5m.s:234    .text.spi_isr_C:000000d8 $d
+     /tmp/ccP7Hh5m.s:246    .text.nxt_spi_init:00000000 $a
+     /tmp/ccP7Hh5m.s:251    .text.nxt_spi_init:00000000 nxt_spi_init
+     /tmp/ccP7Hh5m.s:520    .text.nxt_spi_init:00000278 $d
+     /tmp/ccP7Hh5m.s:555    .text.nxt_spi_write:00000000 $a
+     /tmp/ccP7Hh5m.s:560    .text.nxt_spi_write:00000000 nxt_spi_write
+     /tmp/ccP7Hh5m.s:651    .text.nxt_spi_write:000000c0 $d
+     /tmp/ccP7Hh5m.s:658    .text.nxt_spi_set_display:00000000 $a
+     /tmp/ccP7Hh5m.s:663    .text.nxt_spi_set_display:00000000 nxt_spi_set_display
+     /tmp/ccP7Hh5m.s:701    .text.nxt_spi_set_display:0000003c $d
+     /tmp/ccP7Hh5m.s:706    .text.nxt_spi_refresh:00000000 $a
+     /tmp/ccP7Hh5m.s:711    .text.nxt_spi_refresh:00000000 nxt_spi_refresh
+     /tmp/ccP7Hh5m.s:763    .text.nxt_spi_refresh:00000058 $d
 
 UNDEFINED SYMBOLS
 interrupts_get_and_disable

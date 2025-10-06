@@ -360,9 +360,9 @@
  232              		.file 4 "AT91SAM7S64.h"
 DEFINED SYMBOLS
                             *ABS*:00000000 low_level_init.c
-     /tmp/ccHrRJTR.s:19     .text.low_level_init:00000000 $a
-     /tmp/ccHrRJTR.s:24     .text.low_level_init:00000000 low_level_init
-     /tmp/ccHrRJTR.s:216    .text.low_level_init:000001d0 $d
+     /tmp/ccss1P2R.s:19     .text.low_level_init:00000000 $a
+     /tmp/ccss1P2R.s:24     .text.low_level_init:00000000 low_level_init
+     /tmp/ccss1P2R.s:216    .text.low_level_init:000001d0 $d
 
 UNDEFINED SYMBOLS
 ivt_app

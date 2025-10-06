@@ -1172,27 +1172,27 @@
  820              		.file 7 "./lib/isr.h"
 DEFINED SYMBOLS
                             *ABS*:00000000 twi.c
-     /tmp/ccPeTbT1.s:19     .bss:00000000 twi_state
-     /tmp/ccPeTbT1.s:20     .bss:00000000 $d
-     /tmp/ccPeTbT1.s:23     .bss:00000004 twi_pending
-     /tmp/ccPeTbT1.s:27     .bss:00000008 twi_ptr
-     /tmp/ccPeTbT1.s:31     .bss:0000000c twi_mask
-     /tmp/ccPeTbT1.s:35     .bss:00000010 twi_stats
-     /tmp/ccPeTbT1.s:39     .text.twi_status:00000000 $a
-     /tmp/ccPeTbT1.s:44     .text.twi_status:00000000 twi_status
-     /tmp/ccPeTbT1.s:94     .text.twi_status:0000004c $d
-     /tmp/ccPeTbT1.s:99     .text.fastcode:00000000 $a
-     /tmp/ccPeTbT1.s:104    .text.fastcode:00000000 twi_isr_C
-     /tmp/ccPeTbT1.s:372    .text.fastcode:000001c0 $d
-     /tmp/ccPeTbT1.s:382    .text.twi_init:00000000 $a
-     /tmp/ccPeTbT1.s:387    .text.twi_init:00000000 twi_init
-     /tmp/ccPeTbT1.s:572    .text.twi_init:000001a8 $d
-     /tmp/ccPeTbT1.s:602    .text.twi_start_read:00000000 $a
-     /tmp/ccPeTbT1.s:607    .text.twi_start_read:00000000 twi_start_read
-     /tmp/ccPeTbT1.s:693    .text.twi_start_read:000000b8 $d
-     /tmp/ccPeTbT1.s:705    .text.twi_start_write:00000000 $a
-     /tmp/ccPeTbT1.s:710    .text.twi_start_write:00000000 twi_start_write
-     /tmp/ccPeTbT1.s:802    .text.twi_start_write:000000d8 $d
+     /tmp/ccuNnnQR.s:19     .bss:00000000 twi_state
+     /tmp/ccuNnnQR.s:20     .bss:00000000 $d
+     /tmp/ccuNnnQR.s:23     .bss:00000004 twi_pending
+     /tmp/ccuNnnQR.s:27     .bss:00000008 twi_ptr
+     /tmp/ccuNnnQR.s:31     .bss:0000000c twi_mask
+     /tmp/ccuNnnQR.s:35     .bss:00000010 twi_stats
+     /tmp/ccuNnnQR.s:39     .text.twi_status:00000000 $a
+     /tmp/ccuNnnQR.s:44     .text.twi_status:00000000 twi_status
+     /tmp/ccuNnnQR.s:94     .text.twi_status:0000004c $d
+     /tmp/ccuNnnQR.s:99     .text.fastcode:00000000 $a
+     /tmp/ccuNnnQR.s:104    .text.fastcode:00000000 twi_isr_C
+     /tmp/ccuNnnQR.s:372    .text.fastcode:000001c0 $d
+     /tmp/ccuNnnQR.s:382    .text.twi_init:00000000 $a
+     /tmp/ccuNnnQR.s:387    .text.twi_init:00000000 twi_init
+     /tmp/ccuNnnQR.s:572    .text.twi_init:000001a8 $d
+     /tmp/ccuNnnQR.s:602    .text.twi_start_read:00000000 $a
+     /tmp/ccuNnnQR.s:607    .text.twi_start_read:00000000 twi_start_read
+     /tmp/ccuNnnQR.s:693    .text.twi_start_read:000000b8 $d
+     /tmp/ccuNnnQR.s:705    .text.twi_start_write:00000000 $a
+     /tmp/ccuNnnQR.s:710    .text.twi_start_write:00000000 twi_start_write
+     /tmp/ccuNnnQR.s:802    .text.twi_start_write:000000d8 $d
 
 UNDEFINED SYMBOLS
 interrupts_get_and_disable

@@ -192,24 +192,37 @@ const uint16_t simuli[] = {
 /*****************************************************************************/
 #define true 1
 #define false 0
+#define BUFFER_SIZE_AD 128
+#define BUFFER_SIZE_BPM 16
+#define MIN_BPM 50
+#define MAX_BPM 200
+#define MIN_AD 350
+#define OFFSET_AD 20
 
 struct {
-  uint16_t ad_buf[128];
+  uint16_t ad_buf[BUFFER_SIZE_AD];
   int ad_idx;
-  int sum;
-  int avg;
-  int offset;
-  uint32_t lastBeat;
+  int bpm_idx;
+  int ad_sum;
+  int bpm_sum;
+  int ad_avg;
+  int bpm_avg;
+  uint16_t prev_bpm[BUFFER_SIZE_BPM];
+  uint32_t prev_beat;
   uint32_t begin;
   uint32_t end;
   _Bool onBeat;
+
 } h = {
     .ad_buf = {0},
     .ad_idx = 0,
-    .sum = 0,
-    .avg = 0,
-    .offset = 50,
-    .lastBeat = 0,
+    .ad_sum = 0,
+    .ad_avg = 0,
+    .prev_bpm = {0},
+    .bpm_idx = 0,
+    .bpm_sum = 0,
+    .bpm_avg = 0,
+    .prev_beat = 0,
     .begin = 0,
     .end = 0,
     .onBeat = false,
@@ -220,64 +233,71 @@ int herzschlag_process(int32_t ad) {
   trace_scope(0, ad);
 
   // Ringbuffer
-  h.sum += (ad - h.ad_buf[h.ad_idx]);
+  h.ad_sum += (ad - h.ad_buf[h.ad_idx]);
   h.ad_buf[h.ad_idx] = (uint16_t)ad;
   h.ad_idx = (h.ad_idx + 1) & 127;
 
   // floating average
-  h.avg = (h.sum >> 7) + (h.avg >> 3);
-  trace_scope(1, h.avg);
+  h.ad_avg = (h.ad_sum >> 7) + (h.ad_avg >> 2) - OFFSET_AD;
+  trace_scope(1, h.ad_avg);
 
   // Average not set
-  if (h.avg < 350) {
+  if (h.ad_avg < MIN_AD) {
     return 0;
   }
   // AGC error
-  if (ad > (h.avg << 1)) {
+  if (ad > (h.ad_avg << 1)) {
     return 0;
   }
 
   // start of beat
-  if (ad > h.avg && !h.onBeat) {
+  if (ad > h.ad_avg && !h.onBeat) {
     h.begin = systick_get_ms();
     h.onBeat = true;
     return 0;
   }
 
   // end of beat
-  if (ad < h.avg && h.onBeat) {
+  if (ad < h.ad_avg && h.onBeat) {
     h.end = systick_get_ms();
     h.onBeat = false;
 
     // timestamp of beat
     uint32_t timestamp = h.begin + ((h.end - h.begin) >> 1);
 
-    // Wenn lastBeat == 0 --> erster gefundener Schlag: initialisiere und gib 0
-    // zurück
-    if (h.lastBeat == 0) {
-      h.lastBeat = timestamp;
+    if (h.prev_beat == 0) {
+      h.prev_beat = timestamp;
       return 0;
     }
 
     // time between beats
-    uint32_t t = timestamp - h.lastBeat;
+    uint32_t t = timestamp - h.prev_beat;
     if (t == 0) {
-      h.lastBeat = timestamp;
+      h.prev_beat = timestamp;
       return 0;
     }
 
-    h.lastBeat = timestamp;
+    h.prev_beat = timestamp;
 
-    /* BPM: 1000 ms / t (ms per beat) * 60 */
-    //((120000/t) +1) >>1
-    float bpm_f = (1000.0f / (float)t) * 60.0f;
-    int bpm = (int)(bpm_f + 0.5f);
+    // 60*1000/t
+    int bpm = 60000 / t;
 
-    if (bpm < 50 || bpm > 200) {
+    if (bpm < MIN_BPM || bpm > MAX_BPM) {
       return 0;
     }
 
-    printf("BPM: %d\n", bpm);
+    // Ringbuffer bpm
+    h.bpm_sum += (bpm - h.prev_bpm[h.bpm_idx]);
+    h.prev_bpm[h.bpm_idx] = (uint16_t)bpm;
+    h.bpm_idx = (h.bpm_idx + 1) & 15;
+
+    // floating average bpm
+    h.bpm_avg = (h.bpm_sum >> 4);
+
+    if (bpm > (h.bpm_avg + 10) || bpm < (h.bpm_avg - 10))
+      return 0;
+
+    printf("Real BPM: %d\n", bpm);
 
     return bpm;
   }
