@@ -8,11 +8,6 @@
 #define NXT
 #else
 #define COMPILER_EXPLORER
-
-#define SIMUL_MODE_NORMAL 0
-#define SIMUL_MODE_DOUBLEBPM 1
-#define SIMUL_MODE_HALFAMPLITUDE 2
-#define SIMUL_MODE SIMUL_MODE_DOUBLEBPM
 #endif
 
 #ifdef NXT
@@ -107,39 +102,22 @@ void trace_scope(int channel, int16_t value) {
 }
 #endif
 #ifdef COMPILER_EXPLORER
-#define COLUMN_MAX 80
-#define VALUE_OFFSET 450
-#define VALUE_SCALE 4
-void trace_scope(int channel, uint16_t value) {
-  static int first = 0;
+void trace_scope(int mode, uint16_t value) {
   static int pos0 = 0;
   static int pos1 = 0;
-  int val = (value - VALUE_OFFSET) / VALUE_SCALE;
-  val = val > COLUMN_MAX ? COLUMN_MAX : (val < 0 ? 0 : val);
-  if (channel == 0) {
-    pos0 = val + 1; // Da %*c eine Mindestbreite von 1 bedingt!
+  int val = (value - 450) / 4;
+  val = val > 80 ? 80 : (val < 0 ? 0 : val);
+  if (mode == 0) {
+    pos0 = val;
   } else {
-    if (!first) {
-      first = 1;
-      for (int lauf = 0; lauf < COLUMN_MAX; lauf++)
-        printf("-");
-      printf("\n");
-      printf("%d%*d%*d|\n", (0 * VALUE_SCALE) + VALUE_OFFSET,
-             COLUMN_MAX / 2 - 2, (COLUMN_MAX / 2 * VALUE_SCALE) + VALUE_OFFSET,
-             COLUMN_MAX / 2 - 1, (COLUMN_MAX * VALUE_SCALE) + VALUE_OFFSET);
-    }
-    pos1 = val + 1;
+    pos1 = val;
     if (pos1 == pos0) {
-      //          printf("%*c%*c",pos0,'+',COLUMN_MAX-pos0+1,'|');
-      printf("%*c", pos0, '+');
+      printf("%*c\n", pos0, '+');
     } else if (pos1 > pos0) {
-      //          printf("%*c%*c%*c",pos0,'*',pos1-pos0,'-',COLUMN_MAX-pos1+1,'|');
-      printf("%*c%*c", pos0, '*', pos1 - pos0, '-');
+      printf("%*c%*c\n", pos0, '*', pos1 - pos0, '-');
     } else {
-      //          printf("%*c%*c%*c",pos1,'-',pos0-pos1,'*',COLUMN_MAX-pos0+1,'|');
-      printf("%*c%*c", pos1, '-', pos0 - pos1, '*');
+      printf("%*c%*c\n", pos1, '-', pos0 - pos1, '*');
     }
-    printf("\n");
   }
 }
 #endif
@@ -214,8 +192,9 @@ const uint16_t simuli[] = {
 /*****************************************************************************/
 #define true 1
 #define false 0
+
 struct {
-  uint16_t ad_buf[256];
+  uint16_t ad_buf[128];
   int ad_idx;
   int sum;
   int avg;
@@ -224,9 +203,8 @@ struct {
   uint32_t begin;
   uint32_t end;
   _Bool onBeat;
-
 } h = {
-    .ad_buf = {},
+    .ad_buf = {0},
     .ad_idx = 0,
     .sum = 0,
     .avg = 0,
@@ -239,53 +217,71 @@ struct {
 
 //>0 ermittelter Herzschlag =0 kein neuer Herzschlag <0 Fehler
 int herzschlag_process(int32_t ad) {
-
   trace_scope(0, ad);
 
+  // Ringbuffer
   h.sum += (ad - h.ad_buf[h.ad_idx]);
-  h.ad_buf[h.ad_idx] = ad;
-  h.ad_idx = (h.ad_idx + 1) & 255;
-  h.avg = (h.sum >> 8) + (h.avg >> 3);
-  trace_scope(1, h.avg);
+  h.ad_buf[h.ad_idx] = (uint16_t)ad;
+  h.ad_idx = (h.ad_idx + 1) & 127;
 
-  // printf("ad: %d, avg: %d\n", ad, h.avg);
-  // TODO: some error handling
+  // floating average
+  h.avg = (h.sum >> 7) + (h.avg >> 3);
+  trace_scope(1, h.avg);
 
   // Average not set
   if (h.avg < 350) {
-    printf("+\n");
     return 0;
   }
-
   // AGC error
   if (ad > (h.avg << 1)) {
-    printf("+\n");
     return 0;
   }
 
+  // start of beat
   if (ad > h.avg && !h.onBeat) {
-    printf("begin\n");
-    printf("sytime: %d\n", systick_get_ms());
     h.begin = systick_get_ms();
     h.onBeat = true;
+    return 0;
   }
 
+  // end of beat
   if (ad < h.avg && h.onBeat) {
-    printf("end\n");
-    printf("sytime: %d\n", systick_get_ms());
     h.end = systick_get_ms();
     h.onBeat = false;
+
+    // timestamp of beat
     uint32_t timestamp = h.begin + ((h.end - h.begin) >> 1);
+
+    // Wenn lastBeat == 0 --> erster gefundener Schlag: initialisiere und gib 0
+    // zurück
+    if (h.lastBeat == 0) {
+      h.lastBeat = timestamp;
+      return 0;
+    }
+
+    // time between beats
     uint32_t t = timestamp - h.lastBeat;
+    if (t == 0) {
+      h.lastBeat = timestamp;
+      return 0;
+    }
+
     h.lastBeat = timestamp;
-    printf("t: %d\n", t);
-    // trace_scope(1, 500);
-    // return (int)(hz * 60);
-    return (float)1000 / (float)t * 60;
-    ;
+
+    /* BPM: 1000 ms / t (ms per beat) * 60 */
+    //((120000/t) +1) >>1
+    float bpm_f = (1000.0f / (float)t) * 60.0f;
+    int bpm = (int)(bpm_f + 0.5f);
+
+    if (bpm < 50 || bpm > 200) {
+      return 0;
+    }
+
+    printf("BPM: %d\n", bpm);
+
+    return bpm;
   }
 
-  // trace_scope(1, 0);
   return 0;
 }
 
@@ -336,7 +332,7 @@ void task_256ms(void) {
   display_string("Bat:");
   display_unsigned(nxt_avr_get_battery_mv(),
                    5); // über AVR-Proz -> PER: NXT_AVR_BATTERY
-  //  display_unsigned(adc_get_usb_mv()         ,5);  //über SAM7-Proz
+  //	display_unsigned(adc_get_usb_mv()         ,5);  //über SAM7-Proz
   display_string("mV");
   // Beispiel zur Abfrage der NXT-Tasten
   display_goto_xy(0, 4);
@@ -405,9 +401,9 @@ void task_idle(void) {
 //__sinit() aufgerufen wird (beides innerhalb von __libc_init_array())
 void __attribute__((constructor)) premain_init(void) {
 #if 0
-    //No linebuffering, call stdio_write() immediately
-    //-> Langsam, da mit jedem Zeichen __sflush_r()/_write()/stdio_write() aufgerufen wird 
-    setvbuf(stdout,NULL,_IONBF,0);
+	//No linebuffering, call stdio_write() immediately
+	//-> Langsam, da mit jedem Zeichen __sflush_r()/_write()/stdio_write() aufgerufen wird 
+	setvbuf(stdout,NULL,_IONBF,0);
 #else
   static char linebuf[10];
   // LineBuffering into global Varialbe (guter Kompromiss)
@@ -424,8 +420,8 @@ void __attribute__((constructor)) premain_init(void) {
 //und belegt unnötige Speicherplatz auf den Stack
 int main(int argc, char *argv[]) 
 {
-    (void) argc;
-    (void) argv;
+	(void) argc;
+	(void) argv;
 #else
 // Variante 2: Deklaration der main() funktion
 int main(void) {
@@ -481,10 +477,10 @@ int main(void) {
                                AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
 #else
 #if 0
-    /* Watchdog Enable */
-    /* Da in dieser Version kein zyklischer Reset des Watchdogs */
-    /* vorhanden ist, wird von einem Watchdog Enable abgesehen  */
-    /* Mit Reset wird der Wachdog aktiviert!                    */
+	/* Watchdog Enable */
+	/* Da in dieser Version kein zyklischer Reset des Watchdogs */
+	/* vorhanden ist, wird von einem Watchdog Enable abgesehen  */
+	/* Mit Reset wird der Wachdog aktiviert!                    */
 #else
 /* Watchdog Disable */
 /* Mode-Register kann nur einmal beschrieben werden */
@@ -608,28 +604,14 @@ start:
 #endif
 #ifdef COMPILER_EXPLORER
 int main(int argc, char *argv[]) {
-  for (size_t lauf = 0; lauf < 2 * (sizeof(simuli) / sizeof(simuli[0]));
-       lauf++) {
-    int ad;
-#if SIMUL_MODE == SIMUL_MODE_NORMAL
-    ad = simuli[simuli_idx % (sizeof(simuli) / sizeof(simuli[0]))];
-    simuli_idx += 1;
-#elif SIMUL_MODE == SIMUL_MODE_DOUBLEBPM
-    ad = simuli[simuli_idx % (sizeof(simuli) / sizeof(simuli[0]))];
-    simuli_idx += 2;
-#elif SIMUL_MODE == SIMUL_MODE_HALFAMPLITUDE
-    ad = simuli[simuli_idx % (sizeof(simuli) / sizeof(simuli[0]))];
-    ad = ((ad - VALUE_OFFSET) / 2) + VALUE_OFFSET;
-    simuli_idx += 1;
-#else
-#error Invalide SIMUL_MODE
-#endif
-    ad = herzschlag_process(ad);
-    if (ad < 0)
+  while (1) {
+    int ret = herzschlag_process(
+        simuli[simuli_idx % (sizeof(simuli) / sizeof(simuli[0]))]);
+    simuli_idx++;
+    if (simuli_idx > 2 * (sizeof(simuli) / sizeof(simuli[0])))
       break;
-    else if (ad > 0) {
-      printf("\e[31m>>> bpm=%d <<<\e[39m\n", ad);
-    }
+    if (ret < 0)
+      break;
   }
 }
 uint32_t systick_get_ms(void) { return simuli_idx * 8; }

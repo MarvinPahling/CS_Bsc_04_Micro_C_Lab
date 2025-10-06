@@ -1,0 +1,12 @@
+./lib/display.c:168:6:display_update	8	static
+./lib/display.c:174:1:display_clear	16	static
+./lib/display.c:184:1:display_goto_xy	16	static
+./lib/display.c:191:1:display_char	32	static
+./lib/display.c:212:1:display_string	16	static
+./lib/display.c:225:6:display_hex	32	static
+./lib/display.c:231:6:display_unsigned	40	static
+./lib/display.c:237:6:display_int	40	static
+./lib/display.c:244:1:display_bitmap_copy	40	static
+./lib/display.c:261:10:display_get_buffer	4	static
+./lib/display.c:266:6:display_init	8	static
+./lib/display.c:273:1:display_test	16	static

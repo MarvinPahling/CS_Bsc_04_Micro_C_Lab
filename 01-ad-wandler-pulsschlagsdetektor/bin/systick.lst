@@ -1,0 +1,465 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"systick.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "./lib/systick.c"
+  18              		.global	systick
+  19              		.bss
+  20              		.align	2
+  23              	systick:
+  24 0000 00000000 		.space	12
+  24      00000000 
+  24      00000000 
+  25              		.section	.text.systick_get_ms,"ax",%progbits
+  26              		.align	2
+  27              		.global	systick_get_ms
+  28              		.syntax unified
+  29              		.arm
+  31              	systick_get_ms:
+  32              	.LFB2:
+   1:./lib/systick.c **** #include <stdlib.h>			//Fuer NULL
+   2:./lib/systick.c **** #include "../AT91SAM7S64.h"
+   3:./lib/systick.c **** #include "systick.h"
+   4:./lib/systick.c **** #include "aic.h"            //Fuer aic_sys_register_pit() aic_sys_vl_t
+   5:./lib/systick.c **** #include "../main.h"
+   6:./lib/systick.c **** 
+   7:./lib/systick.c **** /*static*/ struct {
+   8:./lib/systick.c **** 	aic_sys_vl_t          aic_sys_vl;
+   9:./lib/systick.c **** 	volatile uint32_t     systick_ms;
+  10:./lib/systick.c **** } systick;
+  11:./lib/systick.c **** 
+  12:./lib/systick.c **** uint32_t systick_get_ms(void)
+  13:./lib/systick.c **** {
+  33              		.loc 1 13 1
+  34              		.cfi_startproc
+  35              		@ Function supports interworking.
+  36              		@ args = 0, pretend = 0, frame = 0
+  37              		@ frame_needed = 1, uses_anonymous_args = 0
+  38              		@ link register save eliminated.
+  39 0000 04B02DE5 		str	fp, [sp, #-4]!
+  40              		.cfi_def_cfa_offset 4
+  41              		.cfi_offset 11, -4
+  42 0004 00B08DE2 		add	fp, sp, #0
+  43              		.cfi_def_cfa_register 11
+  14:./lib/systick.c **** 	//32-Bit Variable kann auf 32-Bit System in einen Rutsch gelesen werden
+  15:./lib/systick.c **** 	return systick.systick_ms;
+  44              		.loc 1 15 16
+  45 0008 10309FE5 		ldr	r3, .L3
+  46 000c 083093E5 		ldr	r3, [r3, #8]
+  16:./lib/systick.c **** }
+  47              		.loc 1 16 1
+  48 0010 0300A0E1 		mov	r0, r3
+  49 0014 00D08BE2 		add	sp, fp, #0
+  50              		.cfi_def_cfa_register 13
+  51              		@ sp needed
+  52 0018 04B09DE4 		ldr	fp, [sp], #4
+  53              		.cfi_restore 11
+  54              		.cfi_def_cfa_offset 0
+  55 001c 1EFF2FE1 		bx	lr
+  56              	.L4:
+  57              		.align	2
+  58              	.L3:
+  59 0020 00000000 		.word	systick
+  60              		.cfi_endproc
+  61              	.LFE2:
+  63              		.section	.text.systick_get_ms_cpiv,"ax",%progbits
+  64              		.align	2
+  65              		.global	systick_get_ms_cpiv
+  66              		.syntax unified
+  67              		.arm
+  69              	systick_get_ms_cpiv:
+  70              	.LFB3:
+  17:./lib/systick.c **** 
+  18:./lib/systick.c **** void systick_get_ms_cpiv(SYSTICK_MS_CPIV *ptr)
+  19:./lib/systick.c **** {
+  71              		.loc 1 19 1
+  72              		.cfi_startproc
+  73              		@ Function supports interworking.
+  74              		@ args = 0, pretend = 0, frame = 8
+  75              		@ frame_needed = 1, uses_anonymous_args = 0
+  76              		@ link register save eliminated.
+  77 0000 04B02DE5 		str	fp, [sp, #-4]!
+  78              		.cfi_def_cfa_offset 4
+  79              		.cfi_offset 11, -4
+  80 0004 00B08DE2 		add	fp, sp, #0
+  81              		.cfi_def_cfa_register 11
+  82 0008 0CD04DE2 		sub	sp, sp, #12
+  83 000c 08000BE5 		str	r0, [fp, #-8]
+  84              	.L6:
+  20:./lib/systick.c **** 	//2x32-Bit Variablen bedingen beim Lesen besondere Sorgfalt 
+  21:./lib/systick.c **** 	do {
+  22:./lib/systick.c **** 		ptr->ms   =  systick.systick_ms;
+  85              		.loc 1 22 23
+  86 0010 4C309FE5 		ldr	r3, .L7
+  87 0014 082093E5 		ldr	r2, [r3, #8]
+  88              		.loc 1 22 13
+  89 0018 08301BE5 		ldr	r3, [fp, #-8]
+  90 001c 002083E5 		str	r2, [r3]
+  23:./lib/systick.c **** 		ptr->cpiv = (*AT91C_PITC_PIIR) & AT91C_PITC_CPIV;
+  91              		.loc 1 23 34
+  92 0020 40309FE5 		ldr	r3, .L7+4
+  93 0024 003093E5 		ldr	r3, [r3]
+  94 0028 FF34C3E3 		bic	r3, r3, #-16777216
+  95 002c 0F36C3E3 		bic	r3, r3, #15728640
+  96              		.loc 1 23 13
+  97 0030 08201BE5 		ldr	r2, [fp, #-8]
+  98 0034 043082E5 		str	r3, [r2, #4]
+  24:./lib/systick.c **** 	}
+  25:./lib/systick.c **** 	while(ptr->ms != systick.systick_ms);
+  99              		.loc 1 25 11 discriminator 1
+ 100 0038 08301BE5 		ldr	r3, [fp, #-8]
+ 101 003c 002093E5 		ldr	r2, [r3]
+ 102              		.loc 1 25 26 discriminator 1
+ 103 0040 1C309FE5 		ldr	r3, .L7
+ 104 0044 083093E5 		ldr	r3, [r3, #8]
+ 105              		.loc 1 25 16 discriminator 1
+ 106 0048 030052E1 		cmp	r2, r3
+ 107 004c EFFFFF1A 		bne	.L6
+  26:./lib/systick.c **** }
+ 108              		.loc 1 26 1
+ 109 0050 0000A0E1 		nop
+ 110 0054 0000A0E1 		nop
+ 111 0058 00D08BE2 		add	sp, fp, #0
+ 112              		.cfi_def_cfa_register 13
+ 113              		@ sp needed
+ 114 005c 04B09DE4 		ldr	fp, [sp], #4
+ 115              		.cfi_restore 11
+ 116              		.cfi_def_cfa_offset 0
+ 117 0060 1EFF2FE1 		bx	lr
+ 118              	.L8:
+ 119              		.align	2
+ 120              	.L7:
+ 121 0064 00000000 		.word	systick
+ 122 0068 3CFDFFFF 		.word	-708
+ 123              		.cfi_endproc
+ 124              	.LFE3:
+ 126              		.section	.text.systick_wait_ms,"ax",%progbits
+ 127              		.align	2
+ 128              		.global	systick_wait_ms
+ 129              		.syntax unified
+ 130              		.arm
+ 132              	systick_wait_ms:
+ 133              	.LFB4:
+  27:./lib/systick.c **** 
+  28:./lib/systick.c **** /* Aktives Warten auf Zeitablauf */
+  29:./lib/systick.c **** void systick_wait_ms(int32_t ms)
+  30:./lib/systick.c **** {
+ 134              		.loc 1 30 1
+ 135              		.cfi_startproc
+ 136              		@ Function supports interworking.
+ 137              		@ args = 0, pretend = 0, frame = 16
+ 138              		@ frame_needed = 1, uses_anonymous_args = 0
+ 139              		@ link register save eliminated.
+ 140 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 141              		.cfi_def_cfa_offset 4
+ 142              		.cfi_offset 11, -4
+ 143 0004 00B08DE2 		add	fp, sp, #0
+ 144              		.cfi_def_cfa_register 11
+ 145 0008 14D04DE2 		sub	sp, sp, #20
+ 146 000c 10000BE5 		str	r0, [fp, #-16]
+  31:./lib/systick.c **** 
+  32:./lib/systick.c **** #if 1
+  33:./lib/systick.c **** 	//Aufgrund des möglichen Überlaufes hier besondere vorsicht
+  34:./lib/systick.c **** 	int32_t start=(int32_t)systick.systick_ms;
+ 147              		.loc 1 34 32
+ 148 0010 3C309FE5 		ldr	r3, .L11
+ 149 0014 083093E5 		ldr	r3, [r3, #8]
+ 150              		.loc 1 34 10
+ 151 0018 08300BE5 		str	r3, [fp, #-8]
+  35:./lib/systick.c **** 	while(((int32_t)systick.systick_ms-(int32_t)start)<ms);
+ 152              		.loc 1 35 7
+ 153 001c 0000A0E1 		nop
+ 154              	.L10:
+ 155              		.loc 1 35 25 discriminator 1
+ 156 0020 2C309FE5 		ldr	r3, .L11
+ 157 0024 083093E5 		ldr	r3, [r3, #8]
+ 158              		.loc 1 35 9 discriminator 1
+ 159 0028 0320A0E1 		mov	r2, r3
+ 160              		.loc 1 35 36 discriminator 1
+ 161 002c 08301BE5 		ldr	r3, [fp, #-8]
+ 162 0030 033042E0 		sub	r3, r2, r3
+ 163              		.loc 1 35 52 discriminator 1
+ 164 0034 10201BE5 		ldr	r2, [fp, #-16]
+ 165 0038 030052E1 		cmp	r2, r3
+ 166 003c F7FFFFCA 		bgt	.L10
+  36:./lib/systick.c **** 	//sys_ms  start	(sys_ms-start)>=5		(sys_ms-start)>=7
+  37:./lib/systick.c **** 	//	250   	250	(-6)-(-6)=0>=5=false	(-6)-(-6)=0>=7=false
+  38:./lib/systick.c **** 	//	251 	250	(-5)-(-6)=1>=5=false	(-5)-(-6)=1>=7=false
+  39:./lib/systick.c **** 	//	252		250	(-4)-(-6)=2>=5=false	(-4)-(-6)=2>=7=false
+  40:./lib/systick.c **** 	//	253		250	(-3)-(-6)=3>=5=false	(-3)-(-6)=3>=7=false
+  41:./lib/systick.c **** 	//	254		250	(-2)-(-6)=4>=5=false	(-2)-(-6)=4>=7=false
+  42:./lib/systick.c **** 	//	255		250	(-1)-(-6)=5>=5=true		(-1)-(-6)=5>=7=false
+  43:./lib/systick.c **** 	//	0		250	( 0)-(-6)=6>=5=true		( 0)-(-6)=6>=7=false
+  44:./lib/systick.c **** 	//	1		250	( 1)-(-6)=7>=5=true		( 1)-(-6)=7>=7=true
+  45:./lib/systick.c **** 	//	2		250	( 2)-(-6)=8>=5=true		( 2)-(-6)=8>=7=true
+  46:./lib/systick.c **** 		  
+  47:./lib/systick.c **** #elif 0
+  48:./lib/systick.c **** 	//So bitte nicht, da hier Probleme mit Überlauf vorhanden sind
+  49:./lib/systick.c **** 	volatile uint32_t final = ms + systick.systick_ms;
+  50:./lib/systick.c **** 	while (systick.systick_ms < final);
+  51:./lib/systick.c **** #elif 0
+  52:./lib/systick.c **** 	volatile int i,k;
+  53:./lib/systick.c **** 	for(k=ms; k>0; k--) {
+  54:./lib/systick.c **** 		for(i=11000; i>0; i--);
+  55:./lib/systick.c **** 	}
+  56:./lib/systick.c **** #endif
+  57:./lib/systick.c **** }
+ 167              		.loc 1 57 1
+ 168 0040 0000A0E1 		nop
+ 169 0044 0000A0E1 		nop
+ 170 0048 00D08BE2 		add	sp, fp, #0
+ 171              		.cfi_def_cfa_register 13
+ 172              		@ sp needed
+ 173 004c 04B09DE4 		ldr	fp, [sp], #4
+ 174              		.cfi_restore 11
+ 175              		.cfi_def_cfa_offset 0
+ 176 0050 1EFF2FE1 		bx	lr
+ 177              	.L12:
+ 178              		.align	2
+ 179              	.L11:
+ 180 0054 00000000 		.word	systick
+ 181              		.cfi_endproc
+ 182              	.LFE4:
+ 184              		.section	.text.systick_wait_ns,"ax",%progbits
+ 185              		.align	2
+ 186              		.global	systick_wait_ns
+ 187              		.syntax unified
+ 188              		.arm
+ 190              	systick_wait_ns:
+ 191              	.LFB5:
+  58:./lib/systick.c **** 
+  59:./lib/systick.c **** void systick_wait_ns(uint32_t ns)
+  60:./lib/systick.c **** {
+ 192              		.loc 1 60 1
+ 193              		.cfi_startproc
+ 194              		@ Function supports interworking.
+ 195              		@ args = 0, pretend = 0, frame = 16
+ 196              		@ frame_needed = 1, uses_anonymous_args = 0
+ 197              		@ link register save eliminated.
+ 198 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 199              		.cfi_def_cfa_offset 4
+ 200              		.cfi_offset 11, -4
+ 201 0004 00B08DE2 		add	fp, sp, #0
+ 202              		.cfi_def_cfa_register 11
+ 203 0008 14D04DE2 		sub	sp, sp, #20
+ 204 000c 10000BE5 		str	r0, [fp, #-16]
+  61:./lib/systick.c **** 	volatile uint32_t x = (ns >> 7) + 1;
+ 205              		.loc 1 61 28
+ 206 0010 10301BE5 		ldr	r3, [fp, #-16]
+ 207 0014 A333A0E1 		lsr	r3, r3, #7
+ 208              		.loc 1 61 34
+ 209 0018 013083E2 		add	r3, r3, #1
+ 210              		.loc 1 61 20
+ 211 001c 08300BE5 		str	r3, [fp, #-8]
+  62:./lib/systick.c **** 
+  63:./lib/systick.c **** 	while (x) {
+ 212              		.loc 1 63 8
+ 213 0020 020000EA 		b	.L14
+ 214              	.L15:
+  64:./lib/systick.c **** 		x--;
+ 215              		.loc 1 64 4
+ 216 0024 08301BE5 		ldr	r3, [fp, #-8]
+ 217 0028 013043E2 		sub	r3, r3, #1
+ 218 002c 08300BE5 		str	r3, [fp, #-8]
+ 219              	.L14:
+  63:./lib/systick.c **** 		x--;
+ 220              		.loc 1 63 9
+ 221 0030 08301BE5 		ldr	r3, [fp, #-8]
+ 222 0034 000053E3 		cmp	r3, #0
+ 223 0038 F9FFFF1A 		bne	.L15
+  65:./lib/systick.c **** 	}
+  66:./lib/systick.c **** }
+ 224              		.loc 1 66 1
+ 225 003c 0000A0E1 		nop
+ 226 0040 0000A0E1 		nop
+ 227 0044 00D08BE2 		add	sp, fp, #0
+ 228              		.cfi_def_cfa_register 13
+ 229              		@ sp needed
+ 230 0048 04B09DE4 		ldr	fp, [sp], #4
+ 231              		.cfi_restore 11
+ 232              		.cfi_def_cfa_offset 0
+ 233 004c 1EFF2FE1 		bx	lr
+ 234              		.cfi_endproc
+ 235              	.LFE5:
+ 237              		.section	.text.systick_isr,"ax",%progbits
+ 238              		.align	2
+ 239              		.global	systick_isr
+ 240              		.syntax unified
+ 241              		.arm
+ 243              	systick_isr:
+ 244              	.LFB6:
+  67:./lib/systick.c **** 
+  68:./lib/systick.c **** void systick_isr(void)
+  69:./lib/systick.c **** {
+ 245              		.loc 1 69 1
+ 246              		.cfi_startproc
+ 247              		@ Function supports interworking.
+ 248              		@ args = 0, pretend = 0, frame = 8
+ 249              		@ frame_needed = 1, uses_anonymous_args = 0
+ 250              		@ link register save eliminated.
+ 251 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 252              		.cfi_def_cfa_offset 4
+ 253              		.cfi_offset 11, -4
+ 254 0004 00B08DE2 		add	fp, sp, #0
+ 255              		.cfi_def_cfa_register 11
+ 256 0008 0CD04DE2 		sub	sp, sp, #12
+  70:./lib/systick.c **** 	uint32_t status;
+  71:./lib/systick.c **** 	
+  72:./lib/systick.c **** 	/* Read status to confirm interrupt */
+  73:./lib/systick.c **** 	status = *AT91C_PITC_PIVR;
+ 257              		.loc 1 73 11
+ 258 000c 30309FE5 		ldr	r3, .L17
+ 259              		.loc 1 73 9
+ 260 0010 003093E5 		ldr	r3, [r3]
+ 261 0014 08300BE5 		str	r3, [fp, #-8]
+  74:./lib/systick.c **** 
+  75:./lib/systick.c **** 	// Update with number of ticks since last time
+  76:./lib/systick.c **** 	systick.systick_ms += (status & AT91C_PITC_PICNT) >> 20;
+ 262              		.loc 1 76 9
+ 263 0018 28309FE5 		ldr	r3, .L17+4
+ 264 001c 082093E5 		ldr	r2, [r3, #8]
+ 265              		.loc 1 76 52
+ 266 0020 08301BE5 		ldr	r3, [fp, #-8]
+ 267 0024 233AA0E1 		lsr	r3, r3, #20
+ 268              		.loc 1 76 21
+ 269 0028 033082E0 		add	r3, r2, r3
+ 270 002c 14209FE5 		ldr	r2, .L17+4
+ 271 0030 083082E5 		str	r3, [r2, #8]
+  77:./lib/systick.c **** }
+ 272              		.loc 1 77 1
+ 273 0034 0000A0E1 		nop
+ 274 0038 00D08BE2 		add	sp, fp, #0
+ 275              		.cfi_def_cfa_register 13
+ 276              		@ sp needed
+ 277 003c 04B09DE4 		ldr	fp, [sp], #4
+ 278              		.cfi_restore 11
+ 279              		.cfi_def_cfa_offset 0
+ 280 0040 1EFF2FE1 		bx	lr
+ 281              	.L18:
+ 282              		.align	2
+ 283              	.L17:
+ 284 0044 38FDFFFF 		.word	-712
+ 285 0048 00000000 		.word	systick
+ 286              		.cfi_endproc
+ 287              	.LFE6:
+ 289              		.section	.text.systick_init,"ax",%progbits
+ 290              		.align	2
+ 291              		.global	systick_init
+ 292              		.syntax unified
+ 293              		.arm
+ 295              	systick_init:
+ 296              	.LFB7:
+  78:./lib/systick.c **** 
+  79:./lib/systick.c **** /************************************************************/
+  80:./lib/systick.c **** 
+  81:./lib/systick.c **** void systick_init(void)
+  82:./lib/systick.c **** {
+ 297              		.loc 1 82 1
+ 298              		.cfi_startproc
+ 299              		@ Function supports interworking.
+ 300              		@ args = 0, pretend = 0, frame = 8
+ 301              		@ frame_needed = 1, uses_anonymous_args = 0
+ 302 0000 00482DE9 		push	{fp, lr}
+ 303              		.cfi_def_cfa_offset 8
+ 304              		.cfi_offset 11, -8
+ 305              		.cfi_offset 14, -4
+ 306 0004 04B08DE2 		add	fp, sp, #4
+ 307              		.cfi_def_cfa 11, 4
+ 308 0008 08D04DE2 		sub	sp, sp, #8
+  83:./lib/systick.c **** 	uint32_t value=((MCK / 16 / BSP_TICKS_PER_SEC) - 1);
+ 309              		.loc 1 83 11
+ 310 000c 48309FE5 		ldr	r3, .L20
+ 311 0010 08300BE5 		str	r3, [fp, #-8]
+  84:./lib/systick.c **** 	
+  85:./lib/systick.c **** 	aic_sys_register_pit(&systick.aic_sys_vl,systick_isr);
+ 312              		.loc 1 85 2
+ 313 0014 44109FE5 		ldr	r1, .L20+4
+ 314 0018 44009FE5 		ldr	r0, .L20+8
+ 315 001c 44309FE5 		ldr	r3, .L20+12
+ 316 0020 0FE0A0E1 		mov	lr, pc
+ 317 0024 13FF2FE1 		bx	r3
+ 318              	.LVL0:
+  86:./lib/systick.c **** 	aic_sys_init(AT91C_AIC_SRCTYPE_HIGH_LEVEL,AIC_INT_LEVEL_NORMAL);
+ 319              		.loc 1 86 2
+ 320 0028 0410A0E3 		mov	r1, #4
+ 321 002c 4000A0E3 		mov	r0, #64
+ 322 0030 34309FE5 		ldr	r3, .L20+16
+ 323 0034 0FE0A0E1 		mov	lr, pc
+ 324 0038 13FF2FE1 		bx	r3
+ 325              	.LVL1:
+  87:./lib/systick.c **** 	
+  88:./lib/systick.c **** 	*AT91C_PITC_PIMR = AT91C_PITC_PITEN | AT91C_PITC_PITIEN | value;
+ 326              		.loc 1 88 2
+ 327 003c 2C209FE5 		ldr	r2, .L20+20
+ 328              		.loc 1 88 58
+ 329 0040 08301BE5 		ldr	r3, [fp, #-8]
+ 330 0044 033483E3 		orr	r3, r3, #50331648
+ 331              		.loc 1 88 19
+ 332 0048 003082E5 		str	r3, [r2]
+  89:./lib/systick.c **** 
+  90:./lib/systick.c **** }
+ 333              		.loc 1 90 1
+ 334 004c 0000A0E1 		nop
+ 335 0050 04D04BE2 		sub	sp, fp, #4
+ 336              		.cfi_def_cfa 13, 8
+ 337              		@ sp needed
+ 338 0054 0048BDE8 		pop	{fp, lr}
+ 339              		.cfi_restore 14
+ 340              		.cfi_restore 11
+ 341              		.cfi_def_cfa_offset 0
+ 342 0058 1EFF2FE1 		bx	lr
+ 343              	.L21:
+ 344              		.align	2
+ 345              	.L20:
+ 346 005c B20B0000 		.word	2994
+ 347 0060 00000000 		.word	systick_isr
+ 348 0064 00000000 		.word	systick
+ 349 0068 00000000 		.word	aic_sys_register_pit
+ 350 006c 00000000 		.word	aic_sys_init
+ 351 0070 30FDFFFF 		.word	-720
+ 352              		.cfi_endproc
+ 353              	.LFE7:
+ 355              		.text
+ 356              	.Letext0:
+ 357              		.file 2 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 358              		.file 3 "./lib/../AT91SAM7S64.h"
+ 359              		.file 4 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 360              		.file 5 "./lib/systick.h"
+ 361              		.file 6 "./lib/aic.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 systick.c
+     /tmp/cc8RvSRB.s:23     .bss:00000000 systick
+     /tmp/cc8RvSRB.s:20     .bss:00000000 $d
+     /tmp/cc8RvSRB.s:26     .text.systick_get_ms:00000000 $a
+     /tmp/cc8RvSRB.s:31     .text.systick_get_ms:00000000 systick_get_ms
+     /tmp/cc8RvSRB.s:59     .text.systick_get_ms:00000020 $d
+     /tmp/cc8RvSRB.s:64     .text.systick_get_ms_cpiv:00000000 $a
+     /tmp/cc8RvSRB.s:69     .text.systick_get_ms_cpiv:00000000 systick_get_ms_cpiv
+     /tmp/cc8RvSRB.s:121    .text.systick_get_ms_cpiv:00000064 $d
+     /tmp/cc8RvSRB.s:127    .text.systick_wait_ms:00000000 $a
+     /tmp/cc8RvSRB.s:132    .text.systick_wait_ms:00000000 systick_wait_ms
+     /tmp/cc8RvSRB.s:180    .text.systick_wait_ms:00000054 $d
+     /tmp/cc8RvSRB.s:185    .text.systick_wait_ns:00000000 $a
+     /tmp/cc8RvSRB.s:190    .text.systick_wait_ns:00000000 systick_wait_ns
+     /tmp/cc8RvSRB.s:238    .text.systick_isr:00000000 $a
+     /tmp/cc8RvSRB.s:243    .text.systick_isr:00000000 systick_isr
+     /tmp/cc8RvSRB.s:284    .text.systick_isr:00000044 $d
+     /tmp/cc8RvSRB.s:290    .text.systick_init:00000000 $a
+     /tmp/cc8RvSRB.s:295    .text.systick_init:00000000 systick_init
+     /tmp/cc8RvSRB.s:346    .text.systick_init:0000005c $d
+
+UNDEFINED SYMBOLS
+aic_sys_register_pit
+aic_sys_init

@@ -1,0 +1,54 @@
+B::
+
+;WinPOS [<left> <up>] [<hsize> <vsize>] [<scale>] [<window_name>] [<state>] [<header>]
+;Determines the coordinates for the next window opened by a command. 
+;The window position can be specified as an integer value, floating point value or 
+;in percent of the total screen size. 
+
+TOOLBAR   ON
+STATUSBAR ON
+FramePOS 1.2857 0.75 179. 63.
+WinPAGE.RESet
+
+WinPAGE.Create P000
+WinCLEAR
+
+;--------------------------------
+;Linke Spalte
+
+WinPOS 0.0  0.0 74. 33. 16. 1. W000
+WinTABS 10. 10. 25.
+List.auto /markpc
+
+WinPOS 0.0 39.0 74. 6. 0. 0. W001
+Var.Watch %e main_data
+
+WinPOS 0.0 52.0 74. 5. 0. 0. W002
+area.view
+
+;--------------------------------
+;Rechte Spalte
+
+WinPOS 80.0 0.0 52. 10. 0. 0. W003
+register.view /SpotLight /Stack
+
+WinPOS 80.0 15.0 52. 19. 0. 0. W004
+term
+
+WinPOS 137. 0. 36. 32. 5. 0. W005
+Frame.view /Locals /Caller
+
+;SIM_ONLY WinPOS 129.0 39.0 45. 42. 0. 0. W006
+;RAM_ONLY WinPOS  80.0 39.0 45. 17. 0. 0. W006
+;SIM_ONLY d.image e:0x10000000 150. 250. 2.0 /GRAYSCALE8
+;RAM_ONLY d.image e:0x10000000 100. 64. 2.0 /mono 
+
+;SIM_ONLY WinPOS  80.0 39.0 44. 17. 17. 2. W007
+;SIM_ONLY port.timing g.NXT_SENSOR
+
+
+;--------------------------------
+
+WinPAGE.select P000
+
+ENDDO
