@@ -297,7 +297,8 @@ int herzschlag_process(int32_t ad) {
     if (bpm > (h.bpm_avg + 10) || bpm < (h.bpm_avg - 10))
       return 0;
 
-    printf("Real BPM: %d\n", bpm);
+    (void)term_int(bpm, 3, ASYNCSYNC_NONBLOCK);
+    (void)term_string("\n\r", ASYNCSYNC_NONBLOCK);
 
     return bpm;
   }
