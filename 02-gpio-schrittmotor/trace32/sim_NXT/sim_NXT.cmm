@@ -1,0 +1,188 @@
+
+//In der Simulation genutzte Ports
+
+;name.s p.-1 RESET        //Predefined Ports
+;name.s p.-2 ARM_IRQ      //durch AIC gesetzt
+;name.s p.-3 ARM_FIQ      //durch AIC gesetzt
+
+name.s p.0    PA0_TACHOC0_INTC0  //von GPIO gesetzt/gelesen
+name.s p.1    PA1_TACHOA1_DIRA   //von GPIO gesetzt/gelesen
+name.s p.2    PA2_DIGID1         //von GPIO gesetzt/gelesen
+name.s p.3    PA3                //von GPIO gesetzt/gelesen
+name.s p.4    PA4                //von GPIO gesetzt/gelesen
+name.s p.5    PA5                //von GPIO gesetzt/gelesen
+name.s p.6    PA6                //von GPIO gesetzt/gelesen
+name.s p.7    PA7                //von GPIO gesetzt/gelesen
+name.s p.8    PA8_TACHOC1_DIRC   //von GPIO gesetzt/gelesen
+name.s p.9    PA9_TACHOB1_DIRB   //von GPIO gesetzt/gelesen
+name.s p.10   PA10               //von GPIO gesetzt/gelesen
+name.s p.11   PA11               //von GPIO gesetzt/gelesen
+name.s p.12   PA12_LCD_CD        //von GPIO gesetzt/gelesen
+name.s p.13   PA13               //von GPIO gesetzt/gelesen
+name.s p.14   PA14               //von GPIO gesetzt/gelesen
+name.s p.15   PA15_TACHOA0_INTA0 //von GPIO gesetzt/gelesen
+name.s p.16   PA16               //von GPIO gesetzt/gelesen
+name.s p.17   PA17               //von GPIO gesetzt/gelesen
+name.s p.18   PA18_DIGIA1        //von GPIO gesetzt/gelesen
+name.s p.19   PA19_DIGIB1_FIQ    //von GPIO gesetzt/gelesen
+name.s p.20   PA20_DIGIC1_IRQ0   //von GPIO gesetzt/gelesen
+name.s p.21   PA21               //von GPIO gesetzt/gelesen
+name.s p.22   PA22               //von GPIO gesetzt/gelesen
+name.s p.23   PA23_DIGIA0        //von GPIO gesetzt/gelesen
+name.s p.24   PA24               //von GPIO gesetzt/gelesen
+name.s p.25   PA25               //von GPIO gesetzt/gelesen
+name.s p.26   PA26_TACHOB0_INTB0 //von GPIO gesetzt/gelesen
+name.s p.27   PA27               //von GPIO gesetzt/gelesen
+name.s p.28   PA28_DIGIB0        //von GPIO gesetzt/gelesen
+name.s p.29   PA29_DIGIC0        //von GPIO gesetzt/gelesen
+name.s p.30   PA30_DIGID0_IRQ1   //von GPIO gesetzt/gelesen
+name.s p.31   PA31               //von GPIO gesetzt/gelesen
+
+name.group g.PA p.PA0_TACHOC0_INTC0 p.PA1_TACHOA1_DIRA p.PA2_DIGID1 p.PA3 p.PA4 p.PA5 p.PA6 p.PA7 \
+           p.PA8_TACHOC1_DIRC p.PA9_TACHOB1_DIRB p.PA10 p.PA11 p.PA12_LCD_CD p.PA13 p.PA14 p.PA15_TACHOA0_INTA0 \
+		   p.PA16 p.PA17 p.PA18_DIGIA1 p.PA19_DIGIB1_FIQ p.PA20_DIGIC1_IRQ0 p.PA21 p.PA22 p.PA23_DIGIA0 \
+		   p.PA24 p.PA25 p.PA26_TACHOB0_INTB0 p.PA27 p.PA28_DIGIB0 p.PA29_DIGIC0 p.PA30_DIGID0_IRQ1 p.PA31
+		   
+name.group g.NXT_SENSOR1 p.PA23_DIGIA0      p.PA18_DIGIA1
+name.group g.NXT_SENSOR2 p.PA28_DIGIB0      p.PA19_DIGIB1_FIQ
+name.group g.NXT_SENSOR3 p.PA29_DIGIC0      p.PA20_DIGIC1_IRQ0 
+name.group g.NXT_SENSOR4 p.PA30_DIGID0_IRQ1 p.PA2_DIGID1
+
+name.group g.NXT_SENSOR g.NXT_SENSOR1 g.NXT_SENSOR2 g.NXT_SENSOR3 g.NXT_SENSOR4
+
+name.group g.NXT_MOTOR1 p.PA15_TACHOA0_INTA0 p.PA1_TACHOA1_DIRA
+name.group g.NXT_MOTOR2 p.PA26_TACHOB0_INTB0 p.PA9_TACHOB1_DIRB
+name.group g.NXT_MOTOR3 p.PA0_TACHOC0_INTC0  p.PA8_TACHOC1_DIRC
+
+name.group g.NXT_MOTOR  g.NXT_MOTOR1 g.NXT_MOTOR2 g.NXT_MOTOR3
+
+name.group g.NXT_LCD    p.PA12_LCD_CD
+
+//name.word w.PA g.PA  --> Zum Zusammenführen als Bus, macht hier keinen Sinn
+				   
+;name.s p.32   PIO_A0             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.33   PIO_A1             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.34   PIO_A2             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.35   PIO_A3             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.36   PIO_A4             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.37   PIO_A5             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.38   PIO_A6             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.39   PIO_A7             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.40   PIO_A8             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.41   PIO_A9             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.42   PIO_A10            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.43   PIO_A11            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.44   PIO_A12            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.45   PIO_A13            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.46   PIO_A14            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.47   PIO_A15            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.48   PIO_A16            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.49   PIO_A17            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.50   PIO_A18            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.51   PIO_A19            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.52   PIO_A20            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.53   PIO_A21            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.54   PIO_A22            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.55   PIO_A23            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.56   PIO_A24            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.57   PIO_A25            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.58   PIO_A26            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.59   PIO_A27            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.60   PIO_A28            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.61   PIO_A29            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.62   PIO_A30            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.63   PIO_A31            //von GPIO gelesen, derzeit nicht gesetzt
+
+;name.group g.PIO_A p.PIO_A0  p.PIO_A1  p.PIO_A2  p.PIO_A3  p.PIO_A4  p.PIO_A5  p.PIO_A6  p.PIO_A7 \
+;                   p.PIO_A8  p.PIO_A9  p.PIO_A10 p.PIO_A11 p.PIO_A12 p.PIO_A13 p.PIO_A14 p.PIO_A14 \
+;                   p.PIO_A16 p.PIO_A17 p.PIO_A18 p.PIO_A19 p.PIO_A20 p.PIO_A21 p.PIO_A22 p.PIO_A23 \
+;                   p.PIO_A24 p.PIO_A25 p.PIO_A26 p.PIO_A27 p.PIO_A28 p.PIO_A29 p.PIO_A30 p.PIO_A31 \
+
+;name.s p.64   PIO_B0             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.65   PIO_B1             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.66   PIO_B2             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.67   PIO_B3             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.68   PIO_B4             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.69   PIO_B5             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.70   PIO_B6             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.71   PIO_B7             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.72   PIO_B8             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.73   PIO_B9             //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.74   PIO_B10            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.75   PIO_B11            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.76   PIO_B12            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.77   PIO_B13            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.78   PIO_B14            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.79   PIO_B15            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.80   PIO_B16            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.81   PIO_B17            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.82   PIO_B18            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.83   PIO_B19            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.84   PIO_B20            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.85   PIO_B21            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.86   PIO_B22            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.87   PIO_B23            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.88   PIO_B24            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.89   PIO_B25            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.90   PIO_B26            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.91   PIO_B27            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.92   PIO_B28            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.93   PIO_B29            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.94   PIO_B30            //von GPIO gelesen, derzeit nicht gesetzt
+;name.s p.95   PIO_B31            //von GPIO gelesen, derzeit nicht gesetzt
+
+;name.group g.PIO_b p.PIO_B0  p.PIO_B1  p.PIO_B2  p.PIO_B3  p.PIO_B4  p.PIO_B5  p.PIO_B6  p.PIO_B7 \
+;                   p.PIO_B8  p.PIO_B9  p.PIO_B10 p.PIO_B11 p.PIO_B12 p.PIO_B13 p.PIO_B14 p.PIO_B14 \
+;                   p.PIO_B16 p.PIO_B17 p.PIO_B18 p.PIO_B19 p.PIO_B20 p.PIO_B21 p.PIO_B22 p.PIO_B23 \
+;                   p.PIO_B24 p.PIO_B25 p.PIO_B26 p.PIO_B27 p.PIO_B28 p.PIO_B29 p.PIO_B30 p.PIO_B31 \
+
+
+name.s p.256   AIC_IN0_FIQ   //Wird durch GPIO von PA19_DIGIB1_FIQ durchgereicht
+name.s p.257   AIC_IN1_SYS   //Ergibt sich aus der Veroderung von PIT/RTT/WDT/DBGU/PMC/RSTC
+name.s p.258   AIC_IN2_PIOA  //Wird durch GPIO angesteuert
+name.s p.259   AIC_IN3_R3    //Wird nicht angesteuert
+name.s p.260   AIC_IN4_ADC   //Wird nicht angesteuert
+name.s p.261   AIC_IN5_SPI   //Wird nicht angesteuert
+name.s p.262   AIC_IN6_US0   //Wird nicht angesteuert
+name.s p.263   AIC_IN7_US1   //Wird nicht angesteuert
+name.s p.264   AIC_IN8_SSC   //Wird nicht angesteuert
+name.s p.265   AIC_IN9_TWI   //Wird nicht angesteuert
+name.s p.266   AIC_IN10_PWMC  //Wird nicht angesteuert
+name.s p.267   AIC_IN11_UDP   //Wird nicht angesteuert
+name.s p.268   AIC_IN12_TC0   //Wird nicht angesteuert
+name.s p.269   AIC_IN13_TC1   //Wird nicht angesteuert
+name.s p.270   AIC_IN14_TC2   //Wird nicht angesteuert
+name.s p.271   AIC_IN15_R15   //Wird nicht angesteuert
+name.s p.272   AIC_IN16_R16   //Wird nicht angesteuert
+name.s p.273   AIC_IN17_R17   //Wird nicht angesteuert
+name.s p.274   AIC_IN18_R18   //Wird nicht angesteuert
+name.s p.275   AIC_IN19_R19   //Wird nicht angesteuert
+name.s p.276   AIC_IN20_R20   //Wird nicht angesteuert
+name.s p.277   AIC_IN21_R21   //Wird nicht angesteuert
+name.s p.278   AIC_IN22_R22   //Wird nicht angesteuert
+name.s p.279   AIC_IN23_R23   //Wird nicht angesteuert
+name.s p.280   AIC_IN24_R24   //Wird nicht angesteuert
+name.s p.281   AIC_IN25_R25   //Wird nicht angesteuert
+name.s p.282   AIC_IN26_R26   //Wird nicht angesteuert
+name.s p.283   AIC_IN27_R27   //Wird nicht angesteuert
+name.s p.284   AIC_IN28_R28   //Wird nicht angesteuert
+name.s p.285   AIC_IN29_R29   //Wird nicht angesteuert
+name.s p.286   AIC_IN30_IRQ0  //Wird durch GPIO von PA20_DIGIC1_IRQ0 durchgereicht
+name.s p.287   AIC_IN31_IRQ1  //Wird durch GPIO von PA30_DIGID0_IRQ1 durchgereicht
+
+;name.group g.AIC p.ARM_IRQ       p.ARM_FIQ \
+name.group g.AIC p.AIC_IN0_FIQ   p.AIC_IN1_SYS  p.AIC_IN2_PIOA  p.AIC_IN3_R3 \
+                 p.AIC_IN4_ADC   p.AIC_IN5_SPI  p.AIC_IN6_US0   p.AIC_IN7_US1 \
+                 p.AIC_IN8_SSC   p.AIC_IN9_TWI  p.AIC_IN10_PWMC p.AIC_IN11_UDP \
+                 p.AIC_IN12_TC0  p.AIC_IN13_TC1 p.AIC_IN14_TC2  \
+                 p.AIC_IN30_IRQ0 p.AIC_IN31_IRQ1
+
+name.s p.288  AIC_SYS_PIT    //Von PIT angesteuert und zu AIC_IN1_SYS verordert
+name.s p.289  AIC_SYS_RTT    //Wird derzeit nicht angesteuert
+name.s p.290  AIC_SYS_WDT    //Wird derzeit nicht angesteuert
+name.s p.291  AIC_SYS_DBGU   //Wird derzeit nicht angesteuert
+name.s p.292  AIC_SYS_PMC    //Wird derzeit nicht angesteuert
+name.s p.293  AIC_SYS_RSTC   //Wird derzeit nicht angesteuert
+
+name.group g.AIC_SYS p.AIC_SYS_PIT  p.AIC_SYS_RTT p.AIC_SYS_WDT \
+                     p.AIC_SYS_DBGU p.AIC_SYS_PMC p.AIC_SYS_RSTC
