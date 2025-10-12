@@ -7,18 +7,24 @@
 #-----------------------------------------------------------------------------
 # Globale Einstellungen
 
+ifndef MICRO_C_CONFIG_MARVIN
+ GNU_ARM   := /lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-
+ TRACE32_INSTALL_DIR := /mnt/c/Programme.Portable/T32MINI.202009
+ TRACE32_OS := WINDOWS
+else
+ GNU_ARM   := /Users/marvin/micro-c-lab/arm-gnu-compiler/bin/arm-none-eabi-
+ TRACE32_INSTALL_DIR := /Users/marvin/micro-c-lab/t32
+ TRACE32_OS := MACOS
+endif
 #Pfad + Prefix zum GCC Toolchain 
 #GNU_ARM  := ../devkitARM/bin/arm-none-eabi-
 #GNU_ARM  := arm-none-eabi-
 #GNU_ARM   := /lib/gcc/gcc-arm-none-eabi-10.3-2021.10/bin/arm-none-eabi-
-GNU_ARM   := /lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-
 
- TRACE32_INSTALL_DIR := /mnt/c/Programme.Portable/T32MINI.202009
 #TRACE32_INSTALL_DIR := /mnt/c/Programme.Portable/T32MINI.202402
 
 #Einstungen koennten zwar mittels uname automatisch ermittelt werden,
 #so ist es aber sicherer
- TRACE32_OS := WINDOWS
 #TRACE32_OS := LINUX
 #TRACE32_OS := MACOS 
 
@@ -129,14 +135,14 @@ BIN2SAMBA := ../bin2samba/bin2samba.exe
 
 #Pruefen, ob GNU_ARM Verzeichnis 'existiert'
 #- Test auf vorhandensein einer Datei auch über  $(shell command -v datei) möglich
-ifneq ($(shell test -e $(GNU_ARM)gcc && echo -n yes),yes)
-  $(error Invalid Path GNU_ARM='$(GNU_ARM)')
-endif
-
-#Pruefen, ob TRACE32_INSTALL_DIR Verzeichnis existiert
-ifneq ($(shell test -e $(TRACE32_INSTALL_DIR) && echo -n yes),yes)
-  $(error Invalid Path TRACE32_INSTALL_DIR='$(TRACE32_INSTALL_DIR)')
-endif
+# ifneq ($(shell test -e $(GNU_ARM)gcc && echo -n yes),yes)
+#   $(error Invalid Path GNU_ARM='$(GNU_ARM)')
+# endif
+#
+# #Pruefen, ob TRACE32_INSTALL_DIR Verzeichnis existiert
+# ifneq ($(shell test -e $(TRACE32_INSTALL_DIR) && echo -n yes),yes)
+#   $(error Invalid Path TRACE32_INSTALL_DIR='$(TRACE32_INSTALL_DIR)')
+# endif
 
 ifeq ($(TRACE32_OS),WINDOWS)
 else ifeq ($(TRACE32_OS),LINUX)
