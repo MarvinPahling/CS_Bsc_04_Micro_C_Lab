@@ -118,11 +118,13 @@ struct {
 	SCHRITT_MODE  schritt_mode;
 	POSITION_MODE position_mode;
 	uint32_t      pos;
+	uint8_t       speed;
 	//...
 } schrittmotor_data={   
 	.schritt_mode =SCHRITT_VOLL_1,
 	.position_mode=POSITION_MANUELL,
 	.pos          =0,
+	.speed        =0,
 	//...
 };  //Vorteil, alle benötigten Variablen können mit 'v.view %e schrittmotor_data' 
     //online verfolgt werden
@@ -168,9 +170,59 @@ void ui_process(void)
 	
 	button_t button_new=nxt_avr_get_buttons();
 	
-	//Beispiel für Tastenauswertung		   
 	if((button_new.orange == 1) && (schrittmotor_data.button_old.orange == 0)) {
-		(void)term_string("Oranges pressed\n\r",ASYNCSYNC_NONBLOCK);
+		(void)term_string("Orange pressed\n\r",ASYNCSYNC_NONBLOCK);
+		
+		if (schrittmotor_data.schritt_mode + 1 < SCHRITT_END) {
+        	schrittmotor_data.schritt_mode++;
+			schrittmotor_init(schrittmotor_data.schritt_mode);
+    	} else {
+        	schrittmotor_data.schritt_mode = SCHRITT_VOLL_1;
+			schrittmotor_init(schrittmotor_data.schritt_mode);
+		}	  
+		printf("Neuer Modus: %s\n", schritt_mode2str[schrittmotor_data.schritt_mode]);
+    }
+
+	if((button_new.grey == 1) && (schrittmotor_data.button_old.grey == 0)) {
+		(void)term_string("Grey pressed\n\r",ASYNCSYNC_NONBLOCK);
+	  
+		if (schrittmotor_data.position_mode + 1 < POSITION_END) {
+        	schrittmotor_data.position_mode++;
+    	} else {
+        	schrittmotor_data.position_mode = POSITION_MANUELL;
+		}
+		printf("Position: %i\n", schrittmotor_data.position_mode);
+    }
+	
+	if(schrittmotor_data.position_mode == POSITION_KONTINUIERLICH){
+		
+		if((button_new.left == 1) && (schrittmotor_data.button_old.left == 0)) {
+
+			if(schrittmotor_data.speed > 0) {
+				schrittmotor_data.speed--;
+				printf("Speed: %i\n", schrittmotor_data.speed);}
+		} 
+		if((button_new.right == 1) && (schrittmotor_data.button_old.right == 0)) {
+
+			if(schrittmotor_data.speed < 4){ 
+				schrittmotor_data.speed++;
+			 	printf("Speed: %i\n", schrittmotor_data.speed);}
+		}
+	}
+
+	if(schrittmotor_data.position_mode == POSITION_MANUELL){
+		
+		if((button_new.left == 1) && (schrittmotor_data.button_old.left == 0)) {
+
+				schrittmotor_data.pos--;
+				printf("Pos: %lu\n", schrittmotor_data.pos);
+			
+		} 
+		if((button_new.right == 1) && (schrittmotor_data.button_old.right == 0)) {
+
+				schrittmotor_data.pos++;
+			 	printf("Pos: %lu\n", schrittmotor_data.pos);
+		}
 	}
 	//Weitere Tasten: orange left right grey
 
