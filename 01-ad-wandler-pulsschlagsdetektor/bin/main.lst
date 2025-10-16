@@ -984,10 +984,7 @@
  773              		.section	.rodata
  774              		.align	2
  775              	.LC0:
- 776 0000 5265616C 		.ascii	"Real BPM: %d\012\000"
- 776      2042504D 
- 776      3A202564 
- 776      0A00
+ 776 0000 0A0D00   		.ascii	"\012\015\000"
  777              		.section	.text.herzschlag_process,"ax",%progbits
  778              		.align	2
  779              		.global	herzschlag_process
@@ -1087,39 +1084,45 @@
  192:main.c        **** /*****************************************************************************/
  193:main.c        **** #define true 1
  194:main.c        **** #define false 0
- 195:main.c        **** 
- 196:main.c        **** struct {
- 197:main.c        ****   uint16_t ad_buf[128];
- 198:main.c        ****   int ad_idx;
- 199:main.c        ****   int bpm_idx;
- 200:main.c        ****   int ad_sum;
- 201:main.c        ****   int bpm_sum;
- 202:main.c        ****   int ad_avg;
- 203:main.c        ****   int bpm_avg;
- 204:main.c        ****   uint16_t prev_bpm[16];
- 205:main.c        ****   uint32_t prev_beat;
- 206:main.c        ****   uint32_t begin;
- 207:main.c        ****   uint32_t end;
- 208:main.c        ****   _Bool onBeat;
- 209:main.c        **** 
- 210:main.c        **** } h = {
- 211:main.c        ****     .ad_buf = {0},
- 212:main.c        ****     .ad_idx = 0,
- 213:main.c        ****     .ad_sum = 0,
- 214:main.c        ****     .ad_avg = 0,
- 215:main.c        ****     .prev_bpm = {0},
- 216:main.c        ****     .bpm_idx = 0,
- 217:main.c        ****     .bpm_sum = 0,
- 218:main.c        ****     .bpm_avg = 0,
- 219:main.c        ****     .prev_beat = 0,
- 220:main.c        ****     .begin = 0,
- 221:main.c        ****     .end = 0,
- 222:main.c        ****     .onBeat = false,
- 223:main.c        **** };
- 224:main.c        **** 
- 225:main.c        **** //>0 ermittelter Herzschlag =0 kein neuer Herzschlag <0 Fehler
- 226:main.c        **** int herzschlag_process(int32_t ad) {
- 785              		.loc 1 226 36
+ 195:main.c        **** #define BUFFER_SIZE_AD 128
+ 196:main.c        **** #define BUFFER_SIZE_BPM 16
+ 197:main.c        **** #define MIN_BPM 50
+ 198:main.c        **** #define MAX_BPM 200
+ 199:main.c        **** #define MIN_AD 350
+ 200:main.c        **** #define OFFSET_AD 20
+ 201:main.c        **** 
+ 202:main.c        **** struct {
+ 203:main.c        ****   uint16_t ad_buf[BUFFER_SIZE_AD];
+ 204:main.c        ****   int ad_idx;
+ 205:main.c        ****   int bpm_idx;
+ 206:main.c        ****   int ad_sum;
+ 207:main.c        ****   int bpm_sum;
+ 208:main.c        ****   int ad_avg;
+ 209:main.c        ****   int bpm_avg;
+ 210:main.c        ****   uint16_t prev_bpm[BUFFER_SIZE_BPM];
+ 211:main.c        ****   uint32_t prev_beat;
+ 212:main.c        ****   uint32_t begin;
+ 213:main.c        ****   uint32_t end;
+ 214:main.c        ****   _Bool onBeat;
+ 215:main.c        **** 
+ 216:main.c        **** } h = {
+ 217:main.c        ****     .ad_buf = {0},
+ 218:main.c        ****     .ad_idx = 0,
+ 219:main.c        ****     .ad_sum = 0,
+ 220:main.c        ****     .ad_avg = 0,
+ 221:main.c        ****     .prev_bpm = {0},
+ 222:main.c        ****     .bpm_idx = 0,
+ 223:main.c        ****     .bpm_sum = 0,
+ 224:main.c        ****     .bpm_avg = 0,
+ 225:main.c        ****     .prev_beat = 0,
+ 226:main.c        ****     .begin = 0,
+ 227:main.c        ****     .end = 0,
+ 228:main.c        ****     .onBeat = false,
+ 229:main.c        **** };
+ 230:main.c        **** 
+ 231:main.c        **** //>0 ermittelter Herzschlag =0 kein neuer Herzschlag <0 Fehler
+ 232:main.c        **** int herzschlag_process(int32_t ad) {
+ 785              		.loc 1 232 36
  786              		.cfi_startproc
  787              		@ Function supports interworking.
  788              		@ args = 0, pretend = 0, frame = 24
@@ -1132,370 +1135,364 @@
  795              		.cfi_def_cfa 11, 4
  796 0008 18D04DE2 		sub	sp, sp, #24
  797 000c 18000BE5 		str	r0, [fp, #-24]
- 227:main.c        ****   trace_scope(0, ad);
- 798              		.loc 1 227 3
+ 233:main.c        ****   trace_scope(0, ad);
+ 798              		.loc 1 233 3
  799 0010 18301BE5 		ldr	r3, [fp, #-24]
  800 0014 0338A0E1 		lsl	r3, r3, #16
  801 0018 4338A0E1 		asr	r3, r3, #16
  802 001c 0310A0E1 		mov	r1, r3
  803 0020 0000A0E3 		mov	r0, #0
- 804 0024 60339FE5 		ldr	r3, .L57
+ 804 0024 78339FE5 		ldr	r3, .L57
  805 0028 0FE0A0E1 		mov	lr, pc
  806 002c 13FF2FE1 		bx	r3
  807              	.LVL5:
- 228:main.c        **** 
- 229:main.c        ****   // Ringbuffer
- 230:main.c        ****   h.ad_sum += (ad - h.ad_buf[h.ad_idx]);
- 808              		.loc 1 230 4
- 809 0030 58339FE5 		ldr	r3, .L57+4
+ 234:main.c        **** 
+ 235:main.c        ****   // Ringbuffer
+ 236:main.c        ****   h.ad_sum += (ad - h.ad_buf[h.ad_idx]);
+ 808              		.loc 1 236 4
+ 809 0030 70339FE5 		ldr	r3, .L57+4
  810 0034 082193E5 		ldr	r2, [r3, #264]
- 811              		.loc 1 230 31
- 812 0038 50339FE5 		ldr	r3, .L57+4
+ 811              		.loc 1 236 31
+ 812 0038 68339FE5 		ldr	r3, .L57+4
  813 003c 003193E5 		ldr	r3, [r3, #256]
- 814              		.loc 1 230 29
- 815 0040 48139FE5 		ldr	r1, .L57+4
+ 814              		.loc 1 236 29
+ 815 0040 60139FE5 		ldr	r1, .L57+4
  816 0044 8330A0E1 		lsl	r3, r3, #1
  817 0048 033081E0 		add	r3, r1, r3
  818 004c B030D3E1 		ldrh	r3, [r3]
  819 0050 0310A0E1 		mov	r1, r3
- 820              		.loc 1 230 19
+ 820              		.loc 1 236 19
  821 0054 18301BE5 		ldr	r3, [fp, #-24]
  822 0058 013043E0 		sub	r3, r3, r1
- 823              		.loc 1 230 12
+ 823              		.loc 1 236 12
  824 005c 033082E0 		add	r3, r2, r3
- 825 0060 28239FE5 		ldr	r2, .L57+4
+ 825 0060 40239FE5 		ldr	r2, .L57+4
  826 0064 083182E5 		str	r3, [r2, #264]
- 231:main.c        ****   h.ad_buf[h.ad_idx] = (uint16_t)ad;
- 827              		.loc 1 231 13
- 828 0068 20339FE5 		ldr	r3, .L57+4
+ 237:main.c        ****   h.ad_buf[h.ad_idx] = (uint16_t)ad;
+ 827              		.loc 1 237 13
+ 828 0068 38339FE5 		ldr	r3, .L57+4
  829 006c 003193E5 		ldr	r3, [r3, #256]
- 830              		.loc 1 231 24
+ 830              		.loc 1 237 24
  831 0070 18201BE5 		ldr	r2, [fp, #-24]
  832 0074 0228A0E1 		lsl	r2, r2, #16
  833 0078 2228A0E1 		lsr	r2, r2, #16
- 834              		.loc 1 231 22
- 835 007c 0C139FE5 		ldr	r1, .L57+4
+ 834              		.loc 1 237 22
+ 835 007c 24139FE5 		ldr	r1, .L57+4
  836 0080 8330A0E1 		lsl	r3, r3, #1
  837 0084 033081E0 		add	r3, r1, r3
  838 0088 B020C3E1 		strh	r2, [r3]	@ movhi
- 232:main.c        ****   h.ad_idx = (h.ad_idx + 1) & 127;
- 839              		.loc 1 232 16
- 840 008c FC329FE5 		ldr	r3, .L57+4
+ 238:main.c        ****   h.ad_idx = (h.ad_idx + 1) & 127;
+ 839              		.loc 1 238 16
+ 840 008c 14339FE5 		ldr	r3, .L57+4
  841 0090 003193E5 		ldr	r3, [r3, #256]
- 842              		.loc 1 232 24
+ 842              		.loc 1 238 24
  843 0094 013083E2 		add	r3, r3, #1
- 844              		.loc 1 232 29
+ 844              		.loc 1 238 29
  845 0098 7F3003E2 		and	r3, r3, #127
- 846              		.loc 1 232 12
- 847 009c EC229FE5 		ldr	r2, .L57+4
+ 846              		.loc 1 238 12
+ 847 009c 04239FE5 		ldr	r2, .L57+4
  848 00a0 003182E5 		str	r3, [r2, #256]
- 233:main.c        **** 
- 234:main.c        ****   // floating average
- 235:main.c        ****   h.ad_avg = (h.ad_sum >> 7) + (h.ad_avg >> 2) - 20;
- 849              		.loc 1 235 16
- 850 00a4 E4329FE5 		ldr	r3, .L57+4
+ 239:main.c        **** 
+ 240:main.c        ****   // floating average
+ 241:main.c        ****   h.ad_avg = (h.ad_sum >> 7) + (h.ad_avg >> 2) - OFFSET_AD;
+ 849              		.loc 1 241 16
+ 850 00a4 FC329FE5 		ldr	r3, .L57+4
  851 00a8 083193E5 		ldr	r3, [r3, #264]
- 852              		.loc 1 235 24
+ 852              		.loc 1 241 24
  853 00ac C323A0E1 		asr	r2, r3, #7
- 854              		.loc 1 235 34
- 855 00b0 D8329FE5 		ldr	r3, .L57+4
+ 854              		.loc 1 241 34
+ 855 00b0 F0329FE5 		ldr	r3, .L57+4
  856 00b4 103193E5 		ldr	r3, [r3, #272]
- 857              		.loc 1 235 42
+ 857              		.loc 1 241 42
  858 00b8 4331A0E1 		asr	r3, r3, #2
- 859              		.loc 1 235 30
+ 859              		.loc 1 241 30
  860 00bc 033082E0 		add	r3, r2, r3
- 861              		.loc 1 235 48
+ 861              		.loc 1 241 48
  862 00c0 143043E2 		sub	r3, r3, #20
- 863              		.loc 1 235 12
- 864 00c4 C4229FE5 		ldr	r2, .L57+4
+ 863              		.loc 1 241 12
+ 864 00c4 DC229FE5 		ldr	r2, .L57+4
  865 00c8 103182E5 		str	r3, [r2, #272]
- 236:main.c        ****   trace_scope(1, h.ad_avg);
- 866              		.loc 1 236 19
- 867 00cc BC329FE5 		ldr	r3, .L57+4
+ 242:main.c        ****   trace_scope(1, h.ad_avg);
+ 866              		.loc 1 242 19
+ 867 00cc D4329FE5 		ldr	r3, .L57+4
  868 00d0 103193E5 		ldr	r3, [r3, #272]
- 869              		.loc 1 236 3
+ 869              		.loc 1 242 3
  870 00d4 0338A0E1 		lsl	r3, r3, #16
  871 00d8 4338A0E1 		asr	r3, r3, #16
  872 00dc 0310A0E1 		mov	r1, r3
  873 00e0 0100A0E3 		mov	r0, #1
- 874 00e4 A0329FE5 		ldr	r3, .L57
+ 874 00e4 B8329FE5 		ldr	r3, .L57
  875 00e8 0FE0A0E1 		mov	lr, pc
  876 00ec 13FF2FE1 		bx	r3
  877              	.LVL6:
- 237:main.c        **** 
- 238:main.c        ****   // Average not set
- 239:main.c        ****   if (h.ad_avg < 350) {
- 878              		.loc 1 239 8
- 879 00f0 98329FE5 		ldr	r3, .L57+4
+ 243:main.c        **** 
+ 244:main.c        ****   // Average not set
+ 245:main.c        ****   if (h.ad_avg < MIN_AD) {
+ 878              		.loc 1 245 8
+ 879 00f0 B0329FE5 		ldr	r3, .L57+4
  880 00f4 103193E5 		ldr	r3, [r3, #272]
- 881              		.loc 1 239 6
- 882 00f8 94229FE5 		ldr	r2, .L57+8
+ 881              		.loc 1 245 6
+ 882 00f8 AC229FE5 		ldr	r2, .L57+8
  883 00fc 020053E1 		cmp	r3, r2
  884 0100 010000CA 		bgt	.L46
- 240:main.c        ****     return 0;
- 885              		.loc 1 240 12
+ 246:main.c        ****     return 0;
+ 885              		.loc 1 246 12
  886 0104 0030A0E3 		mov	r3, #0
- 887 0108 9B0000EA 		b	.L47
+ 887 0108 A10000EA 		b	.L47
  888              	.L46:
- 241:main.c        ****   }
- 242:main.c        ****   // AGC error
- 243:main.c        ****   if (ad > (h.ad_avg << 1)) {
- 889              		.loc 1 243 14
- 890 010c 7C329FE5 		ldr	r3, .L57+4
+ 247:main.c        ****   }
+ 248:main.c        ****   // AGC error
+ 249:main.c        ****   if (ad > (h.ad_avg << 1)) {
+ 889              		.loc 1 249 14
+ 890 010c 94329FE5 		ldr	r3, .L57+4
  891 0110 103193E5 		ldr	r3, [r3, #272]
- 892              		.loc 1 243 22
+ 892              		.loc 1 249 22
  893 0114 8330A0E1 		lsl	r3, r3, #1
- 894              		.loc 1 243 6
+ 894              		.loc 1 249 6
  895 0118 18201BE5 		ldr	r2, [fp, #-24]
  896 011c 030052E1 		cmp	r2, r3
  897 0120 010000DA 		ble	.L48
- 244:main.c        ****     return 0;
- 898              		.loc 1 244 12
+ 250:main.c        ****     return 0;
+ 898              		.loc 1 250 12
  899 0124 0030A0E3 		mov	r3, #0
- 900 0128 930000EA 		b	.L47
+ 900 0128 990000EA 		b	.L47
  901              	.L48:
- 245:main.c        ****   }
- 246:main.c        **** 
- 247:main.c        ****   // start of beat
- 248:main.c        ****   if (ad > h.ad_avg && !h.onBeat) {
- 902              		.loc 1 248 13
- 903 012c 5C329FE5 		ldr	r3, .L57+4
+ 251:main.c        ****   }
+ 252:main.c        **** 
+ 253:main.c        ****   // start of beat
+ 254:main.c        ****   if (ad > h.ad_avg && !h.onBeat) {
+ 902              		.loc 1 254 13
+ 903 012c 74329FE5 		ldr	r3, .L57+4
  904 0130 103193E5 		ldr	r3, [r3, #272]
- 905              		.loc 1 248 6
+ 905              		.loc 1 254 6
  906 0134 18201BE5 		ldr	r2, [fp, #-24]
  907 0138 030052E1 		cmp	r2, r3
  908 013c 100000DA 		ble	.L49
- 909              		.loc 1 248 26 discriminator 1
- 910 0140 48329FE5 		ldr	r3, .L57+4
+ 909              		.loc 1 254 26 discriminator 1
+ 910 0140 60329FE5 		ldr	r3, .L57+4
  911 0144 4431D3E5 		ldrb	r3, [r3, #324]	@ zero_extendqisi2
- 912              		.loc 1 248 24 discriminator 1
+ 912              		.loc 1 254 24 discriminator 1
  913 0148 013023E2 		eor	r3, r3, #1
  914 014c FF3003E2 		and	r3, r3, #255
- 915              		.loc 1 248 21 discriminator 1
+ 915              		.loc 1 254 21 discriminator 1
  916 0150 000053E3 		cmp	r3, #0
  917 0154 0A00000A 		beq	.L49
- 249:main.c        ****     h.begin = systick_get_ms();
- 918              		.loc 1 249 15
- 919 0158 38329FE5 		ldr	r3, .L57+12
+ 255:main.c        ****     h.begin = systick_get_ms();
+ 918              		.loc 1 255 15
+ 919 0158 50329FE5 		ldr	r3, .L57+12
  920 015c 0FE0A0E1 		mov	lr, pc
  921 0160 13FF2FE1 		bx	r3
  922              	.LVL7:
  923 0164 0030A0E1 		mov	r3, r0
- 924              		.loc 1 249 13 discriminator 1
- 925 0168 20229FE5 		ldr	r2, .L57+4
+ 924              		.loc 1 255 13 discriminator 1
+ 925 0168 38229FE5 		ldr	r2, .L57+4
  926 016c 3C3182E5 		str	r3, [r2, #316]
- 250:main.c        ****     h.onBeat = true;
- 927              		.loc 1 250 14
- 928 0170 18329FE5 		ldr	r3, .L57+4
+ 256:main.c        ****     h.onBeat = true;
+ 927              		.loc 1 256 14
+ 928 0170 30329FE5 		ldr	r3, .L57+4
  929 0174 0120A0E3 		mov	r2, #1
  930 0178 4421C3E5 		strb	r2, [r3, #324]
- 251:main.c        ****     return 0;
- 931              		.loc 1 251 12
+ 257:main.c        ****     return 0;
+ 931              		.loc 1 257 12
  932 017c 0030A0E3 		mov	r3, #0
- 933 0180 7D0000EA 		b	.L47
+ 933 0180 830000EA 		b	.L47
  934              	.L49:
- 252:main.c        ****   }
- 253:main.c        **** 
- 254:main.c        ****   // end of beat
- 255:main.c        ****   if (ad < h.ad_avg && h.onBeat) {
- 935              		.loc 1 255 13
- 936 0184 04329FE5 		ldr	r3, .L57+4
+ 258:main.c        ****   }
+ 259:main.c        **** 
+ 260:main.c        ****   // end of beat
+ 261:main.c        ****   if (ad < h.ad_avg && h.onBeat) {
+ 935              		.loc 1 261 13
+ 936 0184 1C329FE5 		ldr	r3, .L57+4
  937 0188 103193E5 		ldr	r3, [r3, #272]
- 938              		.loc 1 255 6
+ 938              		.loc 1 261 6
  939 018c 18201BE5 		ldr	r2, [fp, #-24]
  940 0190 030052E1 		cmp	r2, r3
- 941 0194 770000AA 		bge	.L50
- 942              		.loc 1 255 25 discriminator 1
- 943 0198 F0319FE5 		ldr	r3, .L57+4
+ 941 0194 7D0000AA 		bge	.L50
+ 942              		.loc 1 261 25 discriminator 1
+ 943 0198 08329FE5 		ldr	r3, .L57+4
  944 019c 4431D3E5 		ldrb	r3, [r3, #324]	@ zero_extendqisi2
- 945              		.loc 1 255 21 discriminator 1
+ 945              		.loc 1 261 21 discriminator 1
  946 01a0 000053E3 		cmp	r3, #0
- 947 01a4 7300000A 		beq	.L50
+ 947 01a4 7900000A 		beq	.L50
  948              	.LBB7:
- 256:main.c        ****     h.end = systick_get_ms();
- 949              		.loc 1 256 13
- 950 01a8 E8319FE5 		ldr	r3, .L57+12
+ 262:main.c        ****     h.end = systick_get_ms();
+ 949              		.loc 1 262 13
+ 950 01a8 00329FE5 		ldr	r3, .L57+12
  951 01ac 0FE0A0E1 		mov	lr, pc
  952 01b0 13FF2FE1 		bx	r3
  953              	.LVL8:
  954 01b4 0030A0E1 		mov	r3, r0
- 955              		.loc 1 256 11 discriminator 1
- 956 01b8 D0219FE5 		ldr	r2, .L57+4
+ 955              		.loc 1 262 11 discriminator 1
+ 956 01b8 E8219FE5 		ldr	r2, .L57+4
  957 01bc 403182E5 		str	r3, [r2, #320]
- 257:main.c        ****     h.onBeat = false;
- 958              		.loc 1 257 14
- 959 01c0 C8319FE5 		ldr	r3, .L57+4
+ 263:main.c        ****     h.onBeat = false;
+ 958              		.loc 1 263 14
+ 959 01c0 E0319FE5 		ldr	r3, .L57+4
  960 01c4 0020A0E3 		mov	r2, #0
  961 01c8 4421C3E5 		strb	r2, [r3, #324]
- 258:main.c        **** 
- 259:main.c        ****     // timestamp of beat
- 260:main.c        ****     uint32_t timestamp = h.begin + ((h.end - h.begin) >> 1);
- 962              		.loc 1 260 27
- 963 01cc BC319FE5 		ldr	r3, .L57+4
+ 264:main.c        **** 
+ 265:main.c        ****     // timestamp of beat
+ 266:main.c        ****     uint32_t timestamp = h.begin + ((h.end - h.begin) >> 1);
+ 962              		.loc 1 266 27
+ 963 01cc D4319FE5 		ldr	r3, .L57+4
  964 01d0 3C2193E5 		ldr	r2, [r3, #316]
- 965              		.loc 1 260 39
- 966 01d4 B4319FE5 		ldr	r3, .L57+4
+ 965              		.loc 1 266 39
+ 966 01d4 CC319FE5 		ldr	r3, .L57+4
  967 01d8 401193E5 		ldr	r1, [r3, #320]
- 968              		.loc 1 260 47
- 969 01dc AC319FE5 		ldr	r3, .L57+4
+ 968              		.loc 1 266 47
+ 969 01dc C4319FE5 		ldr	r3, .L57+4
  970 01e0 3C3193E5 		ldr	r3, [r3, #316]
- 971              		.loc 1 260 44
+ 971              		.loc 1 266 44
  972 01e4 033041E0 		sub	r3, r1, r3
- 973              		.loc 1 260 55
+ 973              		.loc 1 266 55
  974 01e8 A330A0E1 		lsr	r3, r3, #1
- 975              		.loc 1 260 14
+ 975              		.loc 1 266 14
  976 01ec 033082E0 		add	r3, r2, r3
  977 01f0 08300BE5 		str	r3, [fp, #-8]
- 261:main.c        **** 
- 262:main.c        ****     // Wenn lastBeat == 0 --> erster gefundener Schlag: initialisiere und gib 0
- 263:main.c        ****     // zurück
- 264:main.c        ****     if (h.prev_beat == 0) {
- 978              		.loc 1 264 10
- 979 01f4 94319FE5 		ldr	r3, .L57+4
+ 267:main.c        **** 
+ 268:main.c        ****     if (h.prev_beat == 0) {
+ 978              		.loc 1 268 10
+ 979 01f4 AC319FE5 		ldr	r3, .L57+4
  980 01f8 383193E5 		ldr	r3, [r3, #312]
- 981              		.loc 1 264 8
+ 981              		.loc 1 268 8
  982 01fc 000053E3 		cmp	r3, #0
  983 0200 0400001A 		bne	.L51
- 265:main.c        ****       h.prev_beat = timestamp;
- 984              		.loc 1 265 19
- 985 0204 84219FE5 		ldr	r2, .L57+4
+ 269:main.c        ****       h.prev_beat = timestamp;
+ 984              		.loc 1 269 19
+ 985 0204 9C219FE5 		ldr	r2, .L57+4
  986 0208 08301BE5 		ldr	r3, [fp, #-8]
  987 020c 383182E5 		str	r3, [r2, #312]
- 266:main.c        ****       return 0;
- 988              		.loc 1 266 14
+ 270:main.c        ****       return 0;
+ 988              		.loc 1 270 14
  989 0210 0030A0E3 		mov	r3, #0
- 990 0214 580000EA 		b	.L47
+ 990 0214 5E0000EA 		b	.L47
  991              	.L51:
- 267:main.c        ****     }
- 268:main.c        **** 
- 269:main.c        ****     // time between beats
- 270:main.c        ****     uint32_t t = timestamp - h.prev_beat;
- 992              		.loc 1 270 31
- 993 0218 70319FE5 		ldr	r3, .L57+4
+ 271:main.c        ****     }
+ 272:main.c        **** 
+ 273:main.c        ****     // time between beats
+ 274:main.c        ****     uint32_t t = timestamp - h.prev_beat;
+ 992              		.loc 1 274 31
+ 993 0218 88319FE5 		ldr	r3, .L57+4
  994 021c 383193E5 		ldr	r3, [r3, #312]
- 995              		.loc 1 270 14
+ 995              		.loc 1 274 14
  996 0220 08201BE5 		ldr	r2, [fp, #-8]
  997 0224 033042E0 		sub	r3, r2, r3
  998 0228 0C300BE5 		str	r3, [fp, #-12]
- 271:main.c        ****     if (t == 0) {
- 999              		.loc 1 271 8
+ 275:main.c        ****     if (t == 0) {
+ 999              		.loc 1 275 8
  1000 022c 0C301BE5 		ldr	r3, [fp, #-12]
  1001 0230 000053E3 		cmp	r3, #0
  1002 0234 0400001A 		bne	.L52
- 272:main.c        ****       h.prev_beat = timestamp;
- 1003              		.loc 1 272 19
- 1004 0238 50219FE5 		ldr	r2, .L57+4
+ 276:main.c        ****       h.prev_beat = timestamp;
+ 1003              		.loc 1 276 19
+ 1004 0238 68219FE5 		ldr	r2, .L57+4
  1005 023c 08301BE5 		ldr	r3, [fp, #-8]
  1006 0240 383182E5 		str	r3, [r2, #312]
- 273:main.c        ****       return 0;
- 1007              		.loc 1 273 14
+ 277:main.c        ****       return 0;
+ 1007              		.loc 1 277 14
  1008 0244 0030A0E3 		mov	r3, #0
- 1009 0248 4B0000EA 		b	.L47
+ 1009 0248 510000EA 		b	.L47
  1010              	.L52:
- 274:main.c        ****     }
- 275:main.c        **** 
- 276:main.c        ****     h.prev_beat = timestamp;
- 1011              		.loc 1 276 17
- 1012 024c 3C219FE5 		ldr	r2, .L57+4
+ 278:main.c        ****     }
+ 279:main.c        **** 
+ 280:main.c        ****     h.prev_beat = timestamp;
+ 1011              		.loc 1 280 17
+ 1012 024c 54219FE5 		ldr	r2, .L57+4
  1013 0250 08301BE5 		ldr	r3, [fp, #-8]
  1014 0254 383182E5 		str	r3, [r2, #312]
- 277:main.c        **** 
- 278:main.c        ****     /* BPM: 1000 ms / t (ms per beat) * 60 */
- 279:main.c        ****     //((120000/t) +1) >>1
- 280:main.c        ****     int bpm = 60000 / t;
- 1015              		.loc 1 280 21
- 1016 0258 3C319FE5 		ldr	r3, .L57+16
+ 281:main.c        **** 
+ 282:main.c        ****     // 60*1000/t
+ 283:main.c        ****     int bpm = 60000 / t;
+ 1015              		.loc 1 283 21
+ 1016 0258 54319FE5 		ldr	r3, .L57+16
  1017 025c 0C101BE5 		ldr	r1, [fp, #-12]
- 1018 0260 38019FE5 		ldr	r0, .L57+20
+ 1018 0260 50019FE5 		ldr	r0, .L57+20
  1019 0264 0FE0A0E1 		mov	lr, pc
  1020 0268 13FF2FE1 		bx	r3
  1021              	.LVL9:
  1022 026c 0030A0E1 		mov	r3, r0
- 1023              		.loc 1 280 9
+ 1023              		.loc 1 283 9
  1024 0270 10300BE5 		str	r3, [fp, #-16]
- 281:main.c        **** 
- 282:main.c        ****     if (bpm < 50 || bpm > 200) {
- 1025              		.loc 1 282 8
+ 284:main.c        **** 
+ 285:main.c        ****     if (bpm < MIN_BPM || bpm > MAX_BPM) {
+ 1025              		.loc 1 285 8
  1026 0274 10301BE5 		ldr	r3, [fp, #-16]
  1027 0278 310053E3 		cmp	r3, #49
  1028 027c 020000DA 		ble	.L53
- 1029              		.loc 1 282 18 discriminator 1
+ 1029              		.loc 1 285 23 discriminator 1
  1030 0280 10301BE5 		ldr	r3, [fp, #-16]
  1031 0284 C80053E3 		cmp	r3, #200
  1032 0288 010000DA 		ble	.L54
  1033              	.L53:
- 283:main.c        ****       return 0;
- 1034              		.loc 1 283 14
+ 286:main.c        ****       return 0;
+ 1034              		.loc 1 286 14
  1035 028c 0030A0E3 		mov	r3, #0
- 1036 0290 390000EA 		b	.L47
+ 1036 0290 3F0000EA 		b	.L47
  1037              	.L54:
- 284:main.c        ****     }
- 285:main.c        **** 
- 286:main.c        ****     // Ringbuffer bpm
- 287:main.c        ****     h.bpm_sum += (bpm - h.prev_bpm[h.bpm_idx]);
- 1038              		.loc 1 287 6
- 1039 0294 F4309FE5 		ldr	r3, .L57+4
+ 287:main.c        ****     }
+ 288:main.c        **** 
+ 289:main.c        ****     // Ringbuffer bpm
+ 290:main.c        ****     h.bpm_sum += (bpm - h.prev_bpm[h.bpm_idx]);
+ 1038              		.loc 1 290 6
+ 1039 0294 0C319FE5 		ldr	r3, .L57+4
  1040 0298 0C2193E5 		ldr	r2, [r3, #268]
- 1041              		.loc 1 287 37
- 1042 029c EC309FE5 		ldr	r3, .L57+4
+ 1041              		.loc 1 290 37
+ 1042 029c 04319FE5 		ldr	r3, .L57+4
  1043 02a0 043193E5 		ldr	r3, [r3, #260]
- 1044              		.loc 1 287 35
- 1045 02a4 E4109FE5 		ldr	r1, .L57+4
+ 1044              		.loc 1 290 35
+ 1045 02a4 FC109FE5 		ldr	r1, .L57+4
  1046 02a8 8C3083E2 		add	r3, r3, #140
  1047 02ac 8330A0E1 		lsl	r3, r3, #1
  1048 02b0 033081E0 		add	r3, r1, r3
  1049 02b4 B030D3E1 		ldrh	r3, [r3]
  1050 02b8 0310A0E1 		mov	r1, r3
- 1051              		.loc 1 287 23
+ 1051              		.loc 1 290 23
  1052 02bc 10301BE5 		ldr	r3, [fp, #-16]
  1053 02c0 013043E0 		sub	r3, r3, r1
- 1054              		.loc 1 287 15
+ 1054              		.loc 1 290 15
  1055 02c4 033082E0 		add	r3, r2, r3
- 1056 02c8 C0209FE5 		ldr	r2, .L57+4
+ 1056 02c8 D8209FE5 		ldr	r2, .L57+4
  1057 02cc 0C3182E5 		str	r3, [r2, #268]
- 288:main.c        ****     h.prev_bpm[h.bpm_idx] = (uint16_t)bpm;
- 1058              		.loc 1 288 17
- 1059 02d0 B8309FE5 		ldr	r3, .L57+4
+ 291:main.c        ****     h.prev_bpm[h.bpm_idx] = (uint16_t)bpm;
+ 1058              		.loc 1 291 17
+ 1059 02d0 D0309FE5 		ldr	r3, .L57+4
  1060 02d4 043193E5 		ldr	r3, [r3, #260]
- 1061              		.loc 1 288 29
+ 1061              		.loc 1 291 29
  1062 02d8 10201BE5 		ldr	r2, [fp, #-16]
  1063 02dc 0228A0E1 		lsl	r2, r2, #16
  1064 02e0 2228A0E1 		lsr	r2, r2, #16
- 1065              		.loc 1 288 27
- 1066 02e4 A4109FE5 		ldr	r1, .L57+4
+ 1065              		.loc 1 291 27
+ 1066 02e4 BC109FE5 		ldr	r1, .L57+4
  1067 02e8 8C3083E2 		add	r3, r3, #140
  1068 02ec 8330A0E1 		lsl	r3, r3, #1
  1069 02f0 033081E0 		add	r3, r1, r3
  1070 02f4 B020C3E1 		strh	r2, [r3]	@ movhi
- 289:main.c        ****     h.bpm_idx = (h.bpm_idx + 1) & 15;
- 1071              		.loc 1 289 19
- 1072 02f8 90309FE5 		ldr	r3, .L57+4
+ 292:main.c        ****     h.bpm_idx = (h.bpm_idx + 1) & 15;
+ 1071              		.loc 1 292 19
+ 1072 02f8 A8309FE5 		ldr	r3, .L57+4
  1073 02fc 043193E5 		ldr	r3, [r3, #260]
- 1074              		.loc 1 289 28
+ 1074              		.loc 1 292 28
  1075 0300 013083E2 		add	r3, r3, #1
- 1076              		.loc 1 289 33
+ 1076              		.loc 1 292 33
  1077 0304 0F3003E2 		and	r3, r3, #15
- 1078              		.loc 1 289 15
- 1079 0308 80209FE5 		ldr	r2, .L57+4
+ 1078              		.loc 1 292 15
+ 1079 0308 98209FE5 		ldr	r2, .L57+4
  1080 030c 043182E5 		str	r3, [r2, #260]
- 290:main.c        **** 
- 291:main.c        ****     // floating average bpm
- 292:main.c        ****     h.bpm_avg = (h.bpm_sum >> 4);
- 1081              		.loc 1 292 19
- 1082 0310 78309FE5 		ldr	r3, .L57+4
- 1083 0314 0C3193E5 		ldr	r3, [r3, #268]
- 1084              		.loc 1 292 28
- 1085 0318 4332A0E1 		asr	r3, r3, #4
- 1086              		.loc 1 292 15
- 1087 031c 6C209FE5 		ldr	r2, .L57+4
- 1088 0320 143182E5 		str	r3, [r2, #276]
  293:main.c        **** 
- 294:main.c        ****     // printf("BPM: %d\n", bpm);
- 295:main.c        ****     // printf("AVG: %d\n", h.bpm_avg);
+ 294:main.c        ****     // floating average bpm
+ 295:main.c        ****     h.bpm_avg = (h.bpm_sum >> 4);
+ 1081              		.loc 1 295 19
+ 1082 0310 90309FE5 		ldr	r3, .L57+4
+ 1083 0314 0C3193E5 		ldr	r3, [r3, #268]
+ 1084              		.loc 1 295 28
+ 1085 0318 4332A0E1 		asr	r3, r3, #4
+ 1086              		.loc 1 295 15
+ 1087 031c 84209FE5 		ldr	r2, .L57+4
+ 1088 0320 143182E5 		str	r3, [r2, #276]
  296:main.c        **** 
  297:main.c        ****     if (bpm > (h.bpm_avg + 10) || bpm < (h.bpm_avg - 10))
  1089              		.loc 1 297 17
- 1090 0324 64309FE5 		ldr	r3, .L57+4
+ 1090 0324 7C309FE5 		ldr	r3, .L57+4
  1091 0328 143193E5 		ldr	r3, [r3, #276]
  1092              		.loc 1 297 26
  1093 032c 0A3083E2 		add	r3, r3, #10
@@ -1504,7 +1501,7 @@
  1096 0334 030052E1 		cmp	r2, r3
  1097 0338 050000CA 		bgt	.L55
  1098              		.loc 1 297 43 discriminator 1
- 1099 033c 4C309FE5 		ldr	r3, .L57+4
+ 1099 033c 64309FE5 		ldr	r3, .L57+4
  1100 0340 143193E5 		ldr	r3, [r3, #276]
  1101              		.loc 1 297 52 discriminator 1
  1102 0344 0A3043E2 		sub	r3, r3, #10
@@ -1516,1267 +1513,1277 @@
  298:main.c        ****       return 0;
  1108              		.loc 1 298 14
  1109 0354 0030A0E3 		mov	r3, #0
- 1110 0358 070000EA 		b	.L47
+ 1110 0358 0D0000EA 		b	.L47
  1111              	.L56:
  299:main.c        **** 
- 300:main.c        ****     printf("Real BPM: %d\n", bpm);
- 1112              		.loc 1 300 5
- 1113 035c 10101BE5 		ldr	r1, [fp, #-16]
- 1114 0360 3C009FE5 		ldr	r0, .L57+24
- 1115 0364 3C309FE5 		ldr	r3, .L57+28
- 1116 0368 0FE0A0E1 		mov	lr, pc
- 1117 036c 13FF2FE1 		bx	r3
- 1118              	.LVL10:
- 301:main.c        **** 
- 302:main.c        ****     return bpm;
- 1119              		.loc 1 302 12
- 1120 0370 10301BE5 		ldr	r3, [fp, #-16]
- 1121 0374 000000EA 		b	.L47
- 1122              	.L50:
- 1123              	.LBE7:
- 303:main.c        ****   }
- 304:main.c        **** 
- 305:main.c        ****   return 0;
- 1124              		.loc 1 305 10
- 1125 0378 0030A0E3 		mov	r3, #0
- 1126              	.L47:
- 306:main.c        **** }
- 1127              		.loc 1 306 1
- 1128 037c 0300A0E1 		mov	r0, r3
- 1129 0380 04D04BE2 		sub	sp, fp, #4
- 1130              		.cfi_def_cfa 13, 8
- 1131              		@ sp needed
- 1132 0384 0048BDE8 		pop	{fp, lr}
- 1133              		.cfi_restore 14
- 1134              		.cfi_restore 11
- 1135              		.cfi_def_cfa_offset 0
- 1136 0388 1EFF2FE1 		bx	lr
- 1137              	.L58:
- 1138              		.align	2
- 1139              	.L57:
- 1140 038c 00000000 		.word	trace_scope
- 1141 0390 00000000 		.word	h
- 1142 0394 5D010000 		.word	349
- 1143 0398 00000000 		.word	systick_get_ms
- 1144 039c 00000000 		.word	__aeabi_uidiv
- 1145 03a0 60EA0000 		.word	60000
- 1146 03a4 00000000 		.word	.LC0
- 1147 03a8 00000000 		.word	printf
- 1148              		.cfi_endproc
- 1149              	.LFE17:
- 1151              		.section	.text.task_8ms,"ax",%progbits
- 1152              		.align	2
- 1153              		.global	task_8ms
- 1154              		.syntax unified
- 1155              		.arm
- 1157              	task_8ms:
- 1158              	.LFB18:
- 307:main.c        **** 
- 308:main.c        **** #ifdef NXT
- 309:main.c        **** /*****************************************************************************/
- 310:main.c        **** /*   Hilfsroutinen                                                           */
- 311:main.c        **** /*****************************************************************************/
- 312:main.c        **** void task_8ms(void) {
- 1159              		.loc 1 312 21
- 1160              		.cfi_startproc
- 1161              		@ Function supports interworking.
- 1162              		@ args = 0, pretend = 0, frame = 0
- 1163              		@ frame_needed = 1, uses_anonymous_args = 0
- 1164 0000 00482DE9 		push	{fp, lr}
- 1165              		.cfi_def_cfa_offset 8
- 1166              		.cfi_offset 11, -8
- 1167              		.cfi_offset 14, -4
- 1168 0004 04B08DE2 		add	fp, sp, #4
- 1169              		.cfi_def_cfa 11, 4
- 313:main.c        ****   // Keine blockierende Aufrufe
- 314:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 315:main.c        **** #ifdef MODE_SIM
- 316:main.c        ****   (void)herzschlag_process(simuli[simuli_idx++]);
- 317:main.c        ****   simuli_idx = simuli_idx % (sizeof(simuli) / sizeof(simuli[0]));
- 318:main.c        **** #else
- 319:main.c        ****   (void)herzschlag_process(nxt_avr_get_sensor_adc_raw(HERZSCHLAG_PORT));
- 1170              		.loc 1 319 28
- 1171 0008 0100A0E3 		mov	r0, #1
- 1172 000c 28309FE5 		ldr	r3, .L60
- 1173 0010 0FE0A0E1 		mov	lr, pc
- 1174 0014 13FF2FE1 		bx	r3
- 1175              	.LVL11:
- 1176 0018 0030A0E1 		mov	r3, r0
- 1177              		.loc 1 319 9 discriminator 1
- 1178 001c 0300A0E1 		mov	r0, r3
- 1179 0020 18309FE5 		ldr	r3, .L60+4
- 1180 0024 0FE0A0E1 		mov	lr, pc
- 1181 0028 13FF2FE1 		bx	r3
- 1182              	.LVL12:
- 320:main.c        **** #endif
- 321:main.c        **** }
- 1183              		.loc 1 321 1
- 1184 002c 0000A0E1 		nop
- 1185 0030 04D04BE2 		sub	sp, fp, #4
- 1186              		.cfi_def_cfa 13, 8
- 1187              		@ sp needed
- 1188 0034 0048BDE8 		pop	{fp, lr}
- 1189              		.cfi_restore 14
- 1190              		.cfi_restore 11
- 1191              		.cfi_def_cfa_offset 0
- 1192 0038 1EFF2FE1 		bx	lr
- 1193              	.L61:
- 1194              		.align	2
- 1195              	.L60:
- 1196 003c 00000000 		.word	nxt_avr_get_sensor_adc_raw
- 1197 0040 00000000 		.word	herzschlag_process
- 1198              		.cfi_endproc
- 1199              	.LFE18:
- 1201              		.section	.text.task_16ms,"ax",%progbits
- 1202              		.align	2
- 1203              		.global	task_16ms
- 1204              		.syntax unified
- 1205              		.arm
- 1207              	task_16ms:
- 1208              	.LFB19:
- 322:main.c        **** 
- 323:main.c        **** void task_16ms(void) {
- 1209              		.loc 1 323 22
- 1210              		.cfi_startproc
- 1211              		@ Function supports interworking.
- 1212              		@ args = 0, pretend = 0, frame = 0
- 1213              		@ frame_needed = 1, uses_anonymous_args = 0
- 1214              		@ link register save eliminated.
- 1215 0000 04B02DE5 		str	fp, [sp, #-4]!
- 1216              		.cfi_def_cfa_offset 4
- 1217              		.cfi_offset 11, -4
- 1218 0004 00B08DE2 		add	fp, sp, #0
- 1219              		.cfi_def_cfa_register 11
- 324:main.c        ****   // Keine blockierende Aufrufe
- 325:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 326:main.c        **** }
- 1220              		.loc 1 326 1
- 1221 0008 0000A0E1 		nop
- 1222 000c 00D08BE2 		add	sp, fp, #0
- 1223              		.cfi_def_cfa_register 13
- 1224              		@ sp needed
- 1225 0010 04B09DE4 		ldr	fp, [sp], #4
- 1226              		.cfi_restore 11
- 1227              		.cfi_def_cfa_offset 0
- 1228 0014 1EFF2FE1 		bx	lr
- 1229              		.cfi_endproc
- 1230              	.LFE19:
- 1232              		.section	.text.task_32ms,"ax",%progbits
- 1233              		.align	2
- 1234              		.global	task_32ms
- 1235              		.syntax unified
- 1236              		.arm
- 1238              	task_32ms:
- 1239              	.LFB20:
- 327:main.c        **** void task_32ms(void) {
- 1240              		.loc 1 327 22
- 1241              		.cfi_startproc
- 1242              		@ Function supports interworking.
- 1243              		@ args = 0, pretend = 0, frame = 0
- 1244              		@ frame_needed = 1, uses_anonymous_args = 0
- 1245              		@ link register save eliminated.
- 1246 0000 04B02DE5 		str	fp, [sp, #-4]!
- 1247              		.cfi_def_cfa_offset 4
- 1248              		.cfi_offset 11, -4
- 1249 0004 00B08DE2 		add	fp, sp, #0
- 1250              		.cfi_def_cfa_register 11
- 328:main.c        ****   // Keine blockierende Aufrufe
- 329:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 330:main.c        **** }
- 1251              		.loc 1 330 1
- 1252 0008 0000A0E1 		nop
- 1253 000c 00D08BE2 		add	sp, fp, #0
- 1254              		.cfi_def_cfa_register 13
- 1255              		@ sp needed
- 1256 0010 04B09DE4 		ldr	fp, [sp], #4
- 1257              		.cfi_restore 11
- 1258              		.cfi_def_cfa_offset 0
- 1259 0014 1EFF2FE1 		bx	lr
- 1260              		.cfi_endproc
- 1261              	.LFE20:
- 1263              		.section	.text.task_64ms,"ax",%progbits
- 1264              		.align	2
- 1265              		.global	task_64ms
- 1266              		.syntax unified
- 1267              		.arm
- 1269              	task_64ms:
- 1270              	.LFB21:
- 331:main.c        **** void task_64ms(void) {
- 1271              		.loc 1 331 22
- 1272              		.cfi_startproc
- 1273              		@ Function supports interworking.
- 1274              		@ args = 0, pretend = 0, frame = 0
- 1275              		@ frame_needed = 1, uses_anonymous_args = 0
- 1276              		@ link register save eliminated.
- 1277 0000 04B02DE5 		str	fp, [sp, #-4]!
- 1278              		.cfi_def_cfa_offset 4
- 1279              		.cfi_offset 11, -4
- 1280 0004 00B08DE2 		add	fp, sp, #0
- 1281              		.cfi_def_cfa_register 11
- 332:main.c        ****   // Keine blockierende Aufrufe
- 333:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 334:main.c        **** }
- 1282              		.loc 1 334 1
- 1283 0008 0000A0E1 		nop
- 1284 000c 00D08BE2 		add	sp, fp, #0
- 1285              		.cfi_def_cfa_register 13
- 1286              		@ sp needed
- 1287 0010 04B09DE4 		ldr	fp, [sp], #4
- 1288              		.cfi_restore 11
- 1289              		.cfi_def_cfa_offset 0
- 1290 0014 1EFF2FE1 		bx	lr
- 1291              		.cfi_endproc
- 1292              	.LFE21:
- 1294              		.section	.text.task_128ms,"ax",%progbits
- 1295              		.align	2
- 1296              		.global	task_128ms
- 1297              		.syntax unified
- 1298              		.arm
- 1300              	task_128ms:
- 1301              	.LFB22:
- 335:main.c        **** 
- 336:main.c        **** void task_128ms(void) {
- 1302              		.loc 1 336 23
- 1303              		.cfi_startproc
- 1304              		@ Function supports interworking.
- 1305              		@ args = 0, pretend = 0, frame = 0
- 1306              		@ frame_needed = 1, uses_anonymous_args = 0
- 1307              		@ link register save eliminated.
- 1308 0000 04B02DE5 		str	fp, [sp, #-4]!
- 1309              		.cfi_def_cfa_offset 4
- 1310              		.cfi_offset 11, -4
- 1311 0004 00B08DE2 		add	fp, sp, #0
- 1312              		.cfi_def_cfa_register 11
- 337:main.c        ****   // Keine blockierende Aufrufe
- 338:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 339:main.c        **** }
- 1313              		.loc 1 339 1
- 1314 0008 0000A0E1 		nop
- 1315 000c 00D08BE2 		add	sp, fp, #0
- 1316              		.cfi_def_cfa_register 13
- 1317              		@ sp needed
- 1318 0010 04B09DE4 		ldr	fp, [sp], #4
- 1319              		.cfi_restore 11
- 1320              		.cfi_def_cfa_offset 0
- 1321 0014 1EFF2FE1 		bx	lr
- 1322              		.cfi_endproc
- 1323              	.LFE22:
- 1325              		.section	.rodata
- 1326 000e 0000     		.align	2
- 1327              	.LC1:
- 1328 0010 53303A00 		.ascii	"S0:\000"
- 1329              		.align	2
- 1330              	.LC2:
- 1331 0014 4261743A 		.ascii	"Bat:\000"
- 1331      00
- 1332 0019 000000   		.align	2
- 1333              	.LC3:
- 1334 001c 6D5600   		.ascii	"mV\000"
- 1335 001f 00       		.align	2
- 1336              	.LC4:
- 1337 0020 4275743A 		.ascii	"But: \000"
- 1337      2000
- 1338 0026 0000     		.align	2
- 1339              	.LC5:
- 1340 0028 54696D65 		.ascii	"Time: \000"
- 1340      3A2000
- 1341 002f 00       		.align	2
- 1342              	.LC6:
- 1343 0030 7300     		.ascii	"s\000"
- 1344              		.section	.text.task_256ms,"ax",%progbits
- 1345              		.align	2
- 1346              		.global	task_256ms
- 1347              		.syntax unified
- 1348              		.arm
- 1350              	task_256ms:
- 1351              	.LFB23:
- 340:main.c        **** void task_256ms(void) {
- 1352              		.loc 1 340 23
- 1353              		.cfi_startproc
- 1354              		@ Function supports interworking.
- 1355              		@ args = 0, pretend = 0, frame = 0
- 1356              		@ frame_needed = 1, uses_anonymous_args = 0
- 1357 0000 00482DE9 		push	{fp, lr}
- 1358              		.cfi_def_cfa_offset 8
- 1359              		.cfi_offset 11, -8
- 1360              		.cfi_offset 14, -4
- 1361 0004 04B08DE2 		add	fp, sp, #4
- 1362              		.cfi_def_cfa 11, 4
- 341:main.c        ****   // Keine blockierende Aufrufe
- 342:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 343:main.c        **** 
- 344:main.c        ****   // Beispielanwendung für MotorPos,Sensor,Batterie und NXT-Tasten
- 345:main.c        ****   // Im Simulationsmodus kann im 'Per'-Fenster Werte vorgegeben werden
- 346:main.c        ****   // Beispiel zur Abfrage des anlogen Eingangs am SensorPort 1
- 347:main.c        ****   display_string("S0:");
- 1363              		.loc 1 347 3
- 1364 0008 2C029FE5 		ldr	r0, .L75
- 1365 000c 2C329FE5 		ldr	r3, .L75+4
- 1366 0010 0FE0A0E1 		mov	lr, pc
- 1367 0014 13FF2FE1 		bx	r3
- 1368              	.LVL13:
- 348:main.c        ****   display_hex((uint32_t)nxt_avr_get_sensor_adc_raw(SENSOR_1),
- 1369              		.loc 1 348 25
- 1370 0018 0000A0E3 		mov	r0, #0
- 1371 001c 20329FE5 		ldr	r3, .L75+8
- 1372 0020 0FE0A0E1 		mov	lr, pc
- 1373 0024 13FF2FE1 		bx	r3
- 1374              	.LVL14:
- 1375 0028 0030A0E1 		mov	r3, r0
- 1376              		.loc 1 348 3 discriminator 1
- 1377 002c 0310A0E3 		mov	r1, #3
- 1378 0030 0300A0E1 		mov	r0, r3
- 1379 0034 0C329FE5 		ldr	r3, .L75+12
- 1380 0038 0FE0A0E1 		mov	lr, pc
- 1381 003c 13FF2FE1 		bx	r3
- 1382              	.LVL15:
- 349:main.c        ****               3); // PER: NXT_AVR_ADC_1
- 350:main.c        ****   // Beispiel zur Abfrage der Batteriespannung
- 351:main.c        ****   display_goto_xy(0, 3);
- 1383              		.loc 1 351 3
- 1384 0040 0310A0E3 		mov	r1, #3
- 1385 0044 0000A0E3 		mov	r0, #0
- 1386 0048 FC319FE5 		ldr	r3, .L75+16
- 1387 004c 0FE0A0E1 		mov	lr, pc
- 1388 0050 13FF2FE1 		bx	r3
- 1389              	.LVL16:
- 352:main.c        ****   display_string("Bat:");
- 1390              		.loc 1 352 3
- 1391 0054 F4019FE5 		ldr	r0, .L75+20
- 1392 0058 E0319FE5 		ldr	r3, .L75+4
- 1393 005c 0FE0A0E1 		mov	lr, pc
- 1394 0060 13FF2FE1 		bx	r3
- 1395              	.LVL17:
- 353:main.c        ****   display_unsigned(nxt_avr_get_battery_mv(),
- 1396              		.loc 1 353 20
- 1397 0064 E8319FE5 		ldr	r3, .L75+24
- 1398 0068 0FE0A0E1 		mov	lr, pc
- 1399 006c 13FF2FE1 		bx	r3
- 1400              	.LVL18:
- 1401 0070 0030A0E1 		mov	r3, r0
- 1402              		.loc 1 353 3 discriminator 1
- 1403 0074 0510A0E3 		mov	r1, #5
- 1404 0078 0300A0E1 		mov	r0, r3
- 1405 007c D4319FE5 		ldr	r3, .L75+28
- 1406 0080 0FE0A0E1 		mov	lr, pc
- 1407 0084 13FF2FE1 		bx	r3
- 1408              	.LVL19:
- 354:main.c        ****                    5); // über AVR-Proz -> PER: NXT_AVR_BATTERY
- 355:main.c        ****   //	display_unsigned(adc_get_usb_mv()         ,5);  //über SAM7-Proz
- 356:main.c        ****   display_string("mV");
- 1409              		.loc 1 356 3
- 1410 0088 CC019FE5 		ldr	r0, .L75+32
- 1411 008c AC319FE5 		ldr	r3, .L75+4
- 1412 0090 0FE0A0E1 		mov	lr, pc
- 1413 0094 13FF2FE1 		bx	r3
- 1414              	.LVL20:
- 357:main.c        ****   // Beispiel zur Abfrage der NXT-Tasten
- 358:main.c        ****   display_goto_xy(0, 4);
- 1415              		.loc 1 358 3
- 1416 0098 0410A0E3 		mov	r1, #4
- 1417 009c 0000A0E3 		mov	r0, #0
- 1418 00a0 A4319FE5 		ldr	r3, .L75+16
- 1419 00a4 0FE0A0E1 		mov	lr, pc
- 1420 00a8 13FF2FE1 		bx	r3
- 1421              	.LVL21:
- 359:main.c        ****   display_string("But: ");
- 1422              		.loc 1 359 3
- 1423 00ac AC019FE5 		ldr	r0, .L75+36
- 1424 00b0 88319FE5 		ldr	r3, .L75+4
- 1425 00b4 0FE0A0E1 		mov	lr, pc
- 1426 00b8 13FF2FE1 		bx	r3
- 1427              	.LVL22:
- 360:main.c        ****   display_char(nxt_avr_get_buttons().orange ? 'O' : '-');
- 1428              		.loc 1 360 16
- 1429 00bc A0319FE5 		ldr	r3, .L75+40
- 1430 00c0 0FE0A0E1 		mov	lr, pc
- 1431 00c4 13FF2FE1 		bx	r3
- 1432              	.LVL23:
- 1433 00c8 0030A0E1 		mov	r3, r0
- 1434              		.loc 1 360 45 discriminator 1
- 1435 00cc FF3003E2 		and	r3, r3, #255
- 1436 00d0 013003E2 		and	r3, r3, #1
- 1437 00d4 FF3003E2 		and	r3, r3, #255
- 1438              		.loc 1 360 3 discriminator 1
- 1439 00d8 000053E3 		cmp	r3, #0
- 1440 00dc 0100000A 		beq	.L67
- 1441 00e0 4F30A0E3 		mov	r3, #79
- 1442 00e4 000000EA 		b	.L68
- 1443              	.L67:
- 1444              		.loc 1 360 3 is_stmt 0 discriminator 2
- 1445 00e8 2D30A0E3 		mov	r3, #45
- 1446              	.L68:
- 1447              		.loc 1 360 3 discriminator 4
- 1448 00ec 0300A0E1 		mov	r0, r3
- 1449 00f0 70319FE5 		ldr	r3, .L75+44
- 1450 00f4 0FE0A0E1 		mov	lr, pc
- 1451 00f8 13FF2FE1 		bx	r3
- 1452              	.LVL24:
- 361:main.c        ****   display_char(nxt_avr_get_buttons().left ? 'L'
- 1453              		.loc 1 361 16 is_stmt 1
- 1454 00fc 60319FE5 		ldr	r3, .L75+40
- 1455 0100 0FE0A0E1 		mov	lr, pc
- 1456 0104 13FF2FE1 		bx	r3
- 1457              	.LVL25:
- 1458 0108 0030A0E1 		mov	r3, r0
- 1459              		.loc 1 361 43 discriminator 1
- 1460 010c FF3003E2 		and	r3, r3, #255
- 1461 0110 023003E2 		and	r3, r3, #2
- 1462 0114 FF3003E2 		and	r3, r3, #255
- 1463              		.loc 1 361 3 discriminator 1
- 1464 0118 000053E3 		cmp	r3, #0
- 1465 011c 0100000A 		beq	.L69
- 1466 0120 4C30A0E3 		mov	r3, #76
- 1467 0124 000000EA 		b	.L70
- 1468              	.L69:
- 1469              		.loc 1 361 3 is_stmt 0 discriminator 2
- 1470 0128 2D30A0E3 		mov	r3, #45
- 1471              	.L70:
- 1472              		.loc 1 361 3 discriminator 4
- 1473 012c 0300A0E1 		mov	r0, r3
- 1474 0130 30319FE5 		ldr	r3, .L75+44
- 1475 0134 0FE0A0E1 		mov	lr, pc
- 1476 0138 13FF2FE1 		bx	r3
- 1477              	.LVL26:
- 362:main.c        ****                                           : '-'); // Left/Right/Grey generien
- 363:main.c        ****   display_char(nxt_avr_get_buttons().right ? 'R'
- 1478              		.loc 1 363 16 is_stmt 1
- 1479 013c 20319FE5 		ldr	r3, .L75+40
- 1480 0140 0FE0A0E1 		mov	lr, pc
- 1481 0144 13FF2FE1 		bx	r3
- 1482              	.LVL27:
- 1483 0148 0030A0E1 		mov	r3, r0
- 1484              		.loc 1 363 44 discriminator 1
- 1485 014c FF3003E2 		and	r3, r3, #255
- 1486 0150 043003E2 		and	r3, r3, #4
- 1487 0154 FF3003E2 		and	r3, r3, #255
- 1488              		.loc 1 363 3 discriminator 1
- 1489 0158 000053E3 		cmp	r3, #0
- 1490 015c 0100000A 		beq	.L71
- 1491 0160 5230A0E3 		mov	r3, #82
- 1492 0164 000000EA 		b	.L72
- 1493              	.L71:
- 1494              		.loc 1 363 3 is_stmt 0 discriminator 2
- 1495 0168 2D30A0E3 		mov	r3, #45
- 1496              	.L72:
- 1497              		.loc 1 363 3 discriminator 4
- 1498 016c 0300A0E1 		mov	r0, r3
- 1499 0170 F0309FE5 		ldr	r3, .L75+44
- 1500 0174 0FE0A0E1 		mov	lr, pc
- 1501 0178 13FF2FE1 		bx	r3
- 1502              	.LVL28:
- 364:main.c        ****                                            : '-'); // je eine eigenen Spannung
- 365:main.c        ****   display_char(nxt_avr_get_buttons().grey
- 1503              		.loc 1 365 16 is_stmt 1
- 1504 017c E0309FE5 		ldr	r3, .L75+40
- 1505 0180 0FE0A0E1 		mov	lr, pc
- 1506 0184 13FF2FE1 		bx	r3
- 1507              	.LVL29:
- 1508 0188 0030A0E1 		mov	r3, r0
+ 300:main.c        ****     (void)term_int(bpm, 3, ASYNCSYNC_NONBLOCK);
+ 1112              		.loc 1 300 11
+ 1113 035c 0020A0E3 		mov	r2, #0
+ 1114 0360 0310A0E3 		mov	r1, #3
+ 1115 0364 10001BE5 		ldr	r0, [fp, #-16]
+ 1116 0368 4C309FE5 		ldr	r3, .L57+24
+ 1117 036c 0FE0A0E1 		mov	lr, pc
+ 1118 0370 13FF2FE1 		bx	r3
+ 1119              	.LVL10:
+ 301:main.c        ****     (void)term_string("\n\r", ASYNCSYNC_NONBLOCK);
+ 1120              		.loc 1 301 11
+ 1121 0374 0010A0E3 		mov	r1, #0
+ 1122 0378 40009FE5 		ldr	r0, .L57+28
+ 1123 037c 40309FE5 		ldr	r3, .L57+32
+ 1124 0380 0FE0A0E1 		mov	lr, pc
+ 1125 0384 13FF2FE1 		bx	r3
+ 1126              	.LVL11:
+ 302:main.c        **** 
+ 303:main.c        ****     return bpm;
+ 1127              		.loc 1 303 12
+ 1128 0388 10301BE5 		ldr	r3, [fp, #-16]
+ 1129 038c 000000EA 		b	.L47
+ 1130              	.L50:
+ 1131              	.LBE7:
+ 304:main.c        ****   }
+ 305:main.c        **** 
+ 306:main.c        ****   return 0;
+ 1132              		.loc 1 306 10
+ 1133 0390 0030A0E3 		mov	r3, #0
+ 1134              	.L47:
+ 307:main.c        **** }
+ 1135              		.loc 1 307 1
+ 1136 0394 0300A0E1 		mov	r0, r3
+ 1137 0398 04D04BE2 		sub	sp, fp, #4
+ 1138              		.cfi_def_cfa 13, 8
+ 1139              		@ sp needed
+ 1140 039c 0048BDE8 		pop	{fp, lr}
+ 1141              		.cfi_restore 14
+ 1142              		.cfi_restore 11
+ 1143              		.cfi_def_cfa_offset 0
+ 1144 03a0 1EFF2FE1 		bx	lr
+ 1145              	.L58:
+ 1146              		.align	2
+ 1147              	.L57:
+ 1148 03a4 00000000 		.word	trace_scope
+ 1149 03a8 00000000 		.word	h
+ 1150 03ac 5D010000 		.word	349
+ 1151 03b0 00000000 		.word	systick_get_ms
+ 1152 03b4 00000000 		.word	__aeabi_uidiv
+ 1153 03b8 60EA0000 		.word	60000
+ 1154 03bc 00000000 		.word	term_int
+ 1155 03c0 00000000 		.word	.LC0
+ 1156 03c4 00000000 		.word	term_string
+ 1157              		.cfi_endproc
+ 1158              	.LFE17:
+ 1160              		.section	.text.task_8ms,"ax",%progbits
+ 1161              		.align	2
+ 1162              		.global	task_8ms
+ 1163              		.syntax unified
+ 1164              		.arm
+ 1166              	task_8ms:
+ 1167              	.LFB18:
+ 308:main.c        **** 
+ 309:main.c        **** #ifdef NXT
+ 310:main.c        **** /*****************************************************************************/
+ 311:main.c        **** /*   Hilfsroutinen                                                           */
+ 312:main.c        **** /*****************************************************************************/
+ 313:main.c        **** void task_8ms(void) {
+ 1168              		.loc 1 313 21
+ 1169              		.cfi_startproc
+ 1170              		@ Function supports interworking.
+ 1171              		@ args = 0, pretend = 0, frame = 0
+ 1172              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1173 0000 00482DE9 		push	{fp, lr}
+ 1174              		.cfi_def_cfa_offset 8
+ 1175              		.cfi_offset 11, -8
+ 1176              		.cfi_offset 14, -4
+ 1177 0004 04B08DE2 		add	fp, sp, #4
+ 1178              		.cfi_def_cfa 11, 4
+ 314:main.c        ****   // Keine blockierende Aufrufe
+ 315:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 316:main.c        **** #ifdef MODE_SIM
+ 317:main.c        ****   (void)herzschlag_process(simuli[simuli_idx++]);
+ 318:main.c        ****   simuli_idx = simuli_idx % (sizeof(simuli) / sizeof(simuli[0]));
+ 319:main.c        **** #else
+ 320:main.c        ****   (void)herzschlag_process(nxt_avr_get_sensor_adc_raw(HERZSCHLAG_PORT));
+ 1179              		.loc 1 320 28
+ 1180 0008 0100A0E3 		mov	r0, #1
+ 1181 000c 28309FE5 		ldr	r3, .L60
+ 1182 0010 0FE0A0E1 		mov	lr, pc
+ 1183 0014 13FF2FE1 		bx	r3
+ 1184              	.LVL12:
+ 1185 0018 0030A0E1 		mov	r3, r0
+ 1186              		.loc 1 320 9 discriminator 1
+ 1187 001c 0300A0E1 		mov	r0, r3
+ 1188 0020 18309FE5 		ldr	r3, .L60+4
+ 1189 0024 0FE0A0E1 		mov	lr, pc
+ 1190 0028 13FF2FE1 		bx	r3
+ 1191              	.LVL13:
+ 321:main.c        **** #endif
+ 322:main.c        **** }
+ 1192              		.loc 1 322 1
+ 1193 002c 0000A0E1 		nop
+ 1194 0030 04D04BE2 		sub	sp, fp, #4
+ 1195              		.cfi_def_cfa 13, 8
+ 1196              		@ sp needed
+ 1197 0034 0048BDE8 		pop	{fp, lr}
+ 1198              		.cfi_restore 14
+ 1199              		.cfi_restore 11
+ 1200              		.cfi_def_cfa_offset 0
+ 1201 0038 1EFF2FE1 		bx	lr
+ 1202              	.L61:
+ 1203              		.align	2
+ 1204              	.L60:
+ 1205 003c 00000000 		.word	nxt_avr_get_sensor_adc_raw
+ 1206 0040 00000000 		.word	herzschlag_process
+ 1207              		.cfi_endproc
+ 1208              	.LFE18:
+ 1210              		.section	.text.task_16ms,"ax",%progbits
+ 1211              		.align	2
+ 1212              		.global	task_16ms
+ 1213              		.syntax unified
+ 1214              		.arm
+ 1216              	task_16ms:
+ 1217              	.LFB19:
+ 323:main.c        **** 
+ 324:main.c        **** void task_16ms(void) {
+ 1218              		.loc 1 324 22
+ 1219              		.cfi_startproc
+ 1220              		@ Function supports interworking.
+ 1221              		@ args = 0, pretend = 0, frame = 0
+ 1222              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1223              		@ link register save eliminated.
+ 1224 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1225              		.cfi_def_cfa_offset 4
+ 1226              		.cfi_offset 11, -4
+ 1227 0004 00B08DE2 		add	fp, sp, #0
+ 1228              		.cfi_def_cfa_register 11
+ 325:main.c        ****   // Keine blockierende Aufrufe
+ 326:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 327:main.c        **** }
+ 1229              		.loc 1 327 1
+ 1230 0008 0000A0E1 		nop
+ 1231 000c 00D08BE2 		add	sp, fp, #0
+ 1232              		.cfi_def_cfa_register 13
+ 1233              		@ sp needed
+ 1234 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1235              		.cfi_restore 11
+ 1236              		.cfi_def_cfa_offset 0
+ 1237 0014 1EFF2FE1 		bx	lr
+ 1238              		.cfi_endproc
+ 1239              	.LFE19:
+ 1241              		.section	.text.task_32ms,"ax",%progbits
+ 1242              		.align	2
+ 1243              		.global	task_32ms
+ 1244              		.syntax unified
+ 1245              		.arm
+ 1247              	task_32ms:
+ 1248              	.LFB20:
+ 328:main.c        **** void task_32ms(void) {
+ 1249              		.loc 1 328 22
+ 1250              		.cfi_startproc
+ 1251              		@ Function supports interworking.
+ 1252              		@ args = 0, pretend = 0, frame = 0
+ 1253              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1254              		@ link register save eliminated.
+ 1255 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1256              		.cfi_def_cfa_offset 4
+ 1257              		.cfi_offset 11, -4
+ 1258 0004 00B08DE2 		add	fp, sp, #0
+ 1259              		.cfi_def_cfa_register 11
+ 329:main.c        ****   // Keine blockierende Aufrufe
+ 330:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 331:main.c        **** }
+ 1260              		.loc 1 331 1
+ 1261 0008 0000A0E1 		nop
+ 1262 000c 00D08BE2 		add	sp, fp, #0
+ 1263              		.cfi_def_cfa_register 13
+ 1264              		@ sp needed
+ 1265 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1266              		.cfi_restore 11
+ 1267              		.cfi_def_cfa_offset 0
+ 1268 0014 1EFF2FE1 		bx	lr
+ 1269              		.cfi_endproc
+ 1270              	.LFE20:
+ 1272              		.section	.text.task_64ms,"ax",%progbits
+ 1273              		.align	2
+ 1274              		.global	task_64ms
+ 1275              		.syntax unified
+ 1276              		.arm
+ 1278              	task_64ms:
+ 1279              	.LFB21:
+ 332:main.c        **** void task_64ms(void) {
+ 1280              		.loc 1 332 22
+ 1281              		.cfi_startproc
+ 1282              		@ Function supports interworking.
+ 1283              		@ args = 0, pretend = 0, frame = 0
+ 1284              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1285              		@ link register save eliminated.
+ 1286 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1287              		.cfi_def_cfa_offset 4
+ 1288              		.cfi_offset 11, -4
+ 1289 0004 00B08DE2 		add	fp, sp, #0
+ 1290              		.cfi_def_cfa_register 11
+ 333:main.c        ****   // Keine blockierende Aufrufe
+ 334:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 335:main.c        **** }
+ 1291              		.loc 1 335 1
+ 1292 0008 0000A0E1 		nop
+ 1293 000c 00D08BE2 		add	sp, fp, #0
+ 1294              		.cfi_def_cfa_register 13
+ 1295              		@ sp needed
+ 1296 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1297              		.cfi_restore 11
+ 1298              		.cfi_def_cfa_offset 0
+ 1299 0014 1EFF2FE1 		bx	lr
+ 1300              		.cfi_endproc
+ 1301              	.LFE21:
+ 1303              		.section	.text.task_128ms,"ax",%progbits
+ 1304              		.align	2
+ 1305              		.global	task_128ms
+ 1306              		.syntax unified
+ 1307              		.arm
+ 1309              	task_128ms:
+ 1310              	.LFB22:
+ 336:main.c        **** 
+ 337:main.c        **** void task_128ms(void) {
+ 1311              		.loc 1 337 23
+ 1312              		.cfi_startproc
+ 1313              		@ Function supports interworking.
+ 1314              		@ args = 0, pretend = 0, frame = 0
+ 1315              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1316              		@ link register save eliminated.
+ 1317 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1318              		.cfi_def_cfa_offset 4
+ 1319              		.cfi_offset 11, -4
+ 1320 0004 00B08DE2 		add	fp, sp, #0
+ 1321              		.cfi_def_cfa_register 11
+ 338:main.c        ****   // Keine blockierende Aufrufe
+ 339:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 340:main.c        **** }
+ 1322              		.loc 1 340 1
+ 1323 0008 0000A0E1 		nop
+ 1324 000c 00D08BE2 		add	sp, fp, #0
+ 1325              		.cfi_def_cfa_register 13
+ 1326              		@ sp needed
+ 1327 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1328              		.cfi_restore 11
+ 1329              		.cfi_def_cfa_offset 0
+ 1330 0014 1EFF2FE1 		bx	lr
+ 1331              		.cfi_endproc
+ 1332              	.LFE22:
+ 1334              		.section	.rodata
+ 1335 0003 00       		.align	2
+ 1336              	.LC1:
+ 1337 0004 53303A00 		.ascii	"S0:\000"
+ 1338              		.align	2
+ 1339              	.LC2:
+ 1340 0008 4261743A 		.ascii	"Bat:\000"
+ 1340      00
+ 1341 000d 000000   		.align	2
+ 1342              	.LC3:
+ 1343 0010 6D5600   		.ascii	"mV\000"
+ 1344 0013 00       		.align	2
+ 1345              	.LC4:
+ 1346 0014 4275743A 		.ascii	"But: \000"
+ 1346      2000
+ 1347 001a 0000     		.align	2
+ 1348              	.LC5:
+ 1349 001c 54696D65 		.ascii	"Time: \000"
+ 1349      3A2000
+ 1350 0023 00       		.align	2
+ 1351              	.LC6:
+ 1352 0024 7300     		.ascii	"s\000"
+ 1353              		.section	.text.task_256ms,"ax",%progbits
+ 1354              		.align	2
+ 1355              		.global	task_256ms
+ 1356              		.syntax unified
+ 1357              		.arm
+ 1359              	task_256ms:
+ 1360              	.LFB23:
+ 341:main.c        **** void task_256ms(void) {
+ 1361              		.loc 1 341 23
+ 1362              		.cfi_startproc
+ 1363              		@ Function supports interworking.
+ 1364              		@ args = 0, pretend = 0, frame = 0
+ 1365              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1366 0000 00482DE9 		push	{fp, lr}
+ 1367              		.cfi_def_cfa_offset 8
+ 1368              		.cfi_offset 11, -8
+ 1369              		.cfi_offset 14, -4
+ 1370 0004 04B08DE2 		add	fp, sp, #4
+ 1371              		.cfi_def_cfa 11, 4
+ 342:main.c        ****   // Keine blockierende Aufrufe
+ 343:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 344:main.c        **** 
+ 345:main.c        ****   // Beispielanwendung für MotorPos,Sensor,Batterie und NXT-Tasten
+ 346:main.c        ****   // Im Simulationsmodus kann im 'Per'-Fenster Werte vorgegeben werden
+ 347:main.c        ****   // Beispiel zur Abfrage des anlogen Eingangs am SensorPort 1
+ 348:main.c        ****   display_string("S0:");
+ 1372              		.loc 1 348 3
+ 1373 0008 2C029FE5 		ldr	r0, .L75
+ 1374 000c 2C329FE5 		ldr	r3, .L75+4
+ 1375 0010 0FE0A0E1 		mov	lr, pc
+ 1376 0014 13FF2FE1 		bx	r3
+ 1377              	.LVL14:
+ 349:main.c        ****   display_hex((uint32_t)nxt_avr_get_sensor_adc_raw(SENSOR_1),
+ 1378              		.loc 1 349 25
+ 1379 0018 0000A0E3 		mov	r0, #0
+ 1380 001c 20329FE5 		ldr	r3, .L75+8
+ 1381 0020 0FE0A0E1 		mov	lr, pc
+ 1382 0024 13FF2FE1 		bx	r3
+ 1383              	.LVL15:
+ 1384 0028 0030A0E1 		mov	r3, r0
+ 1385              		.loc 1 349 3 discriminator 1
+ 1386 002c 0310A0E3 		mov	r1, #3
+ 1387 0030 0300A0E1 		mov	r0, r3
+ 1388 0034 0C329FE5 		ldr	r3, .L75+12
+ 1389 0038 0FE0A0E1 		mov	lr, pc
+ 1390 003c 13FF2FE1 		bx	r3
+ 1391              	.LVL16:
+ 350:main.c        ****               3); // PER: NXT_AVR_ADC_1
+ 351:main.c        ****   // Beispiel zur Abfrage der Batteriespannung
+ 352:main.c        ****   display_goto_xy(0, 3);
+ 1392              		.loc 1 352 3
+ 1393 0040 0310A0E3 		mov	r1, #3
+ 1394 0044 0000A0E3 		mov	r0, #0
+ 1395 0048 FC319FE5 		ldr	r3, .L75+16
+ 1396 004c 0FE0A0E1 		mov	lr, pc
+ 1397 0050 13FF2FE1 		bx	r3
+ 1398              	.LVL17:
+ 353:main.c        ****   display_string("Bat:");
+ 1399              		.loc 1 353 3
+ 1400 0054 F4019FE5 		ldr	r0, .L75+20
+ 1401 0058 E0319FE5 		ldr	r3, .L75+4
+ 1402 005c 0FE0A0E1 		mov	lr, pc
+ 1403 0060 13FF2FE1 		bx	r3
+ 1404              	.LVL18:
+ 354:main.c        ****   display_unsigned(nxt_avr_get_battery_mv(),
+ 1405              		.loc 1 354 20
+ 1406 0064 E8319FE5 		ldr	r3, .L75+24
+ 1407 0068 0FE0A0E1 		mov	lr, pc
+ 1408 006c 13FF2FE1 		bx	r3
+ 1409              	.LVL19:
+ 1410 0070 0030A0E1 		mov	r3, r0
+ 1411              		.loc 1 354 3 discriminator 1
+ 1412 0074 0510A0E3 		mov	r1, #5
+ 1413 0078 0300A0E1 		mov	r0, r3
+ 1414 007c D4319FE5 		ldr	r3, .L75+28
+ 1415 0080 0FE0A0E1 		mov	lr, pc
+ 1416 0084 13FF2FE1 		bx	r3
+ 1417              	.LVL20:
+ 355:main.c        ****                    5); // über AVR-Proz -> PER: NXT_AVR_BATTERY
+ 356:main.c        ****   //	display_unsigned(adc_get_usb_mv()         ,5);  //über SAM7-Proz
+ 357:main.c        ****   display_string("mV");
+ 1418              		.loc 1 357 3
+ 1419 0088 CC019FE5 		ldr	r0, .L75+32
+ 1420 008c AC319FE5 		ldr	r3, .L75+4
+ 1421 0090 0FE0A0E1 		mov	lr, pc
+ 1422 0094 13FF2FE1 		bx	r3
+ 1423              	.LVL21:
+ 358:main.c        ****   // Beispiel zur Abfrage der NXT-Tasten
+ 359:main.c        ****   display_goto_xy(0, 4);
+ 1424              		.loc 1 359 3
+ 1425 0098 0410A0E3 		mov	r1, #4
+ 1426 009c 0000A0E3 		mov	r0, #0
+ 1427 00a0 A4319FE5 		ldr	r3, .L75+16
+ 1428 00a4 0FE0A0E1 		mov	lr, pc
+ 1429 00a8 13FF2FE1 		bx	r3
+ 1430              	.LVL22:
+ 360:main.c        ****   display_string("But: ");
+ 1431              		.loc 1 360 3
+ 1432 00ac AC019FE5 		ldr	r0, .L75+36
+ 1433 00b0 88319FE5 		ldr	r3, .L75+4
+ 1434 00b4 0FE0A0E1 		mov	lr, pc
+ 1435 00b8 13FF2FE1 		bx	r3
+ 1436              	.LVL23:
+ 361:main.c        ****   display_char(nxt_avr_get_buttons().orange ? 'O' : '-');
+ 1437              		.loc 1 361 16
+ 1438 00bc A0319FE5 		ldr	r3, .L75+40
+ 1439 00c0 0FE0A0E1 		mov	lr, pc
+ 1440 00c4 13FF2FE1 		bx	r3
+ 1441              	.LVL24:
+ 1442 00c8 0030A0E1 		mov	r3, r0
+ 1443              		.loc 1 361 45 discriminator 1
+ 1444 00cc FF3003E2 		and	r3, r3, #255
+ 1445 00d0 013003E2 		and	r3, r3, #1
+ 1446 00d4 FF3003E2 		and	r3, r3, #255
+ 1447              		.loc 1 361 3 discriminator 1
+ 1448 00d8 000053E3 		cmp	r3, #0
+ 1449 00dc 0100000A 		beq	.L67
+ 1450 00e0 4F30A0E3 		mov	r3, #79
+ 1451 00e4 000000EA 		b	.L68
+ 1452              	.L67:
+ 1453              		.loc 1 361 3 is_stmt 0 discriminator 2
+ 1454 00e8 2D30A0E3 		mov	r3, #45
+ 1455              	.L68:
+ 1456              		.loc 1 361 3 discriminator 4
+ 1457 00ec 0300A0E1 		mov	r0, r3
+ 1458 00f0 70319FE5 		ldr	r3, .L75+44
+ 1459 00f4 0FE0A0E1 		mov	lr, pc
+ 1460 00f8 13FF2FE1 		bx	r3
+ 1461              	.LVL25:
+ 362:main.c        ****   display_char(nxt_avr_get_buttons().left ? 'L'
+ 1462              		.loc 1 362 16 is_stmt 1
+ 1463 00fc 60319FE5 		ldr	r3, .L75+40
+ 1464 0100 0FE0A0E1 		mov	lr, pc
+ 1465 0104 13FF2FE1 		bx	r3
+ 1466              	.LVL26:
+ 1467 0108 0030A0E1 		mov	r3, r0
+ 1468              		.loc 1 362 43 discriminator 1
+ 1469 010c FF3003E2 		and	r3, r3, #255
+ 1470 0110 023003E2 		and	r3, r3, #2
+ 1471 0114 FF3003E2 		and	r3, r3, #255
+ 1472              		.loc 1 362 3 discriminator 1
+ 1473 0118 000053E3 		cmp	r3, #0
+ 1474 011c 0100000A 		beq	.L69
+ 1475 0120 4C30A0E3 		mov	r3, #76
+ 1476 0124 000000EA 		b	.L70
+ 1477              	.L69:
+ 1478              		.loc 1 362 3 is_stmt 0 discriminator 2
+ 1479 0128 2D30A0E3 		mov	r3, #45
+ 1480              	.L70:
+ 1481              		.loc 1 362 3 discriminator 4
+ 1482 012c 0300A0E1 		mov	r0, r3
+ 1483 0130 30319FE5 		ldr	r3, .L75+44
+ 1484 0134 0FE0A0E1 		mov	lr, pc
+ 1485 0138 13FF2FE1 		bx	r3
+ 1486              	.LVL27:
+ 363:main.c        ****                                           : '-'); // Left/Right/Grey generien
+ 364:main.c        ****   display_char(nxt_avr_get_buttons().right ? 'R'
+ 1487              		.loc 1 364 16 is_stmt 1
+ 1488 013c 20319FE5 		ldr	r3, .L75+40
+ 1489 0140 0FE0A0E1 		mov	lr, pc
+ 1490 0144 13FF2FE1 		bx	r3
+ 1491              	.LVL28:
+ 1492 0148 0030A0E1 		mov	r3, r0
+ 1493              		.loc 1 364 44 discriminator 1
+ 1494 014c FF3003E2 		and	r3, r3, #255
+ 1495 0150 043003E2 		and	r3, r3, #4
+ 1496 0154 FF3003E2 		and	r3, r3, #255
+ 1497              		.loc 1 364 3 discriminator 1
+ 1498 0158 000053E3 		cmp	r3, #0
+ 1499 015c 0100000A 		beq	.L71
+ 1500 0160 5230A0E3 		mov	r3, #82
+ 1501 0164 000000EA 		b	.L72
+ 1502              	.L71:
+ 1503              		.loc 1 364 3 is_stmt 0 discriminator 2
+ 1504 0168 2D30A0E3 		mov	r3, #45
+ 1505              	.L72:
+ 1506              		.loc 1 364 3 discriminator 4
+ 1507 016c 0300A0E1 		mov	r0, r3
+ 1508 0170 F0309FE5 		ldr	r3, .L75+44
+ 1509 0174 0FE0A0E1 		mov	lr, pc
+ 1510 0178 13FF2FE1 		bx	r3
+ 1511              	.LVL29:
+ 365:main.c        ****                                            : '-'); // je eine eigenen Spannung
+ 366:main.c        ****   display_char(nxt_avr_get_buttons().grey
+ 1512              		.loc 1 366 16 is_stmt 1
+ 1513 017c E0309FE5 		ldr	r3, .L75+40
+ 1514 0180 0FE0A0E1 		mov	lr, pc
+ 1515 0184 13FF2FE1 		bx	r3
+ 1516              	.LVL30:
+ 1517 0188 0030A0E1 		mov	r3, r0
+ 367:main.c        ****                    ? 'G'
+ 1518              		.loc 1 367 20
+ 1519 018c FF3003E2 		and	r3, r3, #255
+ 1520 0190 083003E2 		and	r3, r3, #8
+ 1521 0194 FF3003E2 		and	r3, r3, #255
  366:main.c        ****                    ? 'G'
- 1509              		.loc 1 366 20
- 1510 018c FF3003E2 		and	r3, r3, #255
- 1511 0190 083003E2 		and	r3, r3, #8
- 1512 0194 FF3003E2 		and	r3, r3, #255
- 365:main.c        ****                    ? 'G'
- 1513              		.loc 1 365 3
- 1514 0198 000053E3 		cmp	r3, #0
- 1515 019c 0100000A 		beq	.L73
- 365:main.c        ****                    ? 'G'
- 1516              		.loc 1 365 3 is_stmt 0 discriminator 1
- 1517 01a0 4730A0E3 		mov	r3, #71
- 1518 01a4 000000EA 		b	.L74
- 1519              	.L73:
- 365:main.c        ****                    ? 'G'
- 1520              		.loc 1 365 3 discriminator 2
- 1521 01a8 2D30A0E3 		mov	r3, #45
- 1522              	.L74:
- 365:main.c        ****                    ? 'G'
- 1523              		.loc 1 365 3 discriminator 4
- 1524 01ac 0300A0E1 		mov	r0, r3
- 1525 01b0 B0309FE5 		ldr	r3, .L75+44
- 1526 01b4 0FE0A0E1 		mov	lr, pc
- 1527 01b8 13FF2FE1 		bx	r3
- 1528              	.LVL30:
- 367:main.c        ****                    : '-'); // so dass diese 3 nicht gemeinsam
- 368:main.c        ****                            // erkannt werden können
- 369:main.c        ****   // Beispiel für Zeitdarstellung
- 370:main.c        ****   display_goto_xy(0, 5);
- 1529              		.loc 1 370 3 is_stmt 1
- 1530 01bc 0510A0E3 		mov	r1, #5
- 1531 01c0 0000A0E3 		mov	r0, #0
- 1532 01c4 80309FE5 		ldr	r3, .L75+16
- 1533 01c8 0FE0A0E1 		mov	lr, pc
- 1534 01cc 13FF2FE1 		bx	r3
- 1535              	.LVL31:
- 371:main.c        ****   display_string("Time: ");
- 1536              		.loc 1 371 3
- 1537 01d0 94009FE5 		ldr	r0, .L75+48
- 1538 01d4 64309FE5 		ldr	r3, .L75+4
- 1539 01d8 0FE0A0E1 		mov	lr, pc
- 1540 01dc 13FF2FE1 		bx	r3
- 1541              	.LVL32:
- 372:main.c        ****   display_unsigned(systick_get_ms() / 1000, 4);
- 1542              		.loc 1 372 20
- 1543 01e0 88309FE5 		ldr	r3, .L75+52
- 1544 01e4 0FE0A0E1 		mov	lr, pc
- 1545 01e8 13FF2FE1 		bx	r3
- 1546              	.LVL33:
- 1547 01ec 0030A0E1 		mov	r3, r0
- 1548              		.loc 1 372 3 discriminator 1
- 1549 01f0 7C209FE5 		ldr	r2, .L75+56
- 1550 01f4 921383E0 		umull	r1, r3, r2, r3
- 1551 01f8 2333A0E1 		lsr	r3, r3, #6
- 1552 01fc 0410A0E3 		mov	r1, #4
- 1553 0200 0300A0E1 		mov	r0, r3
- 1554 0204 4C309FE5 		ldr	r3, .L75+28
- 1555 0208 0FE0A0E1 		mov	lr, pc
- 1556 020c 13FF2FE1 		bx	r3
- 1557              	.LVL34:
- 373:main.c        ****   display_string("s");
- 1558              		.loc 1 373 3
- 1559 0210 60009FE5 		ldr	r0, .L75+60
- 1560 0214 24309FE5 		ldr	r3, .L75+4
- 1561 0218 0FE0A0E1 		mov	lr, pc
- 1562 021c 13FF2FE1 		bx	r3
- 1563              	.LVL35:
- 374:main.c        ****   display_update();
- 1564              		.loc 1 374 3
- 1565 0220 54309FE5 		ldr	r3, .L75+64
- 1566 0224 0FE0A0E1 		mov	lr, pc
- 1567 0228 13FF2FE1 		bx	r3
- 1568              	.LVL36:
- 375:main.c        **** }
- 1569              		.loc 1 375 1
- 1570 022c 0000A0E1 		nop
- 1571 0230 04D04BE2 		sub	sp, fp, #4
- 1572              		.cfi_def_cfa 13, 8
- 1573              		@ sp needed
- 1574 0234 0048BDE8 		pop	{fp, lr}
- 1575              		.cfi_restore 14
- 1576              		.cfi_restore 11
- 1577              		.cfi_def_cfa_offset 0
- 1578 0238 1EFF2FE1 		bx	lr
- 1579              	.L76:
- 1580              		.align	2
- 1581              	.L75:
- 1582 023c 10000000 		.word	.LC1
- 1583 0240 00000000 		.word	display_string
- 1584 0244 00000000 		.word	nxt_avr_get_sensor_adc_raw
- 1585 0248 00000000 		.word	display_hex
- 1586 024c 00000000 		.word	display_goto_xy
- 1587 0250 14000000 		.word	.LC2
- 1588 0254 00000000 		.word	nxt_avr_get_battery_mv
- 1589 0258 00000000 		.word	display_unsigned
- 1590 025c 1C000000 		.word	.LC3
- 1591 0260 20000000 		.word	.LC4
- 1592 0264 00000000 		.word	nxt_avr_get_buttons
- 1593 0268 00000000 		.word	display_char
- 1594 026c 28000000 		.word	.LC5
- 1595 0270 00000000 		.word	systick_get_ms
- 1596 0274 D34D6210 		.word	274877907
- 1597 0278 30000000 		.word	.LC6
- 1598 027c 00000000 		.word	display_update
- 1599              		.cfi_endproc
- 1600              	.LFE23:
- 1602              		.section	.text.task_512ms,"ax",%progbits
- 1603              		.align	2
- 1604              		.global	task_512ms
- 1605              		.syntax unified
- 1606              		.arm
- 1608              	task_512ms:
- 1609              	.LFB24:
- 376:main.c        **** void task_512ms(void) {
- 1610              		.loc 1 376 23
- 1611              		.cfi_startproc
- 1612              		@ Function supports interworking.
- 1613              		@ args = 0, pretend = 0, frame = 0
- 1614              		@ frame_needed = 1, uses_anonymous_args = 0
- 1615              		@ link register save eliminated.
- 1616 0000 04B02DE5 		str	fp, [sp, #-4]!
- 1617              		.cfi_def_cfa_offset 4
- 1618              		.cfi_offset 11, -4
- 1619 0004 00B08DE2 		add	fp, sp, #0
- 1620              		.cfi_def_cfa_register 11
- 377:main.c        ****   // Keine blockierende Aufrufe
- 378:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 379:main.c        **** }
- 1621              		.loc 1 379 1
- 1622 0008 0000A0E1 		nop
- 1623 000c 00D08BE2 		add	sp, fp, #0
- 1624              		.cfi_def_cfa_register 13
- 1625              		@ sp needed
- 1626 0010 04B09DE4 		ldr	fp, [sp], #4
- 1627              		.cfi_restore 11
- 1628              		.cfi_def_cfa_offset 0
- 1629 0014 1EFF2FE1 		bx	lr
- 1630              		.cfi_endproc
- 1631              	.LFE24:
- 1633              		.section	.text.task_1024ms,"ax",%progbits
- 1634              		.align	2
- 1635              		.global	task_1024ms
- 1636              		.syntax unified
- 1637              		.arm
- 1639              	task_1024ms:
- 1640              	.LFB25:
- 380:main.c        **** void task_1024ms(void) {
- 1641              		.loc 1 380 24
- 1642              		.cfi_startproc
- 1643              		@ Function supports interworking.
- 1644              		@ args = 0, pretend = 0, frame = 0
- 1645              		@ frame_needed = 1, uses_anonymous_args = 0
- 1646              		@ link register save eliminated.
- 1647 0000 04B02DE5 		str	fp, [sp, #-4]!
- 1648              		.cfi_def_cfa_offset 4
- 1649              		.cfi_offset 11, -4
- 1650 0004 00B08DE2 		add	fp, sp, #0
- 1651              		.cfi_def_cfa_register 11
- 381:main.c        ****   // Keine blockierende Aufrufe
- 382:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
- 383:main.c        **** }
- 1652              		.loc 1 383 1
- 1653 0008 0000A0E1 		nop
- 1654 000c 00D08BE2 		add	sp, fp, #0
- 1655              		.cfi_def_cfa_register 13
- 1656              		@ sp needed
- 1657 0010 04B09DE4 		ldr	fp, [sp], #4
- 1658              		.cfi_restore 11
- 1659              		.cfi_def_cfa_offset 0
- 1660 0014 1EFF2FE1 		bx	lr
- 1661              		.cfi_endproc
- 1662              	.LFE25:
- 1664              		.section	.rodata
- 1665 0032 0000     		.align	2
- 1666              	.LC7:
- 1667 0034 0A0D3D3D 		.ascii	"\012\015==>ENTER gedr\374ckt: '\000"
- 1667      3E454E54 
- 1667      45522067 
- 1667      656472FC 
- 1667      636B743A 
- 1668 004b 00       		.align	2
- 1669              	.LC8:
- 1670 004c 270A0D00 		.ascii	"'\012\015\000"
- 1671              		.section	.text.task_idle,"ax",%progbits
- 1672              		.align	2
- 1673              		.global	task_idle
- 1674              		.syntax unified
- 1675              		.arm
- 1677              	task_idle:
- 1678              	.LFB26:
- 384:main.c        **** void task_idle(void) {
- 1679              		.loc 1 384 22
- 1680              		.cfi_startproc
- 1681              		@ Function supports interworking.
- 1682              		@ args = 0, pretend = 0, frame = 8
- 1683              		@ frame_needed = 1, uses_anonymous_args = 0
- 1684 0000 00482DE9 		push	{fp, lr}
- 1685              		.cfi_def_cfa_offset 8
- 1686              		.cfi_offset 11, -8
- 1687              		.cfi_offset 14, -4
- 1688 0004 04B08DE2 		add	fp, sp, #4
- 1689              		.cfi_def_cfa 11, 4
- 1690 0008 08D04DE2 		sub	sp, sp, #8
- 385:main.c        ****   // Keine blockierende Aufrufe
- 386:main.c        ****   // Max. Bearbeitungsdauer: IDLE_MS
- 387:main.c        **** 
- 388:main.c        ****   // Beispielanwendung für Terminal-Schnittstelle
- 389:main.c        ****   unsigned char c;
- 390:main.c        ****   static unsigned char string[100];
- 391:main.c        ****   static uint8_t strpos = 0;
- 392:main.c        **** 
- 393:main.c        ****   if (term_read(&c, ASYNCSYNC_NONBLOCK) == 0) {
- 1691              		.loc 1 393 7
- 1692 000c 05304BE2 		sub	r3, fp, #5
- 1693 0010 0010A0E3 		mov	r1, #0
- 1694 0014 0300A0E1 		mov	r0, r3
- 1695 0018 DC319FE5 		ldr	r3, .L82
- 1696 001c 0FE0A0E1 		mov	lr, pc
- 1697 0020 13FF2FE1 		bx	r3
- 1698              	.LVL37:
- 1699 0024 0030A0E1 		mov	r3, r0
- 1700              		.loc 1 393 6 discriminator 1
- 1701 0028 000053E3 		cmp	r3, #0
- 1702 002c 6E00001A 		bne	.L81
- 394:main.c        ****     main_data.term_status |=
- 395:main.c        ****         term_char(c, ASYNCSYNC_NONBLOCK); // Das empfangene Zeichen als Echo an
- 1703              		.loc 1 395 9
- 1704 0030 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
- 1705 0034 0010A0E3 		mov	r1, #0
- 1706 0038 0300A0E1 		mov	r0, r3
- 1707 003c BC319FE5 		ldr	r3, .L82+4
- 1708 0040 0FE0A0E1 		mov	lr, pc
- 1709 0044 13FF2FE1 		bx	r3
- 1710              	.LVL38:
- 1711 0048 0030A0E1 		mov	r3, r0
- 394:main.c        ****     main_data.term_status |=
- 1712              		.loc 1 394 14
- 1713 004c B0219FE5 		ldr	r2, .L82+8
- 1714 0050 D020D2E1 		ldrsb	r2, [r2]
- 394:main.c        ****     main_data.term_status |=
- 1715              		.loc 1 394 27
- 1716 0054 033CA0E1 		lsl	r3, r3, #24
- 1717 0058 433CA0E1 		asr	r3, r3, #24
- 1718 005c 033082E1 		orr	r3, r2, r3
- 1719 0060 033CA0E1 		lsl	r3, r3, #24
- 1720 0064 432CA0E1 		asr	r2, r3, #24
- 1721 0068 94319FE5 		ldr	r3, .L82+8
- 1722 006c 0020C3E5 		strb	r2, [r3]
- 396:main.c        ****                                           // das Terminal zurückschicken
- 397:main.c        ****     string[strpos] = c;
- 1723              		.loc 1 397 11
- 1724 0070 90319FE5 		ldr	r3, .L82+12
- 1725 0074 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1726 0078 0320A0E1 		mov	r2, r3
- 1727              		.loc 1 397 20
- 1728 007c 05105BE5 		ldrb	r1, [fp, #-5]	@ zero_extendqisi2
- 1729 0080 84319FE5 		ldr	r3, .L82+16
- 1730 0084 0210C3E7 		strb	r1, [r3, r2]
- 398:main.c        ****     string[++strpos] = 0;
- 1731              		.loc 1 398 12
- 1732 0088 78319FE5 		ldr	r3, .L82+12
- 1733 008c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1734 0090 013083E2 		add	r3, r3, #1
- 1735 0094 FF2003E2 		and	r2, r3, #255
- 1736              		.loc 1 398 22
- 1737 0098 68319FE5 		ldr	r3, .L82+12
- 1738 009c 0020C3E5 		strb	r2, [r3]
- 1739              		.loc 1 398 12
- 1740 00a0 60319FE5 		ldr	r3, .L82+12
- 1741 00a4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1742 00a8 0320A0E1 		mov	r2, r3
- 1743              		.loc 1 398 22
- 1744 00ac 58319FE5 		ldr	r3, .L82+16
- 1745 00b0 0010A0E3 		mov	r1, #0
- 1746 00b4 0210C3E7 		strb	r1, [r3, r2]
- 399:main.c        ****     strpos = strpos >= (sizeof(string) - 1) ? (sizeof(string) - 2) : strpos;
- 1747              		.loc 1 399 68
- 1748 00b8 48319FE5 		ldr	r3, .L82+12
- 1749 00bc 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1750 00c0 620053E3 		cmp	r3, #98
- 1751 00c4 0330A031 		movcc	r3, r3
- 1752 00c8 6230A023 		movcs	r3, #98
- 1753 00cc FF2003E2 		and	r2, r3, #255
- 1754              		.loc 1 399 12
- 1755 00d0 30319FE5 		ldr	r3, .L82+12
- 1756 00d4 0020C3E5 		strb	r2, [r3]
- 400:main.c        **** 
- 401:main.c        ****     if (c == '\r') {
- 1757              		.loc 1 401 11
- 1758 00d8 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
- 1759              		.loc 1 401 8
- 1760 00dc 0D0053E3 		cmp	r3, #13
- 1761 00e0 4100001A 		bne	.L81
- 402:main.c        ****       string[--strpos] = 0;
- 1762              		.loc 1 402 14
- 1763 00e4 1C319FE5 		ldr	r3, .L82+12
- 1764 00e8 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1765 00ec 013043E2 		sub	r3, r3, #1
- 1766 00f0 FF2003E2 		and	r2, r3, #255
- 1767              		.loc 1 402 24
- 1768 00f4 0C319FE5 		ldr	r3, .L82+12
- 1769 00f8 0020C3E5 		strb	r2, [r3]
- 1770              		.loc 1 402 14
- 1771 00fc 04319FE5 		ldr	r3, .L82+12
- 1772 0100 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1773 0104 0320A0E1 		mov	r2, r3
- 1774              		.loc 1 402 24
- 1775 0108 FC309FE5 		ldr	r3, .L82+16
- 1776 010c 0010A0E3 		mov	r1, #0
- 1777 0110 0210C3E7 		strb	r1, [r3, r2]
- 403:main.c        ****       main_data.term_status |= term_string("\n\r==>ENTER gedr\xFC"
- 1778              		.loc 1 403 32
- 1779 0114 0010A0E3 		mov	r1, #0
- 1780 0118 F0009FE5 		ldr	r0, .L82+20
- 1781 011c F0309FE5 		ldr	r3, .L82+24
- 1782 0120 0FE0A0E1 		mov	lr, pc
- 1783 0124 13FF2FE1 		bx	r3
- 1784              	.LVL39:
- 1785 0128 0030A0E1 		mov	r3, r0
- 1786              		.loc 1 403 16 discriminator 1
- 1787 012c D0209FE5 		ldr	r2, .L82+8
- 1788 0130 D020D2E1 		ldrsb	r2, [r2]
- 1789              		.loc 1 403 29 discriminator 1
- 1790 0134 033CA0E1 		lsl	r3, r3, #24
- 1791 0138 433CA0E1 		asr	r3, r3, #24
- 1792 013c 033082E1 		orr	r3, r2, r3
- 1793 0140 033CA0E1 		lsl	r3, r3, #24
- 1794 0144 432CA0E1 		asr	r2, r3, #24
- 1795 0148 B4309FE5 		ldr	r3, .L82+8
- 1796 014c 0020C3E5 		strb	r2, [r3]
- 404:main.c        ****                                            "ckt: '",
- 405:main.c        ****                                            ASYNCSYNC_NONBLOCK);
- 406:main.c        ****       main_data.term_status |= term_string((char *)string, ASYNCSYNC_NONBLOCK);
- 1797              		.loc 1 406 32
- 1798 0150 0010A0E3 		mov	r1, #0
- 1799 0154 B0009FE5 		ldr	r0, .L82+16
- 1800 0158 B4309FE5 		ldr	r3, .L82+24
- 1801 015c 0FE0A0E1 		mov	lr, pc
- 1802 0160 13FF2FE1 		bx	r3
- 1803              	.LVL40:
- 1804 0164 0030A0E1 		mov	r3, r0
- 1805              		.loc 1 406 16 discriminator 1
- 1806 0168 94209FE5 		ldr	r2, .L82+8
- 1807 016c D020D2E1 		ldrsb	r2, [r2]
- 1808              		.loc 1 406 29 discriminator 1
- 1809 0170 033CA0E1 		lsl	r3, r3, #24
- 1810 0174 433CA0E1 		asr	r3, r3, #24
- 1811 0178 033082E1 		orr	r3, r2, r3
- 1812 017c 033CA0E1 		lsl	r3, r3, #24
- 1813 0180 432CA0E1 		asr	r2, r3, #24
- 1814 0184 78309FE5 		ldr	r3, .L82+8
- 1815 0188 0020C3E5 		strb	r2, [r3]
- 407:main.c        ****       main_data.term_status |= term_string("'\n\r", ASYNCSYNC_NONBLOCK);
- 1816              		.loc 1 407 32
- 1817 018c 0010A0E3 		mov	r1, #0
- 1818 0190 80009FE5 		ldr	r0, .L82+28
- 1819 0194 78309FE5 		ldr	r3, .L82+24
- 1820 0198 0FE0A0E1 		mov	lr, pc
- 1821 019c 13FF2FE1 		bx	r3
- 1822              	.LVL41:
- 1823 01a0 0030A0E1 		mov	r3, r0
- 1824              		.loc 1 407 16 discriminator 1
- 1825 01a4 58209FE5 		ldr	r2, .L82+8
- 1826 01a8 D020D2E1 		ldrsb	r2, [r2]
- 1827              		.loc 1 407 29 discriminator 1
- 1828 01ac 033CA0E1 		lsl	r3, r3, #24
- 1829 01b0 433CA0E1 		asr	r3, r3, #24
- 1830 01b4 033082E1 		orr	r3, r2, r3
- 1831 01b8 033CA0E1 		lsl	r3, r3, #24
- 1832 01bc 432CA0E1 		asr	r2, r3, #24
- 1833 01c0 3C309FE5 		ldr	r3, .L82+8
- 1834 01c4 0020C3E5 		strb	r2, [r3]
- 408:main.c        ****       // oberen 128 ASCII zeichen des Terminal-Fensters sind wie folgt codiert
- 409:main.c        ****       // https://en.wikipedia.org/wiki/VT100_encoding
- 410:main.c        **** 
- 411:main.c        ****       strpos = 0;
- 1835              		.loc 1 411 14
- 1836 01c8 38309FE5 		ldr	r3, .L82+12
- 1837 01cc 0020A0E3 		mov	r2, #0
- 1838 01d0 0020C3E5 		strb	r2, [r3]
- 412:main.c        ****       string[strpos] = 0;
- 1839              		.loc 1 412 13
- 1840 01d4 2C309FE5 		ldr	r3, .L82+12
- 1841 01d8 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 1842 01dc 0320A0E1 		mov	r2, r3
- 1843              		.loc 1 412 22
- 1844 01e0 24309FE5 		ldr	r3, .L82+16
- 1845 01e4 0010A0E3 		mov	r1, #0
- 1846 01e8 0210C3E7 		strb	r1, [r3, r2]
- 1847              	.L81:
- 413:main.c        ****     }
- 414:main.c        ****   }
- 415:main.c        **** }
- 1848              		.loc 1 415 1
- 1849 01ec 0000A0E1 		nop
- 1850 01f0 04D04BE2 		sub	sp, fp, #4
- 1851              		.cfi_def_cfa 13, 8
- 1852              		@ sp needed
- 1853 01f4 0048BDE8 		pop	{fp, lr}
- 1854              		.cfi_restore 14
- 1855              		.cfi_restore 11
- 1856              		.cfi_def_cfa_offset 0
- 1857 01f8 1EFF2FE1 		bx	lr
- 1858              	.L83:
- 1859              		.align	2
- 1860              	.L82:
- 1861 01fc 00000000 		.word	term_read
- 1862 0200 00000000 		.word	term_char
- 1863 0204 00000000 		.word	main_data
- 1864 0208 70040000 		.word	strpos.3
- 1865 020c 74040000 		.word	string.2
- 1866 0210 34000000 		.word	.LC7
- 1867 0214 00000000 		.word	term_string
- 1868 0218 4C000000 		.word	.LC8
- 1869              		.cfi_endproc
- 1870              	.LFE26:
- 1872              		.section	.text.premain_init,"ax",%progbits
- 1873              		.align	2
- 1874              		.global	premain_init
- 1875              		.syntax unified
- 1876              		.arm
- 1878              	premain_init:
- 1879              	.LFB27:
- 416:main.c        **** /*****************************************************************************/
- 417:main.c        **** /*    Pre-Main-Funktion                                                      */
- 418:main.c        **** /*****************************************************************************/
- 419:main.c        **** // Zur Vermeidung von malloc(1024) bei der ersten Ausgabe über stdout!
- 420:main.c        **** //__attribute__(constructor) stellt sicher, dass premain_init() direkt nach
- 421:main.c        **** //__sinit() aufgerufen wird (beides innerhalb von __libc_init_array())
- 422:main.c        **** void __attribute__((constructor)) premain_init(void) {
- 1880              		.loc 1 422 54
- 1881              		.cfi_startproc
- 1882              		@ Function supports interworking.
- 1883              		@ args = 0, pretend = 0, frame = 0
- 1884              		@ frame_needed = 1, uses_anonymous_args = 0
- 1885 0000 30482DE9 		push	{r4, r5, fp, lr}
- 1886              		.cfi_def_cfa_offset 16
- 1887              		.cfi_offset 4, -16
- 1888              		.cfi_offset 5, -12
- 1889              		.cfi_offset 11, -8
- 1890              		.cfi_offset 14, -4
- 1891 0004 0CB08DE2 		add	fp, sp, #12
- 1892              		.cfi_def_cfa 11, 4
- 423:main.c        **** #if 0
- 424:main.c        **** 	//No linebuffering, call stdio_write() immediately
- 425:main.c        **** 	//-> Langsam, da mit jedem Zeichen __sflush_r()/_write()/stdio_write() aufgerufen wird 
- 426:main.c        **** 	setvbuf(stdout,NULL,_IONBF,0);
- 427:main.c        **** #else
- 428:main.c        ****   static char linebuf[10];
- 429:main.c        ****   // LineBuffering into global Varialbe (guter Kompromiss)
- 430:main.c        ****   setvbuf(stdout, linebuf, _IOLBF, sizeof(linebuf)); // Linebuffering in
- 1893              		.loc 1 430 11
- 1894 0008 2C309FE5 		ldr	r3, .L85
- 1895 000c 003093E5 		ldr	r3, [r3]
- 1896 0010 080093E5 		ldr	r0, [r3, #8]
- 1897              		.loc 1 430 3
- 1898 0014 0A30A0E3 		mov	r3, #10
- 1899 0018 0120A0E3 		mov	r2, #1
- 1900 001c 1C109FE5 		ldr	r1, .L85+4
- 1901 0020 1C409FE5 		ldr	r4, .L85+8
- 1902 0024 0FE0A0E1 		mov	lr, pc
- 1903 0028 14FF2FE1 		bx	r4
- 1904              	.LVL42:
- 431:main.c        **** #endif
- 432:main.c        **** }
- 1905              		.loc 1 432 1
- 1906 002c 0000A0E1 		nop
- 1907 0030 0CD04BE2 		sub	sp, fp, #12
- 1908              		.cfi_def_cfa 13, 16
- 1909              		@ sp needed
- 1910 0034 3048BDE8 		pop	{r4, r5, fp, lr}
- 1911              		.cfi_restore 14
- 1912              		.cfi_restore 11
- 1913              		.cfi_restore 5
- 1914              		.cfi_restore 4
- 1915              		.cfi_def_cfa_offset 0
- 1916 0038 1EFF2FE1 		bx	lr
- 1917              	.L86:
- 1918              		.align	2
- 1919              	.L85:
- 1920 003c 00000000 		.word	_impure_ptr
- 1921 0040 D8040000 		.word	linebuf.1
- 1922 0044 00000000 		.word	setvbuf
- 1923              		.cfi_endproc
- 1924              	.LFE27:
- 1926              		.section	.init_array,"aw",%init_array
+ 1522              		.loc 1 366 3
+ 1523 0198 000053E3 		cmp	r3, #0
+ 1524 019c 0100000A 		beq	.L73
+ 366:main.c        ****                    ? 'G'
+ 1525              		.loc 1 366 3 is_stmt 0 discriminator 1
+ 1526 01a0 4730A0E3 		mov	r3, #71
+ 1527 01a4 000000EA 		b	.L74
+ 1528              	.L73:
+ 366:main.c        ****                    ? 'G'
+ 1529              		.loc 1 366 3 discriminator 2
+ 1530 01a8 2D30A0E3 		mov	r3, #45
+ 1531              	.L74:
+ 366:main.c        ****                    ? 'G'
+ 1532              		.loc 1 366 3 discriminator 4
+ 1533 01ac 0300A0E1 		mov	r0, r3
+ 1534 01b0 B0309FE5 		ldr	r3, .L75+44
+ 1535 01b4 0FE0A0E1 		mov	lr, pc
+ 1536 01b8 13FF2FE1 		bx	r3
+ 1537              	.LVL31:
+ 368:main.c        ****                    : '-'); // so dass diese 3 nicht gemeinsam
+ 369:main.c        ****                            // erkannt werden können
+ 370:main.c        ****   // Beispiel für Zeitdarstellung
+ 371:main.c        ****   display_goto_xy(0, 5);
+ 1538              		.loc 1 371 3 is_stmt 1
+ 1539 01bc 0510A0E3 		mov	r1, #5
+ 1540 01c0 0000A0E3 		mov	r0, #0
+ 1541 01c4 80309FE5 		ldr	r3, .L75+16
+ 1542 01c8 0FE0A0E1 		mov	lr, pc
+ 1543 01cc 13FF2FE1 		bx	r3
+ 1544              	.LVL32:
+ 372:main.c        ****   display_string("Time: ");
+ 1545              		.loc 1 372 3
+ 1546 01d0 94009FE5 		ldr	r0, .L75+48
+ 1547 01d4 64309FE5 		ldr	r3, .L75+4
+ 1548 01d8 0FE0A0E1 		mov	lr, pc
+ 1549 01dc 13FF2FE1 		bx	r3
+ 1550              	.LVL33:
+ 373:main.c        ****   display_unsigned(systick_get_ms() / 1000, 4);
+ 1551              		.loc 1 373 20
+ 1552 01e0 88309FE5 		ldr	r3, .L75+52
+ 1553 01e4 0FE0A0E1 		mov	lr, pc
+ 1554 01e8 13FF2FE1 		bx	r3
+ 1555              	.LVL34:
+ 1556 01ec 0030A0E1 		mov	r3, r0
+ 1557              		.loc 1 373 3 discriminator 1
+ 1558 01f0 7C209FE5 		ldr	r2, .L75+56
+ 1559 01f4 921383E0 		umull	r1, r3, r2, r3
+ 1560 01f8 2333A0E1 		lsr	r3, r3, #6
+ 1561 01fc 0410A0E3 		mov	r1, #4
+ 1562 0200 0300A0E1 		mov	r0, r3
+ 1563 0204 4C309FE5 		ldr	r3, .L75+28
+ 1564 0208 0FE0A0E1 		mov	lr, pc
+ 1565 020c 13FF2FE1 		bx	r3
+ 1566              	.LVL35:
+ 374:main.c        ****   display_string("s");
+ 1567              		.loc 1 374 3
+ 1568 0210 60009FE5 		ldr	r0, .L75+60
+ 1569 0214 24309FE5 		ldr	r3, .L75+4
+ 1570 0218 0FE0A0E1 		mov	lr, pc
+ 1571 021c 13FF2FE1 		bx	r3
+ 1572              	.LVL36:
+ 375:main.c        ****   display_update();
+ 1573              		.loc 1 375 3
+ 1574 0220 54309FE5 		ldr	r3, .L75+64
+ 1575 0224 0FE0A0E1 		mov	lr, pc
+ 1576 0228 13FF2FE1 		bx	r3
+ 1577              	.LVL37:
+ 376:main.c        **** }
+ 1578              		.loc 1 376 1
+ 1579 022c 0000A0E1 		nop
+ 1580 0230 04D04BE2 		sub	sp, fp, #4
+ 1581              		.cfi_def_cfa 13, 8
+ 1582              		@ sp needed
+ 1583 0234 0048BDE8 		pop	{fp, lr}
+ 1584              		.cfi_restore 14
+ 1585              		.cfi_restore 11
+ 1586              		.cfi_def_cfa_offset 0
+ 1587 0238 1EFF2FE1 		bx	lr
+ 1588              	.L76:
+ 1589              		.align	2
+ 1590              	.L75:
+ 1591 023c 04000000 		.word	.LC1
+ 1592 0240 00000000 		.word	display_string
+ 1593 0244 00000000 		.word	nxt_avr_get_sensor_adc_raw
+ 1594 0248 00000000 		.word	display_hex
+ 1595 024c 00000000 		.word	display_goto_xy
+ 1596 0250 08000000 		.word	.LC2
+ 1597 0254 00000000 		.word	nxt_avr_get_battery_mv
+ 1598 0258 00000000 		.word	display_unsigned
+ 1599 025c 10000000 		.word	.LC3
+ 1600 0260 14000000 		.word	.LC4
+ 1601 0264 00000000 		.word	nxt_avr_get_buttons
+ 1602 0268 00000000 		.word	display_char
+ 1603 026c 1C000000 		.word	.LC5
+ 1604 0270 00000000 		.word	systick_get_ms
+ 1605 0274 D34D6210 		.word	274877907
+ 1606 0278 24000000 		.word	.LC6
+ 1607 027c 00000000 		.word	display_update
+ 1608              		.cfi_endproc
+ 1609              	.LFE23:
+ 1611              		.section	.text.task_512ms,"ax",%progbits
+ 1612              		.align	2
+ 1613              		.global	task_512ms
+ 1614              		.syntax unified
+ 1615              		.arm
+ 1617              	task_512ms:
+ 1618              	.LFB24:
+ 377:main.c        **** void task_512ms(void) {
+ 1619              		.loc 1 377 23
+ 1620              		.cfi_startproc
+ 1621              		@ Function supports interworking.
+ 1622              		@ args = 0, pretend = 0, frame = 0
+ 1623              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1624              		@ link register save eliminated.
+ 1625 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1626              		.cfi_def_cfa_offset 4
+ 1627              		.cfi_offset 11, -4
+ 1628 0004 00B08DE2 		add	fp, sp, #0
+ 1629              		.cfi_def_cfa_register 11
+ 378:main.c        ****   // Keine blockierende Aufrufe
+ 379:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 380:main.c        **** }
+ 1630              		.loc 1 380 1
+ 1631 0008 0000A0E1 		nop
+ 1632 000c 00D08BE2 		add	sp, fp, #0
+ 1633              		.cfi_def_cfa_register 13
+ 1634              		@ sp needed
+ 1635 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1636              		.cfi_restore 11
+ 1637              		.cfi_def_cfa_offset 0
+ 1638 0014 1EFF2FE1 		bx	lr
+ 1639              		.cfi_endproc
+ 1640              	.LFE24:
+ 1642              		.section	.text.task_1024ms,"ax",%progbits
+ 1643              		.align	2
+ 1644              		.global	task_1024ms
+ 1645              		.syntax unified
+ 1646              		.arm
+ 1648              	task_1024ms:
+ 1649              	.LFB25:
+ 381:main.c        **** void task_1024ms(void) {
+ 1650              		.loc 1 381 24
+ 1651              		.cfi_startproc
+ 1652              		@ Function supports interworking.
+ 1653              		@ args = 0, pretend = 0, frame = 0
+ 1654              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1655              		@ link register save eliminated.
+ 1656 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1657              		.cfi_def_cfa_offset 4
+ 1658              		.cfi_offset 11, -4
+ 1659 0004 00B08DE2 		add	fp, sp, #0
+ 1660              		.cfi_def_cfa_register 11
+ 382:main.c        ****   // Keine blockierende Aufrufe
+ 383:main.c        ****   // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 384:main.c        **** }
+ 1661              		.loc 1 384 1
+ 1662 0008 0000A0E1 		nop
+ 1663 000c 00D08BE2 		add	sp, fp, #0
+ 1664              		.cfi_def_cfa_register 13
+ 1665              		@ sp needed
+ 1666 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1667              		.cfi_restore 11
+ 1668              		.cfi_def_cfa_offset 0
+ 1669 0014 1EFF2FE1 		bx	lr
+ 1670              		.cfi_endproc
+ 1671              	.LFE25:
+ 1673              		.section	.rodata
+ 1674 0026 0000     		.align	2
+ 1675              	.LC7:
+ 1676 0028 0A0D3D3D 		.ascii	"\012\015==>ENTER gedr\374ckt: '\000"
+ 1676      3E454E54 
+ 1676      45522067 
+ 1676      656472FC 
+ 1676      636B743A 
+ 1677 003f 00       		.align	2
+ 1678              	.LC8:
+ 1679 0040 270A0D00 		.ascii	"'\012\015\000"
+ 1680              		.section	.text.task_idle,"ax",%progbits
+ 1681              		.align	2
+ 1682              		.global	task_idle
+ 1683              		.syntax unified
+ 1684              		.arm
+ 1686              	task_idle:
+ 1687              	.LFB26:
+ 385:main.c        **** void task_idle(void) {
+ 1688              		.loc 1 385 22
+ 1689              		.cfi_startproc
+ 1690              		@ Function supports interworking.
+ 1691              		@ args = 0, pretend = 0, frame = 8
+ 1692              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1693 0000 00482DE9 		push	{fp, lr}
+ 1694              		.cfi_def_cfa_offset 8
+ 1695              		.cfi_offset 11, -8
+ 1696              		.cfi_offset 14, -4
+ 1697 0004 04B08DE2 		add	fp, sp, #4
+ 1698              		.cfi_def_cfa 11, 4
+ 1699 0008 08D04DE2 		sub	sp, sp, #8
+ 386:main.c        ****   // Keine blockierende Aufrufe
+ 387:main.c        ****   // Max. Bearbeitungsdauer: IDLE_MS
+ 388:main.c        **** 
+ 389:main.c        ****   // Beispielanwendung für Terminal-Schnittstelle
+ 390:main.c        ****   unsigned char c;
+ 391:main.c        ****   static unsigned char string[100];
+ 392:main.c        ****   static uint8_t strpos = 0;
+ 393:main.c        **** 
+ 394:main.c        ****   if (term_read(&c, ASYNCSYNC_NONBLOCK) == 0) {
+ 1700              		.loc 1 394 7
+ 1701 000c 05304BE2 		sub	r3, fp, #5
+ 1702 0010 0010A0E3 		mov	r1, #0
+ 1703 0014 0300A0E1 		mov	r0, r3
+ 1704 0018 DC319FE5 		ldr	r3, .L82
+ 1705 001c 0FE0A0E1 		mov	lr, pc
+ 1706 0020 13FF2FE1 		bx	r3
+ 1707              	.LVL38:
+ 1708 0024 0030A0E1 		mov	r3, r0
+ 1709              		.loc 1 394 6 discriminator 1
+ 1710 0028 000053E3 		cmp	r3, #0
+ 1711 002c 6E00001A 		bne	.L81
+ 395:main.c        ****     main_data.term_status |=
+ 396:main.c        ****         term_char(c, ASYNCSYNC_NONBLOCK); // Das empfangene Zeichen als Echo an
+ 1712              		.loc 1 396 9
+ 1713 0030 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 1714 0034 0010A0E3 		mov	r1, #0
+ 1715 0038 0300A0E1 		mov	r0, r3
+ 1716 003c BC319FE5 		ldr	r3, .L82+4
+ 1717 0040 0FE0A0E1 		mov	lr, pc
+ 1718 0044 13FF2FE1 		bx	r3
+ 1719              	.LVL39:
+ 1720 0048 0030A0E1 		mov	r3, r0
+ 395:main.c        ****     main_data.term_status |=
+ 1721              		.loc 1 395 14
+ 1722 004c B0219FE5 		ldr	r2, .L82+8
+ 1723 0050 D020D2E1 		ldrsb	r2, [r2]
+ 395:main.c        ****     main_data.term_status |=
+ 1724              		.loc 1 395 27
+ 1725 0054 033CA0E1 		lsl	r3, r3, #24
+ 1726 0058 433CA0E1 		asr	r3, r3, #24
+ 1727 005c 033082E1 		orr	r3, r2, r3
+ 1728 0060 033CA0E1 		lsl	r3, r3, #24
+ 1729 0064 432CA0E1 		asr	r2, r3, #24
+ 1730 0068 94319FE5 		ldr	r3, .L82+8
+ 1731 006c 0020C3E5 		strb	r2, [r3]
+ 397:main.c        ****                                           // das Terminal zurückschicken
+ 398:main.c        ****     string[strpos] = c;
+ 1732              		.loc 1 398 11
+ 1733 0070 90319FE5 		ldr	r3, .L82+12
+ 1734 0074 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1735 0078 0320A0E1 		mov	r2, r3
+ 1736              		.loc 1 398 20
+ 1737 007c 05105BE5 		ldrb	r1, [fp, #-5]	@ zero_extendqisi2
+ 1738 0080 84319FE5 		ldr	r3, .L82+16
+ 1739 0084 0210C3E7 		strb	r1, [r3, r2]
+ 399:main.c        ****     string[++strpos] = 0;
+ 1740              		.loc 1 399 12
+ 1741 0088 78319FE5 		ldr	r3, .L82+12
+ 1742 008c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1743 0090 013083E2 		add	r3, r3, #1
+ 1744 0094 FF2003E2 		and	r2, r3, #255
+ 1745              		.loc 1 399 22
+ 1746 0098 68319FE5 		ldr	r3, .L82+12
+ 1747 009c 0020C3E5 		strb	r2, [r3]
+ 1748              		.loc 1 399 12
+ 1749 00a0 60319FE5 		ldr	r3, .L82+12
+ 1750 00a4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1751 00a8 0320A0E1 		mov	r2, r3
+ 1752              		.loc 1 399 22
+ 1753 00ac 58319FE5 		ldr	r3, .L82+16
+ 1754 00b0 0010A0E3 		mov	r1, #0
+ 1755 00b4 0210C3E7 		strb	r1, [r3, r2]
+ 400:main.c        ****     strpos = strpos >= (sizeof(string) - 1) ? (sizeof(string) - 2) : strpos;
+ 1756              		.loc 1 400 68
+ 1757 00b8 48319FE5 		ldr	r3, .L82+12
+ 1758 00bc 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1759 00c0 620053E3 		cmp	r3, #98
+ 1760 00c4 0330A031 		movcc	r3, r3
+ 1761 00c8 6230A023 		movcs	r3, #98
+ 1762 00cc FF2003E2 		and	r2, r3, #255
+ 1763              		.loc 1 400 12
+ 1764 00d0 30319FE5 		ldr	r3, .L82+12
+ 1765 00d4 0020C3E5 		strb	r2, [r3]
+ 401:main.c        **** 
+ 402:main.c        ****     if (c == '\r') {
+ 1766              		.loc 1 402 11
+ 1767 00d8 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 1768              		.loc 1 402 8
+ 1769 00dc 0D0053E3 		cmp	r3, #13
+ 1770 00e0 4100001A 		bne	.L81
+ 403:main.c        ****       string[--strpos] = 0;
+ 1771              		.loc 1 403 14
+ 1772 00e4 1C319FE5 		ldr	r3, .L82+12
+ 1773 00e8 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1774 00ec 013043E2 		sub	r3, r3, #1
+ 1775 00f0 FF2003E2 		and	r2, r3, #255
+ 1776              		.loc 1 403 24
+ 1777 00f4 0C319FE5 		ldr	r3, .L82+12
+ 1778 00f8 0020C3E5 		strb	r2, [r3]
+ 1779              		.loc 1 403 14
+ 1780 00fc 04319FE5 		ldr	r3, .L82+12
+ 1781 0100 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1782 0104 0320A0E1 		mov	r2, r3
+ 1783              		.loc 1 403 24
+ 1784 0108 FC309FE5 		ldr	r3, .L82+16
+ 1785 010c 0010A0E3 		mov	r1, #0
+ 1786 0110 0210C3E7 		strb	r1, [r3, r2]
+ 404:main.c        ****       main_data.term_status |= term_string("\n\r==>ENTER gedr\xFC"
+ 1787              		.loc 1 404 32
+ 1788 0114 0010A0E3 		mov	r1, #0
+ 1789 0118 F0009FE5 		ldr	r0, .L82+20
+ 1790 011c F0309FE5 		ldr	r3, .L82+24
+ 1791 0120 0FE0A0E1 		mov	lr, pc
+ 1792 0124 13FF2FE1 		bx	r3
+ 1793              	.LVL40:
+ 1794 0128 0030A0E1 		mov	r3, r0
+ 1795              		.loc 1 404 16 discriminator 1
+ 1796 012c D0209FE5 		ldr	r2, .L82+8
+ 1797 0130 D020D2E1 		ldrsb	r2, [r2]
+ 1798              		.loc 1 404 29 discriminator 1
+ 1799 0134 033CA0E1 		lsl	r3, r3, #24
+ 1800 0138 433CA0E1 		asr	r3, r3, #24
+ 1801 013c 033082E1 		orr	r3, r2, r3
+ 1802 0140 033CA0E1 		lsl	r3, r3, #24
+ 1803 0144 432CA0E1 		asr	r2, r3, #24
+ 1804 0148 B4309FE5 		ldr	r3, .L82+8
+ 1805 014c 0020C3E5 		strb	r2, [r3]
+ 405:main.c        ****                                            "ckt: '",
+ 406:main.c        ****                                            ASYNCSYNC_NONBLOCK);
+ 407:main.c        ****       main_data.term_status |= term_string((char *)string, ASYNCSYNC_NONBLOCK);
+ 1806              		.loc 1 407 32
+ 1807 0150 0010A0E3 		mov	r1, #0
+ 1808 0154 B0009FE5 		ldr	r0, .L82+16
+ 1809 0158 B4309FE5 		ldr	r3, .L82+24
+ 1810 015c 0FE0A0E1 		mov	lr, pc
+ 1811 0160 13FF2FE1 		bx	r3
+ 1812              	.LVL41:
+ 1813 0164 0030A0E1 		mov	r3, r0
+ 1814              		.loc 1 407 16 discriminator 1
+ 1815 0168 94209FE5 		ldr	r2, .L82+8
+ 1816 016c D020D2E1 		ldrsb	r2, [r2]
+ 1817              		.loc 1 407 29 discriminator 1
+ 1818 0170 033CA0E1 		lsl	r3, r3, #24
+ 1819 0174 433CA0E1 		asr	r3, r3, #24
+ 1820 0178 033082E1 		orr	r3, r2, r3
+ 1821 017c 033CA0E1 		lsl	r3, r3, #24
+ 1822 0180 432CA0E1 		asr	r2, r3, #24
+ 1823 0184 78309FE5 		ldr	r3, .L82+8
+ 1824 0188 0020C3E5 		strb	r2, [r3]
+ 408:main.c        ****       main_data.term_status |= term_string("'\n\r", ASYNCSYNC_NONBLOCK);
+ 1825              		.loc 1 408 32
+ 1826 018c 0010A0E3 		mov	r1, #0
+ 1827 0190 80009FE5 		ldr	r0, .L82+28
+ 1828 0194 78309FE5 		ldr	r3, .L82+24
+ 1829 0198 0FE0A0E1 		mov	lr, pc
+ 1830 019c 13FF2FE1 		bx	r3
+ 1831              	.LVL42:
+ 1832 01a0 0030A0E1 		mov	r3, r0
+ 1833              		.loc 1 408 16 discriminator 1
+ 1834 01a4 58209FE5 		ldr	r2, .L82+8
+ 1835 01a8 D020D2E1 		ldrsb	r2, [r2]
+ 1836              		.loc 1 408 29 discriminator 1
+ 1837 01ac 033CA0E1 		lsl	r3, r3, #24
+ 1838 01b0 433CA0E1 		asr	r3, r3, #24
+ 1839 01b4 033082E1 		orr	r3, r2, r3
+ 1840 01b8 033CA0E1 		lsl	r3, r3, #24
+ 1841 01bc 432CA0E1 		asr	r2, r3, #24
+ 1842 01c0 3C309FE5 		ldr	r3, .L82+8
+ 1843 01c4 0020C3E5 		strb	r2, [r3]
+ 409:main.c        ****       // oberen 128 ASCII zeichen des Terminal-Fensters sind wie folgt codiert
+ 410:main.c        ****       // https://en.wikipedia.org/wiki/VT100_encoding
+ 411:main.c        **** 
+ 412:main.c        ****       strpos = 0;
+ 1844              		.loc 1 412 14
+ 1845 01c8 38309FE5 		ldr	r3, .L82+12
+ 1846 01cc 0020A0E3 		mov	r2, #0
+ 1847 01d0 0020C3E5 		strb	r2, [r3]
+ 413:main.c        ****       string[strpos] = 0;
+ 1848              		.loc 1 413 13
+ 1849 01d4 2C309FE5 		ldr	r3, .L82+12
+ 1850 01d8 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1851 01dc 0320A0E1 		mov	r2, r3
+ 1852              		.loc 1 413 22
+ 1853 01e0 24309FE5 		ldr	r3, .L82+16
+ 1854 01e4 0010A0E3 		mov	r1, #0
+ 1855 01e8 0210C3E7 		strb	r1, [r3, r2]
+ 1856              	.L81:
+ 414:main.c        ****     }
+ 415:main.c        ****   }
+ 416:main.c        **** }
+ 1857              		.loc 1 416 1
+ 1858 01ec 0000A0E1 		nop
+ 1859 01f0 04D04BE2 		sub	sp, fp, #4
+ 1860              		.cfi_def_cfa 13, 8
+ 1861              		@ sp needed
+ 1862 01f4 0048BDE8 		pop	{fp, lr}
+ 1863              		.cfi_restore 14
+ 1864              		.cfi_restore 11
+ 1865              		.cfi_def_cfa_offset 0
+ 1866 01f8 1EFF2FE1 		bx	lr
+ 1867              	.L83:
+ 1868              		.align	2
+ 1869              	.L82:
+ 1870 01fc 00000000 		.word	term_read
+ 1871 0200 00000000 		.word	term_char
+ 1872 0204 00000000 		.word	main_data
+ 1873 0208 70040000 		.word	strpos.3
+ 1874 020c 74040000 		.word	string.2
+ 1875 0210 28000000 		.word	.LC7
+ 1876 0214 00000000 		.word	term_string
+ 1877 0218 40000000 		.word	.LC8
+ 1878              		.cfi_endproc
+ 1879              	.LFE26:
+ 1881              		.section	.text.premain_init,"ax",%progbits
+ 1882              		.align	2
+ 1883              		.global	premain_init
+ 1884              		.syntax unified
+ 1885              		.arm
+ 1887              	premain_init:
+ 1888              	.LFB27:
+ 417:main.c        **** /*****************************************************************************/
+ 418:main.c        **** /*    Pre-Main-Funktion                                                      */
+ 419:main.c        **** /*****************************************************************************/
+ 420:main.c        **** // Zur Vermeidung von malloc(1024) bei der ersten Ausgabe über stdout!
+ 421:main.c        **** //__attribute__(constructor) stellt sicher, dass premain_init() direkt nach
+ 422:main.c        **** //__sinit() aufgerufen wird (beides innerhalb von __libc_init_array())
+ 423:main.c        **** void __attribute__((constructor)) premain_init(void) {
+ 1889              		.loc 1 423 54
+ 1890              		.cfi_startproc
+ 1891              		@ Function supports interworking.
+ 1892              		@ args = 0, pretend = 0, frame = 0
+ 1893              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1894 0000 30482DE9 		push	{r4, r5, fp, lr}
+ 1895              		.cfi_def_cfa_offset 16
+ 1896              		.cfi_offset 4, -16
+ 1897              		.cfi_offset 5, -12
+ 1898              		.cfi_offset 11, -8
+ 1899              		.cfi_offset 14, -4
+ 1900 0004 0CB08DE2 		add	fp, sp, #12
+ 1901              		.cfi_def_cfa 11, 4
+ 424:main.c        **** #if 0
+ 425:main.c        **** 	//No linebuffering, call stdio_write() immediately
+ 426:main.c        **** 	//-> Langsam, da mit jedem Zeichen __sflush_r()/_write()/stdio_write() aufgerufen wird 
+ 427:main.c        **** 	setvbuf(stdout,NULL,_IONBF,0);
+ 428:main.c        **** #else
+ 429:main.c        ****   static char linebuf[10];
+ 430:main.c        ****   // LineBuffering into global Varialbe (guter Kompromiss)
+ 431:main.c        ****   setvbuf(stdout, linebuf, _IOLBF, sizeof(linebuf)); // Linebuffering in
+ 1902              		.loc 1 431 11
+ 1903 0008 2C309FE5 		ldr	r3, .L85
+ 1904 000c 003093E5 		ldr	r3, [r3]
+ 1905 0010 080093E5 		ldr	r0, [r3, #8]
+ 1906              		.loc 1 431 3
+ 1907 0014 0A30A0E3 		mov	r3, #10
+ 1908 0018 0120A0E3 		mov	r2, #1
+ 1909 001c 1C109FE5 		ldr	r1, .L85+4
+ 1910 0020 1C409FE5 		ldr	r4, .L85+8
+ 1911 0024 0FE0A0E1 		mov	lr, pc
+ 1912 0028 14FF2FE1 		bx	r4
+ 1913              	.LVL43:
+ 432:main.c        **** #endif
+ 433:main.c        **** }
+ 1914              		.loc 1 433 1
+ 1915 002c 0000A0E1 		nop
+ 1916 0030 0CD04BE2 		sub	sp, fp, #12
+ 1917              		.cfi_def_cfa 13, 16
+ 1918              		@ sp needed
+ 1919 0034 3048BDE8 		pop	{r4, r5, fp, lr}
+ 1920              		.cfi_restore 14
+ 1921              		.cfi_restore 11
+ 1922              		.cfi_restore 5
+ 1923              		.cfi_restore 4
+ 1924              		.cfi_def_cfa_offset 0
+ 1925 0038 1EFF2FE1 		bx	lr
+ 1926              	.L86:
  1927              		.align	2
- 1928 0000 00000000 		.word	premain_init(target1)
- 1929              		.section	.rodata
- 1930              		.align	2
- 1931              	.LC9:
- 1932 0050 64656D6F 		.ascii	"demo : 13:44:28\000"
- 1932      203A2031 
- 1932      333A3434 
- 1932      3A323800 
- 1933              		.align	2
- 1934              	.LC10:
- 1935 0060 1B5B324A 		.ascii	"\033[2J\033[H\033[0m\000"
- 1935      1B5B481B 
- 1935      5B306D00 
+ 1928              	.L85:
+ 1929 003c 00000000 		.word	_impure_ptr
+ 1930 0040 D8040000 		.word	linebuf.1
+ 1931 0044 00000000 		.word	setvbuf
+ 1932              		.cfi_endproc
+ 1933              	.LFE27:
+ 1935              		.section	.init_array,"aw",%init_array
  1936              		.align	2
- 1937              	.LC11:
- 1938 006c 50726F67 		.ascii	"Prog: demo\012\015Version von: Oct  6 2025 13:44:28"
- 1938      3A206465 
- 1938      6D6F0A0D 
- 1938      56657273 
- 1938      696F6E20 
- 1939 0099 0A0D00   		.ascii	"\012\015\000"
- 1940              		.align	2
- 1941              	.LC12:
- 1942 009c 27762E64 		.ascii	"'v.draw %e trace_buf0 trace_buf1' zum oeffnen eines"
- 1942      72617720 
- 1942      25652074 
- 1942      72616365 
- 1942      5F627566 
- 1943 00cf 20274F73 		.ascii	" 'Oszilloskop'\012\015\000"
- 1943      7A696C6C 
- 1943      6F736B6F 
- 1943      70270A0D 
- 1943      00
- 1944              		.align	2
- 1945              	.LC13:
- 1946 00e0 27646F20 		.ascii	"'do trace_scope' zum oeffnen eines 'Oszilloskop'\012"
- 1946      74726163 
- 1946      655F7363 
- 1946      6F706527 
- 1946      207A756D 
- 1947 0111 0D00     		.ascii	"\015\000"
- 1948 0113 00       		.align	2
- 1949              	.LC14:
- 1950 0114 4E585420 		.ascii	"NXT Display Fenster am besten schliessen\012\015\000"
- 1950      44697370 
- 1950      6C617920 
- 1950      46656E73 
- 1950      74657220 
- 1951 013f 00       		.align	2
- 1952              	.LC15:
- 1953 0140 5669656C 		.ascii	"Viel Erfolg!\012\015\000"
- 1953      20457266 
- 1953      6F6C6721 
- 1953      0A0D00
- 1954 014f 00       		.align	2
- 1955              	.LC16:
- 1956 0150 00       		.ascii	"\000"
- 1957 0151 000000   		.align	2
- 1958              	.LC17:
- 1959 0154 386D7300 		.ascii	"8ms\000"
- 1960              		.align	2
- 1961              	.LC18:
- 1962 0158 31366D73 		.ascii	"16ms\000"
- 1962      00
- 1963 015d 000000   		.align	2
- 1964              	.LC19:
- 1965 0160 33326D73 		.ascii	"32ms\000"
- 1965      00
- 1966 0165 000000   		.align	2
- 1967              	.LC20:
- 1968 0168 36346D73 		.ascii	"64ms\000"
- 1968      00
- 1969 016d 000000   		.align	2
- 1970              	.LC21:
- 1971 0170 3132386D 		.ascii	"128ms\000"
- 1971      7300
- 1972 0176 0000     		.align	2
- 1973              	.LC22:
- 1974 0178 3235366D 		.ascii	"256ms\000"
- 1974      7300
- 1975 017e 0000     		.align	2
- 1976              	.LC23:
- 1977 0180 3531326D 		.ascii	"512ms\000"
- 1977      7300
- 1978 0186 0000     		.align	2
- 1979              	.LC24:
- 1980 0188 31303234 		.ascii	"1024ms\000"
- 1980      6D7300
- 1981 018f 00       		.align	2
- 1982              	.LC25:
- 1983 0190 49646C65 		.ascii	"Idle\000"
- 1983      00
- 1984 0195 000000   		.align	2
- 1985              	.LC26:
- 1986 0198 1B5B3331 		.ascii	"\033[31mTiming durch '\000"
- 1986      6D54696D 
- 1986      696E6720 
- 1986      64757263 
- 1986      68202700 
- 1987              		.align	2
- 1988              	.LC27:
- 1989 01ac 27207665 		.ascii	"' verletzt\012\015\033[39m\000"
- 1989      726C6574 
- 1989      7A740A0D 
- 1989      1B5B3339 
- 1989      6D00
- 1990 01be 0000     		.align	2
- 1991              	.LC28:
- 1992 01c0 1B5B3331 		.ascii	"\033[31mStack overflow durch '\000"
- 1992      6D537461 
- 1992      636B206F 
- 1992      76657266 
- 1992      6C6F7720 
- 1993              		.align	2
- 1994              	.LC29:
- 1995 01dc 270A0D1B 		.ascii	"'\012\015\033[39m\000"
- 1995      5B33396D 
- 1995      00
- 1996 01e5 000000   		.align	2
- 1997              	.LC30:
- 1998 01e8 1B5B3331 		.ascii	"\033[31m\012\015Low Battery\012\015\033[39m\000"
- 1998      6D0A0D4C 
- 1998      6F772042 
- 1998      61747465 
- 1998      72790A0D 
- 1999 0202 0000     		.align	2
- 2000              	.LC31:
- 2001 0204 1B5B3331 		.ascii	"\033[31m\012\015Terminal Overflow\012\015\033[39m\000"
- 2001      6D0A0D54 
- 2001      65726D69 
- 2001      6E616C20 
- 2001      4F766572 
- 2002              		.section	.text.main,"ax",%progbits
- 2003              		.align	2
- 2004              		.global	main
- 2005              		.syntax unified
- 2006              		.arm
- 2008              	main:
- 2009              	.LFB28:
- 433:main.c        **** /*****************************************************************************/
- 434:main.c        **** /*    Main-Funktion                                                          */
- 435:main.c        **** /*****************************************************************************/
- 436:main.c        **** #if 0
- 437:main.c        **** //Variante 1: Deklaration der main() Funktion
- 438:main.c        **** //da es keine CLI gibt, über welcher die Anwendung getartet wird
- 439:main.c        **** //sondern der start über startup.s erfolgt, macht dies kein Sinn
- 440:main.c        **** //und belegt unnötige Speicherplatz auf den Stack
- 441:main.c        **** int main(int argc, char *argv[]) 
- 442:main.c        **** {
- 443:main.c        **** 	(void) argc;
- 444:main.c        **** 	(void) argv;
- 445:main.c        **** #else
- 446:main.c        **** // Variante 2: Deklaration der main() funktion
- 447:main.c        **** int main(void) {
- 2010              		.loc 1 447 16
- 2011              		.cfi_startproc
- 2012              		@ Function supports interworking.
- 2013              		@ args = 0, pretend = 0, frame = 24
- 2014              		@ frame_needed = 1, uses_anonymous_args = 0
- 2015 0000 00482DE9 		push	{fp, lr}
- 2016              		.cfi_def_cfa_offset 8
- 2017              		.cfi_offset 11, -8
- 2018              		.cfi_offset 14, -4
- 2019 0004 04B08DE2 		add	fp, sp, #4
- 2020              		.cfi_def_cfa 11, 4
- 2021 0008 18D04DE2 		sub	sp, sp, #24
- 448:main.c        **** #endif
- 449:main.c        ****   /* Interrupts zu diesem Zeitpunkt disabled !!!! */
- 450:main.c        **** 
- 451:main.c        ****   /* 'Pflicht' Initialisierung, können nicht ausgelassen werden */
- 452:main.c        ****   aic_init();          // Interrupt-Controller initialisieren
- 2022              		.loc 1 452 3
- 2023 000c E4359FE5 		ldr	r3, .L116
- 2024 0010 0FE0A0E1 		mov	lr, pc
- 2025 0014 13FF2FE1 		bx	r3
- 2026              	.LVL43:
- 453:main.c        ****   systick_init();      // System-Timer initialisieren
- 2027              		.loc 1 453 3
- 2028 0018 DC359FE5 		ldr	r3, .L116+4
- 2029 001c 0FE0A0E1 		mov	lr, pc
- 2030 0020 13FF2FE1 		bx	r3
- 2031              	.LVL44:
- 454:main.c        ****   interrupts_enable(); // Ohne Worte
- 2032              		.loc 1 454 3
- 2033 0024 D4359FE5 		ldr	r3, .L116+8
- 2034 0028 0FE0A0E1 		mov	lr, pc
- 2035 002c 13FF2FE1 		bx	r3
- 2036              	.LVL45:
- 455:main.c        ****   nxt_avr_init(8);
- 2037              		.loc 1 455 3
- 2038 0030 0800A0E3 		mov	r0, #8
- 2039 0034 C8359FE5 		ldr	r3, .L116+12
- 2040 0038 0FE0A0E1 		mov	lr, pc
- 2041 003c 13FF2FE1 		bx	r3
- 2042              	.LVL46:
- 456:main.c        **** #if defined(MODE_RAM) || defined(MODE_SIM)
- 457:main.c        ****   udmon3_init(); // Speicherzugriff durch den Debugger
- 2043              		.loc 1 457 3
- 2044 0040 C0359FE5 		ldr	r3, .L116+16
- 2045 0044 0FE0A0E1 		mov	lr, pc
- 2046 0048 13FF2FE1 		bx	r3
- 2047              	.LVL47:
- 458:main.c        ****                  // zur Programmlaufzeit mittels der
- 459:main.c        ****                  // DCC Schnittstelle ermöglichen
- 460:main.c        **** #endif
- 461:main.c        **** 
- 462:main.c        ****   /* 'Wahl' Initialisierung, hängt von den benötigten Komponenten ab */
- 463:main.c        ****   term_init();
- 2048              		.loc 1 463 3
- 2049 004c B8359FE5 		ldr	r3, .L116+20
- 2050 0050 0FE0A0E1 		mov	lr, pc
- 2051 0054 13FF2FE1 		bx	r3
- 2052              	.LVL48:
- 464:main.c        ****   display_init();
- 2053              		.loc 1 464 3
- 2054 0058 B0359FE5 		ldr	r3, .L116+24
- 2055 005c 0FE0A0E1 		mov	lr, pc
- 2056 0060 13FF2FE1 		bx	r3
- 2057              	.LVL49:
- 465:main.c        ****   display_clear(0);
- 2058              		.loc 1 465 3
- 2059 0064 0000A0E3 		mov	r0, #0
- 2060 0068 A4359FE5 		ldr	r3, .L116+28
- 2061 006c 0FE0A0E1 		mov	lr, pc
- 2062 0070 13FF2FE1 		bx	r3
- 2063              	.LVL50:
- 466:main.c        ****   display_string(APP_NAME " : " __TIME__);
- 2064              		.loc 1 466 3
- 2065 0074 9C059FE5 		ldr	r0, .L116+32
- 2066 0078 9C359FE5 		ldr	r3, .L116+36
- 2067 007c 0FE0A0E1 		mov	lr, pc
- 2068 0080 13FF2FE1 		bx	r3
- 2069              	.LVL51:
- 467:main.c        ****   display_update();
- 2070              		.loc 1 467 3
- 2071 0084 94359FE5 		ldr	r3, .L116+40
- 2072 0088 0FE0A0E1 		mov	lr, pc
- 2073 008c 13FF2FE1 		bx	r3
- 2074              	.LVL52:
- 468:main.c        **** 
- 469:main.c        ****   // ANSI Escape sequences - VT100 / VT52 (see main.h)
- 470:main.c        ****   (void)term_string(
- 2075              		.loc 1 470 9
- 2076 0090 0110A0E3 		mov	r1, #1
- 2077 0094 88059FE5 		ldr	r0, .L116+44
- 2078 0098 88359FE5 		ldr	r3, .L116+48
- 2079 009c 0FE0A0E1 		mov	lr, pc
- 2080 00a0 13FF2FE1 		bx	r3
- 2081              	.LVL53:
- 471:main.c        ****       "\033[2J" VT100_CURSORHOME // Move Cursor to home position (0,0)
- 472:main.c        ****           VT100_DEFAULT,
- 473:main.c        ****       ASYNCSYNC_BLOCK);
- 474:main.c        ****   (void)term_string("Prog: " APP_NAME "\n\rVersion von: " __DATE__ " " __TIME__
- 2082              		.loc 1 474 9
- 2083 00a4 0110A0E3 		mov	r1, #1
- 2084 00a8 7C059FE5 		ldr	r0, .L116+52
- 2085 00ac 74359FE5 		ldr	r3, .L116+48
- 2086 00b0 0FE0A0E1 		mov	lr, pc
- 2087 00b4 13FF2FE1 		bx	r3
- 2088              	.LVL54:
- 475:main.c        ****                     "\n\r",
- 476:main.c        ****                     ASYNCSYNC_BLOCK);
- 477:main.c        ****   (void)term_string(
- 2089              		.loc 1 477 9
- 2090 00b8 0110A0E3 		mov	r1, #1
- 2091 00bc 6C059FE5 		ldr	r0, .L116+56
- 2092 00c0 60359FE5 		ldr	r3, .L116+48
- 2093 00c4 0FE0A0E1 		mov	lr, pc
- 2094 00c8 13FF2FE1 		bx	r3
- 2095              	.LVL55:
- 478:main.c        ****       "'v.draw %e trace_buf0 trace_buf1' zum oeffnen eines 'Oszilloskop'\n\r",
- 479:main.c        ****       ASYNCSYNC_BLOCK);
- 480:main.c        ****   (void)term_string("'do trace_scope' zum oeffnen eines 'Oszilloskop'\n\r",
- 2096              		.loc 1 480 9
- 2097 00cc 0110A0E3 		mov	r1, #1
- 2098 00d0 5C059FE5 		ldr	r0, .L116+60
- 2099 00d4 4C359FE5 		ldr	r3, .L116+48
- 2100 00d8 0FE0A0E1 		mov	lr, pc
- 2101 00dc 13FF2FE1 		bx	r3
- 2102              	.LVL56:
- 481:main.c        ****                     ASYNCSYNC_BLOCK);
- 482:main.c        ****   (void)term_string("NXT Display Fenster am besten schliessen\n\r",
- 2103              		.loc 1 482 9
- 2104 00e0 0110A0E3 		mov	r1, #1
- 2105 00e4 4C059FE5 		ldr	r0, .L116+64
- 2106 00e8 38359FE5 		ldr	r3, .L116+48
- 2107 00ec 0FE0A0E1 		mov	lr, pc
- 2108 00f0 13FF2FE1 		bx	r3
- 2109              	.LVL57:
- 483:main.c        ****                     ASYNCSYNC_BLOCK);
- 484:main.c        ****   (void)term_string("Viel Erfolg!\n\r", ASYNCSYNC_BLOCK);
- 2110              		.loc 1 484 9
- 2111 00f4 0110A0E3 		mov	r1, #1
- 2112 00f8 3C059FE5 		ldr	r0, .L116+68
- 2113 00fc 24359FE5 		ldr	r3, .L116+48
- 2114 0100 0FE0A0E1 		mov	lr, pc
- 2115 0104 13FF2FE1 		bx	r3
- 2116              	.LVL58:
- 485:main.c        **** 
- 486:main.c        ****   // Alternativ zu term_xxx() kann auch printf() oder noch besser iprintf
- 487:main.c        ****   // genutzt werden beide bedingen jedoch einen großen Speicherbedarf!
- 488:main.c        ****   // Alternativ zu term_read() kann auch scanf() genutzt werden. Auch diese
- 489:main.c        ****   // Funktion
- 490:main.c        ****   //  bedingt einen großen Speicherbedarf
- 491:main.c        **** 
- 492:main.c        **** #ifndef MODE_ROM
- 493:main.c        ****   /* Watchdog Disable */
- 494:main.c        ****   /* Mode-Register kann nur einmal beschrieben werden */
- 495:main.c        ****   AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
- 2117              		.loc 1 495 18
- 2118 0108 30359FE5 		ldr	r3, .L116+72
- 2119              		.loc 1 495 30
- 2120 010c 30259FE5 		ldr	r2, .L116+76
- 2121 0110 042083E5 		str	r2, [r3, #4]
- 2122              	.LBB8:
- 2123              	.LBB9:
- 2124              		.file 4 "lib/../main.h"
+ 1937 0000 00000000 		.word	premain_init(target1)
+ 1938              		.section	.rodata
+ 1939              		.align	2
+ 1940              	.LC9:
+ 1941 0044 64656D6F 		.ascii	"demo : 20:39:38\000"
+ 1941      203A2032 
+ 1941      303A3339 
+ 1941      3A333800 
+ 1942              		.align	2
+ 1943              	.LC10:
+ 1944 0054 1B5B324A 		.ascii	"\033[2J\033[H\033[0m\000"
+ 1944      1B5B481B 
+ 1944      5B306D00 
+ 1945              		.align	2
+ 1946              	.LC11:
+ 1947 0060 50726F67 		.ascii	"Prog: demo\012\015Version von: Oct  9 2025 20:39:38"
+ 1947      3A206465 
+ 1947      6D6F0A0D 
+ 1947      56657273 
+ 1947      696F6E20 
+ 1948 008d 0A0D00   		.ascii	"\012\015\000"
+ 1949              		.align	2
+ 1950              	.LC12:
+ 1951 0090 27762E64 		.ascii	"'v.draw %e trace_buf0 trace_buf1' zum oeffnen eines"
+ 1951      72617720 
+ 1951      25652074 
+ 1951      72616365 
+ 1951      5F627566 
+ 1952 00c3 20274F73 		.ascii	" 'Oszilloskop'\012\015\000"
+ 1952      7A696C6C 
+ 1952      6F736B6F 
+ 1952      70270A0D 
+ 1952      00
+ 1953              		.align	2
+ 1954              	.LC13:
+ 1955 00d4 27646F20 		.ascii	"'do trace_scope' zum oeffnen eines 'Oszilloskop'\012"
+ 1955      74726163 
+ 1955      655F7363 
+ 1955      6F706527 
+ 1955      207A756D 
+ 1956 0105 0D00     		.ascii	"\015\000"
+ 1957 0107 00       		.align	2
+ 1958              	.LC14:
+ 1959 0108 4E585420 		.ascii	"NXT Display Fenster am besten schliessen\012\015\000"
+ 1959      44697370 
+ 1959      6C617920 
+ 1959      46656E73 
+ 1959      74657220 
+ 1960 0133 00       		.align	2
+ 1961              	.LC15:
+ 1962 0134 5669656C 		.ascii	"Viel Erfolg!\012\015\000"
+ 1962      20457266 
+ 1962      6F6C6721 
+ 1962      0A0D00
+ 1963 0143 00       		.align	2
+ 1964              	.LC16:
+ 1965 0144 00       		.ascii	"\000"
+ 1966 0145 000000   		.align	2
+ 1967              	.LC17:
+ 1968 0148 386D7300 		.ascii	"8ms\000"
+ 1969              		.align	2
+ 1970              	.LC18:
+ 1971 014c 31366D73 		.ascii	"16ms\000"
+ 1971      00
+ 1972 0151 000000   		.align	2
+ 1973              	.LC19:
+ 1974 0154 33326D73 		.ascii	"32ms\000"
+ 1974      00
+ 1975 0159 000000   		.align	2
+ 1976              	.LC20:
+ 1977 015c 36346D73 		.ascii	"64ms\000"
+ 1977      00
+ 1978 0161 000000   		.align	2
+ 1979              	.LC21:
+ 1980 0164 3132386D 		.ascii	"128ms\000"
+ 1980      7300
+ 1981 016a 0000     		.align	2
+ 1982              	.LC22:
+ 1983 016c 3235366D 		.ascii	"256ms\000"
+ 1983      7300
+ 1984 0172 0000     		.align	2
+ 1985              	.LC23:
+ 1986 0174 3531326D 		.ascii	"512ms\000"
+ 1986      7300
+ 1987 017a 0000     		.align	2
+ 1988              	.LC24:
+ 1989 017c 31303234 		.ascii	"1024ms\000"
+ 1989      6D7300
+ 1990 0183 00       		.align	2
+ 1991              	.LC25:
+ 1992 0184 49646C65 		.ascii	"Idle\000"
+ 1992      00
+ 1993 0189 000000   		.align	2
+ 1994              	.LC26:
+ 1995 018c 1B5B3331 		.ascii	"\033[31mTiming durch '\000"
+ 1995      6D54696D 
+ 1995      696E6720 
+ 1995      64757263 
+ 1995      68202700 
+ 1996              		.align	2
+ 1997              	.LC27:
+ 1998 01a0 27207665 		.ascii	"' verletzt\012\015\033[39m\000"
+ 1998      726C6574 
+ 1998      7A740A0D 
+ 1998      1B5B3339 
+ 1998      6D00
+ 1999 01b2 0000     		.align	2
+ 2000              	.LC28:
+ 2001 01b4 1B5B3331 		.ascii	"\033[31mStack overflow durch '\000"
+ 2001      6D537461 
+ 2001      636B206F 
+ 2001      76657266 
+ 2001      6C6F7720 
+ 2002              		.align	2
+ 2003              	.LC29:
+ 2004 01d0 270A0D1B 		.ascii	"'\012\015\033[39m\000"
+ 2004      5B33396D 
+ 2004      00
+ 2005 01d9 000000   		.align	2
+ 2006              	.LC30:
+ 2007 01dc 1B5B3331 		.ascii	"\033[31m\012\015Low Battery\012\015\033[39m\000"
+ 2007      6D0A0D4C 
+ 2007      6F772042 
+ 2007      61747465 
+ 2007      72790A0D 
+ 2008 01f6 0000     		.align	2
+ 2009              	.LC31:
+ 2010 01f8 1B5B3331 		.ascii	"\033[31m\012\015Terminal Overflow\012\015\033[39m\000"
+ 2010      6D0A0D54 
+ 2010      65726D69 
+ 2010      6E616C20 
+ 2010      4F766572 
+ 2011              		.section	.text.main,"ax",%progbits
+ 2012              		.align	2
+ 2013              		.global	main
+ 2014              		.syntax unified
+ 2015              		.arm
+ 2017              	main:
+ 2018              	.LFB28:
+ 434:main.c        **** /*****************************************************************************/
+ 435:main.c        **** /*    Main-Funktion                                                          */
+ 436:main.c        **** /*****************************************************************************/
+ 437:main.c        **** #if 0
+ 438:main.c        **** //Variante 1: Deklaration der main() Funktion
+ 439:main.c        **** //da es keine CLI gibt, über welcher die Anwendung getartet wird
+ 440:main.c        **** //sondern der start über startup.s erfolgt, macht dies kein Sinn
+ 441:main.c        **** //und belegt unnötige Speicherplatz auf den Stack
+ 442:main.c        **** int main(int argc, char *argv[]) 
+ 443:main.c        **** {
+ 444:main.c        **** 	(void) argc;
+ 445:main.c        **** 	(void) argv;
+ 446:main.c        **** #else
+ 447:main.c        **** // Variante 2: Deklaration der main() funktion
+ 448:main.c        **** int main(void) {
+ 2019              		.loc 1 448 16
+ 2020              		.cfi_startproc
+ 2021              		@ Function supports interworking.
+ 2022              		@ args = 0, pretend = 0, frame = 24
+ 2023              		@ frame_needed = 1, uses_anonymous_args = 0
+ 2024 0000 00482DE9 		push	{fp, lr}
+ 2025              		.cfi_def_cfa_offset 8
+ 2026              		.cfi_offset 11, -8
+ 2027              		.cfi_offset 14, -4
+ 2028 0004 04B08DE2 		add	fp, sp, #4
+ 2029              		.cfi_def_cfa 11, 4
+ 2030 0008 18D04DE2 		sub	sp, sp, #24
+ 449:main.c        **** #endif
+ 450:main.c        ****   /* Interrupts zu diesem Zeitpunkt disabled !!!! */
+ 451:main.c        **** 
+ 452:main.c        ****   /* 'Pflicht' Initialisierung, können nicht ausgelassen werden */
+ 453:main.c        ****   aic_init();          // Interrupt-Controller initialisieren
+ 2031              		.loc 1 453 3
+ 2032 000c E4359FE5 		ldr	r3, .L116
+ 2033 0010 0FE0A0E1 		mov	lr, pc
+ 2034 0014 13FF2FE1 		bx	r3
+ 2035              	.LVL44:
+ 454:main.c        ****   systick_init();      // System-Timer initialisieren
+ 2036              		.loc 1 454 3
+ 2037 0018 DC359FE5 		ldr	r3, .L116+4
+ 2038 001c 0FE0A0E1 		mov	lr, pc
+ 2039 0020 13FF2FE1 		bx	r3
+ 2040              	.LVL45:
+ 455:main.c        ****   interrupts_enable(); // Ohne Worte
+ 2041              		.loc 1 455 3
+ 2042 0024 D4359FE5 		ldr	r3, .L116+8
+ 2043 0028 0FE0A0E1 		mov	lr, pc
+ 2044 002c 13FF2FE1 		bx	r3
+ 2045              	.LVL46:
+ 456:main.c        ****   nxt_avr_init(8);
+ 2046              		.loc 1 456 3
+ 2047 0030 0800A0E3 		mov	r0, #8
+ 2048 0034 C8359FE5 		ldr	r3, .L116+12
+ 2049 0038 0FE0A0E1 		mov	lr, pc
+ 2050 003c 13FF2FE1 		bx	r3
+ 2051              	.LVL47:
+ 457:main.c        **** #if defined(MODE_RAM) || defined(MODE_SIM)
+ 458:main.c        ****   udmon3_init(); // Speicherzugriff durch den Debugger
+ 2052              		.loc 1 458 3
+ 2053 0040 C0359FE5 		ldr	r3, .L116+16
+ 2054 0044 0FE0A0E1 		mov	lr, pc
+ 2055 0048 13FF2FE1 		bx	r3
+ 2056              	.LVL48:
+ 459:main.c        ****                  // zur Programmlaufzeit mittels der
+ 460:main.c        ****                  // DCC Schnittstelle ermöglichen
+ 461:main.c        **** #endif
+ 462:main.c        **** 
+ 463:main.c        ****   /* 'Wahl' Initialisierung, hängt von den benötigten Komponenten ab */
+ 464:main.c        ****   term_init();
+ 2057              		.loc 1 464 3
+ 2058 004c B8359FE5 		ldr	r3, .L116+20
+ 2059 0050 0FE0A0E1 		mov	lr, pc
+ 2060 0054 13FF2FE1 		bx	r3
+ 2061              	.LVL49:
+ 465:main.c        ****   display_init();
+ 2062              		.loc 1 465 3
+ 2063 0058 B0359FE5 		ldr	r3, .L116+24
+ 2064 005c 0FE0A0E1 		mov	lr, pc
+ 2065 0060 13FF2FE1 		bx	r3
+ 2066              	.LVL50:
+ 466:main.c        ****   display_clear(0);
+ 2067              		.loc 1 466 3
+ 2068 0064 0000A0E3 		mov	r0, #0
+ 2069 0068 A4359FE5 		ldr	r3, .L116+28
+ 2070 006c 0FE0A0E1 		mov	lr, pc
+ 2071 0070 13FF2FE1 		bx	r3
+ 2072              	.LVL51:
+ 467:main.c        ****   display_string(APP_NAME " : " __TIME__);
+ 2073              		.loc 1 467 3
+ 2074 0074 9C059FE5 		ldr	r0, .L116+32
+ 2075 0078 9C359FE5 		ldr	r3, .L116+36
+ 2076 007c 0FE0A0E1 		mov	lr, pc
+ 2077 0080 13FF2FE1 		bx	r3
+ 2078              	.LVL52:
+ 468:main.c        ****   display_update();
+ 2079              		.loc 1 468 3
+ 2080 0084 94359FE5 		ldr	r3, .L116+40
+ 2081 0088 0FE0A0E1 		mov	lr, pc
+ 2082 008c 13FF2FE1 		bx	r3
+ 2083              	.LVL53:
+ 469:main.c        **** 
+ 470:main.c        ****   // ANSI Escape sequences - VT100 / VT52 (see main.h)
+ 471:main.c        ****   (void)term_string(
+ 2084              		.loc 1 471 9
+ 2085 0090 0110A0E3 		mov	r1, #1
+ 2086 0094 88059FE5 		ldr	r0, .L116+44
+ 2087 0098 88359FE5 		ldr	r3, .L116+48
+ 2088 009c 0FE0A0E1 		mov	lr, pc
+ 2089 00a0 13FF2FE1 		bx	r3
+ 2090              	.LVL54:
+ 472:main.c        ****       "\033[2J" VT100_CURSORHOME // Move Cursor to home position (0,0)
+ 473:main.c        ****           VT100_DEFAULT,
+ 474:main.c        ****       ASYNCSYNC_BLOCK);
+ 475:main.c        ****   (void)term_string("Prog: " APP_NAME "\n\rVersion von: " __DATE__ " " __TIME__
+ 2091              		.loc 1 475 9
+ 2092 00a4 0110A0E3 		mov	r1, #1
+ 2093 00a8 7C059FE5 		ldr	r0, .L116+52
+ 2094 00ac 74359FE5 		ldr	r3, .L116+48
+ 2095 00b0 0FE0A0E1 		mov	lr, pc
+ 2096 00b4 13FF2FE1 		bx	r3
+ 2097              	.LVL55:
+ 476:main.c        ****                     "\n\r",
+ 477:main.c        ****                     ASYNCSYNC_BLOCK);
+ 478:main.c        ****   (void)term_string(
+ 2098              		.loc 1 478 9
+ 2099 00b8 0110A0E3 		mov	r1, #1
+ 2100 00bc 6C059FE5 		ldr	r0, .L116+56
+ 2101 00c0 60359FE5 		ldr	r3, .L116+48
+ 2102 00c4 0FE0A0E1 		mov	lr, pc
+ 2103 00c8 13FF2FE1 		bx	r3
+ 2104              	.LVL56:
+ 479:main.c        ****       "'v.draw %e trace_buf0 trace_buf1' zum oeffnen eines 'Oszilloskop'\n\r",
+ 480:main.c        ****       ASYNCSYNC_BLOCK);
+ 481:main.c        ****   (void)term_string("'do trace_scope' zum oeffnen eines 'Oszilloskop'\n\r",
+ 2105              		.loc 1 481 9
+ 2106 00cc 0110A0E3 		mov	r1, #1
+ 2107 00d0 5C059FE5 		ldr	r0, .L116+60
+ 2108 00d4 4C359FE5 		ldr	r3, .L116+48
+ 2109 00d8 0FE0A0E1 		mov	lr, pc
+ 2110 00dc 13FF2FE1 		bx	r3
+ 2111              	.LVL57:
+ 482:main.c        ****                     ASYNCSYNC_BLOCK);
+ 483:main.c        ****   (void)term_string("NXT Display Fenster am besten schliessen\n\r",
+ 2112              		.loc 1 483 9
+ 2113 00e0 0110A0E3 		mov	r1, #1
+ 2114 00e4 4C059FE5 		ldr	r0, .L116+64
+ 2115 00e8 38359FE5 		ldr	r3, .L116+48
+ 2116 00ec 0FE0A0E1 		mov	lr, pc
+ 2117 00f0 13FF2FE1 		bx	r3
+ 2118              	.LVL58:
+ 484:main.c        ****                     ASYNCSYNC_BLOCK);
+ 485:main.c        ****   (void)term_string("Viel Erfolg!\n\r", ASYNCSYNC_BLOCK);
+ 2119              		.loc 1 485 9
+ 2120 00f4 0110A0E3 		mov	r1, #1
+ 2121 00f8 3C059FE5 		ldr	r0, .L116+68
+ 2122 00fc 24359FE5 		ldr	r3, .L116+48
+ 2123 0100 0FE0A0E1 		mov	lr, pc
+ 2124 0104 13FF2FE1 		bx	r3
+ 2125              	.LVL59:
+ 486:main.c        **** 
+ 487:main.c        ****   // Alternativ zu term_xxx() kann auch printf() oder noch besser iprintf
+ 488:main.c        ****   // genutzt werden beide bedingen jedoch einen großen Speicherbedarf!
+ 489:main.c        ****   // Alternativ zu term_read() kann auch scanf() genutzt werden. Auch diese
+ 490:main.c        ****   // Funktion
+ 491:main.c        ****   //  bedingt einen großen Speicherbedarf
+ 492:main.c        **** 
+ 493:main.c        **** #ifndef MODE_ROM
+ 494:main.c        ****   /* Watchdog Disable */
+ 495:main.c        ****   /* Mode-Register kann nur einmal beschrieben werden */
+ 496:main.c        ****   AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
+ 2126              		.loc 1 496 18
+ 2127 0108 30359FE5 		ldr	r3, .L116+72
+ 2128              		.loc 1 496 30
+ 2129 010c 30259FE5 		ldr	r2, .L116+76
+ 2130 0110 042083E5 		str	r2, [r3, #4]
+ 2131              	.LBB8:
+ 2132              	.LBB9:
+ 2133              		.file 4 "lib/../main.h"
    1:lib/../main.h **** #ifndef main_h
    2:lib/../main.h **** #define main_h
    3:lib/../main.h **** #include <stdint.h>
@@ -2897,370 +2904,370 @@
  118:lib/../main.h **** 	         uint32_t *ptr;
  119:lib/../main.h **** 	register uint32_t *sp asm("r13");
  120:lib/../main.h **** 	for(ptr=&__stack_start__[0];ptr<sp;ptr++)
- 2125              		.loc 4 120 9
- 2126 0114 2C359FE5 		ldr	r3, .L116+80
- 2127 0118 14300BE5 		str	r3, [fp, #-20]
- 2128              		.loc 4 120 2
- 2129 011c 050000EA 		b	.L88
- 2130              	.L89:
+ 2134              		.loc 4 120 9
+ 2135 0114 2C359FE5 		ldr	r3, .L116+80
+ 2136 0118 14300BE5 		str	r3, [fp, #-20]
+ 2137              		.loc 4 120 2
+ 2138 011c 050000EA 		b	.L88
+ 2139              	.L89:
  121:lib/../main.h **** 		*ptr=STACK_FILL;
- 2131              		.loc 4 121 7
- 2132 0120 14301BE5 		ldr	r3, [fp, #-20]
- 2133 0124 20259FE5 		ldr	r2, .L116+84
- 2134 0128 002083E5 		str	r2, [r3]
+ 2140              		.loc 4 121 7
+ 2141 0120 14301BE5 		ldr	r3, [fp, #-20]
+ 2142 0124 20259FE5 		ldr	r2, .L116+84
+ 2143 0128 002083E5 		str	r2, [r3]
  120:lib/../main.h **** 		*ptr=STACK_FILL;
- 2135              		.loc 4 120 40 discriminator 3
- 2136 012c 14301BE5 		ldr	r3, [fp, #-20]
- 2137 0130 043083E2 		add	r3, r3, #4
- 2138 0134 14300BE5 		str	r3, [fp, #-20]
- 2139              	.L88:
+ 2144              		.loc 4 120 40 discriminator 3
+ 2145 012c 14301BE5 		ldr	r3, [fp, #-20]
+ 2146 0130 043083E2 		add	r3, r3, #4
+ 2147 0134 14300BE5 		str	r3, [fp, #-20]
+ 2148              	.L88:
  120:lib/../main.h **** 		*ptr=STACK_FILL;
- 2140              		.loc 4 120 33 discriminator 1
- 2141 0138 0D20A0E1 		mov	r2, sp
- 2142 013c 14301BE5 		ldr	r3, [fp, #-20]
- 2143 0140 020053E1 		cmp	r3, r2
- 2144 0144 F5FFFF3A 		bcc	.L89
+ 2149              		.loc 4 120 33 discriminator 1
+ 2150 0138 0D20A0E1 		mov	r2, sp
+ 2151 013c 14301BE5 		ldr	r3, [fp, #-20]
+ 2152 0140 020053E1 		cmp	r3, r2
+ 2153 0144 F5FFFF3A 		bcc	.L89
  122:lib/../main.h **** }
- 2145              		.loc 4 122 1
- 2146 0148 0000A0E1 		nop
- 2147              	.L90:
- 2148              	.LBE9:
- 2149              	.LBE8:
- 496:main.c        ****                                AT91C_WDTC_WDDBGHLT |      /*Debug Halt */
- 497:main.c        ****                                AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
- 498:main.c        **** #else
- 499:main.c        **** #if 0
- 500:main.c        **** 	/* Watchdog Enable */
- 501:main.c        **** 	/* Da in dieser Version kein zyklischer Reset des Watchdogs */
- 502:main.c        **** 	/* vorhanden ist, wird von einem Watchdog Enable abgesehen  */
- 503:main.c        **** 	/* Mit Reset wird der Wachdog aktiviert!                    */
- 504:main.c        **** #else
- 505:main.c        **** /* Watchdog Disable */
- 506:main.c        **** /* Mode-Register kann nur einmal beschrieben werden */
- 507:main.c        **** AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
- 508:main.c        ****                              AT91C_WDTC_WDDBGHLT |      /*Debug Halt */
- 509:main.c        ****                              AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
- 510:main.c        **** #endif
+ 2154              		.loc 4 122 1
+ 2155 0148 0000A0E1 		nop
+ 2156              	.L90:
+ 2157              	.LBE9:
+ 2158              	.LBE8:
+ 497:main.c        ****                                AT91C_WDTC_WDDBGHLT |      /*Debug Halt */
+ 498:main.c        ****                                AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
+ 499:main.c        **** #else
+ 500:main.c        **** #if 0
+ 501:main.c        **** 	/* Watchdog Enable */
+ 502:main.c        **** 	/* Da in dieser Version kein zyklischer Reset des Watchdogs */
+ 503:main.c        **** 	/* vorhanden ist, wird von einem Watchdog Enable abgesehen  */
+ 504:main.c        **** 	/* Mit Reset wird der Wachdog aktiviert!                    */
+ 505:main.c        **** #else
+ 506:main.c        **** /* Watchdog Disable */
+ 507:main.c        **** /* Mode-Register kann nur einmal beschrieben werden */
+ 508:main.c        **** AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
+ 509:main.c        ****                              AT91C_WDTC_WDDBGHLT |      /*Debug Halt */
+ 510:main.c        ****                              AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
  511:main.c        **** #endif
- 512:main.c        ****   // Vorangegangenen Stackaufbau 'löschen'
- 513:main.c        ****   stack_fill();
- 514:main.c        ****   // Label, so das mit 'go start' hierin gesprungen werden kann
- 515:main.c        **** start:
- 516:main.c        ****   __attribute__((unused));
- 517:main.c        ****   uint32_t start_tick = systick_get_ms();
- 2150              		.loc 1 517 25
- 2151 014c FC349FE5 		ldr	r3, .L116+88
- 2152 0150 0FE0A0E1 		mov	lr, pc
- 2153 0154 13FF2FE1 		bx	r3
- 2154              	.LVL59:
- 2155 0158 08000BE5 		str	r0, [fp, #-8]
- 518:main.c        ****   uint32_t zeitscheibe = 0;
- 2156              		.loc 1 518 12
- 2157 015c 0030A0E3 		mov	r3, #0
- 2158 0160 0C300BE5 		str	r3, [fp, #-12]
- 519:main.c        ****   char *task_aktiv = "";
- 2159              		.loc 1 519 9
- 2160 0164 E8349FE5 		ldr	r3, .L116+92
- 2161 0168 10300BE5 		str	r3, [fp, #-16]
- 2162              	.L115:
- 520:main.c        ****   while (1) {
- 521:main.c        ****     // Warten bis zum nächsten TimeSlot
- 522:main.c        ****     while ((int)(start_tick - systick_get_ms()) > 0)
- 2163              		.loc 1 522 11
- 2164 016c 0000A0E1 		nop
- 2165              	.L91:
- 2166              		.loc 1 522 31 discriminator 1
- 2167 0170 D8349FE5 		ldr	r3, .L116+88
- 2168 0174 0FE0A0E1 		mov	lr, pc
- 2169 0178 13FF2FE1 		bx	r3
- 2170              	.LVL60:
- 2171 017c 0020A0E1 		mov	r2, r0
- 2172              		.loc 1 522 29 discriminator 1
- 2173 0180 08301BE5 		ldr	r3, [fp, #-8]
- 2174 0184 023043E0 		sub	r3, r3, r2
- 2175              		.loc 1 522 49 discriminator 1
- 2176 0188 000053E3 		cmp	r3, #0
- 2177 018c F7FFFFCA 		bgt	.L91
- 523:main.c        ****       ;
- 524:main.c        ****     start_tick += ZYKLUS_MS;
- 2178              		.loc 1 524 16
- 2179 0190 08301BE5 		ldr	r3, [fp, #-8]
- 2180 0194 043083E2 		add	r3, r3, #4
- 2181 0198 08300BE5 		str	r3, [fp, #-8]
- 2182              	.L92:
- 525:main.c        ****     // Label, so das mit 'go zyklus' hierhin gesprungen werden kann
- 526:main.c        ****   zyklus:
- 527:main.c        ****     __attribute__((unused)) if ((zeitscheibe & 0b000000001) == 0b000000001) {
- 2183              		.loc 1 527 46
- 2184 019c 0C301BE5 		ldr	r3, [fp, #-12]
- 2185 01a0 013003E2 		and	r3, r3, #1
- 2186              		.loc 1 527 32
- 2187 01a4 000053E3 		cmp	r3, #0
- 2188 01a8 0500000A 		beq	.L93
- 528:main.c        ****       task_aktiv = "8ms";
- 2189              		.loc 1 528 18
- 2190 01ac A4349FE5 		ldr	r3, .L116+96
- 2191 01b0 10300BE5 		str	r3, [fp, #-16]
- 529:main.c        ****       task_8ms();
- 2192              		.loc 1 529 7
- 2193 01b4 A0349FE5 		ldr	r3, .L116+100
- 2194 01b8 0FE0A0E1 		mov	lr, pc
- 2195 01bc 13FF2FE1 		bx	r3
- 2196              	.LVL61:
- 2197 01c0 440000EA 		b	.L94
- 2198              	.L93:
- 530:main.c        ****     }
- 531:main.c        ****     else if ((zeitscheibe & 0b000000011) == 0b000000010) {
- 2199              		.loc 1 531 27
- 2200 01c4 0C301BE5 		ldr	r3, [fp, #-12]
- 2201 01c8 033003E2 		and	r3, r3, #3
- 2202              		.loc 1 531 13
- 2203 01cc 020053E3 		cmp	r3, #2
- 2204 01d0 0500001A 		bne	.L95
- 532:main.c        ****       task_aktiv = "16ms";
- 2205              		.loc 1 532 18
- 2206 01d4 84349FE5 		ldr	r3, .L116+104
- 2207 01d8 10300BE5 		str	r3, [fp, #-16]
- 533:main.c        ****       task_16ms();
- 2208              		.loc 1 533 7
- 2209 01dc 80349FE5 		ldr	r3, .L116+108
- 2210 01e0 0FE0A0E1 		mov	lr, pc
- 2211 01e4 13FF2FE1 		bx	r3
- 2212              	.LVL62:
- 2213 01e8 3A0000EA 		b	.L94
- 2214              	.L95:
- 534:main.c        ****     }
- 535:main.c        ****     else if ((zeitscheibe & 0b000000111) == 0b000000100) {
- 2215              		.loc 1 535 27
- 2216 01ec 0C301BE5 		ldr	r3, [fp, #-12]
- 2217 01f0 073003E2 		and	r3, r3, #7
- 2218              		.loc 1 535 13
- 2219 01f4 040053E3 		cmp	r3, #4
- 2220 01f8 0500001A 		bne	.L96
- 536:main.c        ****       task_aktiv = "32ms";
- 2221              		.loc 1 536 18
- 2222 01fc 64349FE5 		ldr	r3, .L116+112
- 2223 0200 10300BE5 		str	r3, [fp, #-16]
- 537:main.c        ****       task_32ms();
- 2224              		.loc 1 537 7
- 2225 0204 60349FE5 		ldr	r3, .L116+116
- 2226 0208 0FE0A0E1 		mov	lr, pc
- 2227 020c 13FF2FE1 		bx	r3
- 2228              	.LVL63:
- 2229 0210 300000EA 		b	.L94
- 2230              	.L96:
- 538:main.c        ****     }
- 539:main.c        ****     else if ((zeitscheibe & 0b000001111) == 0b000001000) {
- 2231              		.loc 1 539 27
- 2232 0214 0C301BE5 		ldr	r3, [fp, #-12]
- 2233 0218 0F3003E2 		and	r3, r3, #15
- 2234              		.loc 1 539 13
- 2235 021c 080053E3 		cmp	r3, #8
- 2236 0220 0500001A 		bne	.L97
- 540:main.c        ****       task_aktiv = "64ms";
- 2237              		.loc 1 540 18
- 2238 0224 44349FE5 		ldr	r3, .L116+120
- 2239 0228 10300BE5 		str	r3, [fp, #-16]
- 541:main.c        ****       task_64ms();
- 2240              		.loc 1 541 7
- 2241 022c 40349FE5 		ldr	r3, .L116+124
- 2242 0230 0FE0A0E1 		mov	lr, pc
- 2243 0234 13FF2FE1 		bx	r3
- 2244              	.LVL64:
- 2245 0238 260000EA 		b	.L94
- 2246              	.L97:
- 542:main.c        ****     }
- 543:main.c        ****     else if ((zeitscheibe & 0b000011111) == 0b000010000) {
- 2247              		.loc 1 543 27
- 2248 023c 0C301BE5 		ldr	r3, [fp, #-12]
- 2249 0240 1F3003E2 		and	r3, r3, #31
- 2250              		.loc 1 543 13
- 2251 0244 100053E3 		cmp	r3, #16
- 2252 0248 0500001A 		bne	.L98
- 544:main.c        ****       task_aktiv = "128ms";
- 2253              		.loc 1 544 18
- 2254 024c 24349FE5 		ldr	r3, .L116+128
- 2255 0250 10300BE5 		str	r3, [fp, #-16]
- 545:main.c        ****       task_128ms();
- 2256              		.loc 1 545 7
- 2257 0254 20349FE5 		ldr	r3, .L116+132
- 2258 0258 0FE0A0E1 		mov	lr, pc
- 2259 025c 13FF2FE1 		bx	r3
- 2260              	.LVL65:
- 2261 0260 1C0000EA 		b	.L94
- 2262              	.L98:
- 546:main.c        ****     }
- 547:main.c        ****     else if ((zeitscheibe & 0b000111111) == 0b000100000) {
- 2263              		.loc 1 547 27
- 2264 0264 0C301BE5 		ldr	r3, [fp, #-12]
- 2265 0268 3F3003E2 		and	r3, r3, #63
- 2266              		.loc 1 547 13
- 2267 026c 200053E3 		cmp	r3, #32
- 2268 0270 0500001A 		bne	.L99
- 548:main.c        ****       task_aktiv = "256ms";
- 2269              		.loc 1 548 18
- 2270 0274 04349FE5 		ldr	r3, .L116+136
- 2271 0278 10300BE5 		str	r3, [fp, #-16]
- 549:main.c        ****       task_256ms();
- 2272              		.loc 1 549 7
- 2273 027c 00349FE5 		ldr	r3, .L116+140
- 2274 0280 0FE0A0E1 		mov	lr, pc
- 2275 0284 13FF2FE1 		bx	r3
- 2276              	.LVL66:
- 2277 0288 120000EA 		b	.L94
- 2278              	.L99:
- 550:main.c        ****     }
- 551:main.c        ****     else if ((zeitscheibe & 0b001111111) == 0b001000000) {
- 2279              		.loc 1 551 27
- 2280 028c 0C301BE5 		ldr	r3, [fp, #-12]
- 2281 0290 7F3003E2 		and	r3, r3, #127
- 2282              		.loc 1 551 13
- 2283 0294 400053E3 		cmp	r3, #64
- 2284 0298 0500001A 		bne	.L100
- 552:main.c        ****       task_aktiv = "512ms";
- 2285              		.loc 1 552 18
- 2286 029c E4339FE5 		ldr	r3, .L116+144
- 2287 02a0 10300BE5 		str	r3, [fp, #-16]
- 553:main.c        ****       task_512ms();
- 2288              		.loc 1 553 7
- 2289 02a4 E0339FE5 		ldr	r3, .L116+148
- 2290 02a8 0FE0A0E1 		mov	lr, pc
- 2291 02ac 13FF2FE1 		bx	r3
- 2292              	.LVL67:
- 2293 02b0 080000EA 		b	.L94
- 2294              	.L100:
- 554:main.c        ****     }
- 555:main.c        ****     else if ((zeitscheibe & 0b011111111) == 0b010000000) {
- 2295              		.loc 1 555 27
- 2296 02b4 0C301BE5 		ldr	r3, [fp, #-12]
- 2297 02b8 FF3003E2 		and	r3, r3, #255
- 2298              		.loc 1 555 13
- 2299 02bc 800053E3 		cmp	r3, #128
- 2300 02c0 0400001A 		bne	.L94
- 556:main.c        ****       task_aktiv = "1024ms";
- 2301              		.loc 1 556 18
- 2302 02c4 C4339FE5 		ldr	r3, .L116+152
- 2303 02c8 10300BE5 		str	r3, [fp, #-16]
- 557:main.c        ****       task_1024ms();
- 2304              		.loc 1 557 7
- 2305 02cc C0339FE5 		ldr	r3, .L116+156
- 2306 02d0 0FE0A0E1 		mov	lr, pc
- 2307 02d4 13FF2FE1 		bx	r3
- 2308              	.LVL68:
- 2309              	.L94:
- 558:main.c        ****     }
- 559:main.c        ****     // Zeit für IDLE-Task verfügbar
- 560:main.c        ****     if ((int)(start_tick - systick_get_ms()) >= IDLE_MS) {
- 2310              		.loc 1 560 28
- 2311 02d8 70339FE5 		ldr	r3, .L116+88
- 2312 02dc 0FE0A0E1 		mov	lr, pc
- 2313 02e0 13FF2FE1 		bx	r3
- 2314              	.LVL69:
- 2315 02e4 0020A0E1 		mov	r2, r0
- 2316              		.loc 1 560 26 discriminator 1
- 2317 02e8 08301BE5 		ldr	r3, [fp, #-8]
- 2318 02ec 023043E0 		sub	r3, r3, r2
- 2319              		.loc 1 560 8 discriminator 1
- 2320 02f0 010053E3 		cmp	r3, #1
- 2321 02f4 040000DA 		ble	.L101
- 561:main.c        ****       task_aktiv = "Idle";
- 2322              		.loc 1 561 18
- 2323 02f8 98339FE5 		ldr	r3, .L116+160
- 2324 02fc 10300BE5 		str	r3, [fp, #-16]
- 562:main.c        ****       task_idle();
- 2325              		.loc 1 562 7
- 2326 0300 94339FE5 		ldr	r3, .L116+164
- 2327 0304 0FE0A0E1 		mov	lr, pc
- 2328 0308 13FF2FE1 		bx	r3
- 2329              	.LVL70:
- 2330              	.L101:
- 563:main.c        ****     }
- 564:main.c        ****     // Max. Zeitdauer einer Zeitscheibe überschritten?
- 565:main.c        ****     if ((int)(start_tick - systick_get_ms()) <= 0) {
- 2331              		.loc 1 565 28
- 2332 030c 3C339FE5 		ldr	r3, .L116+88
- 2333 0310 0FE0A0E1 		mov	lr, pc
- 2334 0314 13FF2FE1 		bx	r3
- 2335              	.LVL71:
- 2336 0318 0020A0E1 		mov	r2, r0
- 2337              		.loc 1 565 26 discriminator 1
- 2338 031c 08301BE5 		ldr	r3, [fp, #-8]
- 2339 0320 023043E0 		sub	r3, r3, r2
- 2340              		.loc 1 565 8 discriminator 1
- 2341 0324 000053E3 		cmp	r3, #0
- 2342 0328 2C0000CA 		bgt	.L102
- 566:main.c        ****       main_data.term_status |= term_string(
- 2343              		.loc 1 566 32
- 2344 032c 0010A0E3 		mov	r1, #0
- 2345 0330 68039FE5 		ldr	r0, .L116+168
- 2346 0334 EC329FE5 		ldr	r3, .L116+48
- 2347 0338 0FE0A0E1 		mov	lr, pc
- 2348 033c 13FF2FE1 		bx	r3
- 2349              	.LVL72:
- 2350 0340 0030A0E1 		mov	r3, r0
- 2351              		.loc 1 566 16 discriminator 1
- 2352 0344 58239FE5 		ldr	r2, .L116+172
- 2353 0348 D020D2E1 		ldrsb	r2, [r2]
- 2354              		.loc 1 566 29 discriminator 1
- 2355 034c 033CA0E1 		lsl	r3, r3, #24
- 2356 0350 433CA0E1 		asr	r3, r3, #24
- 2357 0354 033082E1 		orr	r3, r2, r3
- 2358 0358 033CA0E1 		lsl	r3, r3, #24
- 2359 035c 432CA0E1 		asr	r2, r3, #24
- 2360 0360 3C339FE5 		ldr	r3, .L116+172
- 2361 0364 0020C3E5 		strb	r2, [r3]
- 567:main.c        ****           VT100_VORDERGRUND_ROT "Timing durch '", ASYNCSYNC_NONBLOCK);
- 568:main.c        ****       main_data.term_status |= term_string(task_aktiv, ASYNCSYNC_NONBLOCK);
- 2362              		.loc 1 568 32
- 2363 0368 0010A0E3 		mov	r1, #0
- 2364 036c 10001BE5 		ldr	r0, [fp, #-16]
- 2365 0370 B0329FE5 		ldr	r3, .L116+48
- 2366 0374 0FE0A0E1 		mov	lr, pc
- 2367 0378 13FF2FE1 		bx	r3
- 2368              	.LVL73:
- 2369 037c 0030A0E1 		mov	r3, r0
- 2370              		.loc 1 568 16 discriminator 1
- 2371 0380 1C239FE5 		ldr	r2, .L116+172
- 2372 0384 D020D2E1 		ldrsb	r2, [r2]
- 2373              		.loc 1 568 29 discriminator 1
- 2374 0388 033CA0E1 		lsl	r3, r3, #24
- 2375 038c 433CA0E1 		asr	r3, r3, #24
- 2376 0390 033082E1 		orr	r3, r2, r3
- 2377 0394 033CA0E1 		lsl	r3, r3, #24
- 2378 0398 432CA0E1 		asr	r2, r3, #24
- 2379 039c 00339FE5 		ldr	r3, .L116+172
- 2380 03a0 0020C3E5 		strb	r2, [r3]
- 569:main.c        ****       main_data.term_status |= term_string(
- 2381              		.loc 1 569 32
- 2382 03a4 0010A0E3 		mov	r1, #0
- 2383 03a8 F8029FE5 		ldr	r0, .L116+176
- 2384 03ac 74329FE5 		ldr	r3, .L116+48
- 2385 03b0 0FE0A0E1 		mov	lr, pc
- 2386 03b4 13FF2FE1 		bx	r3
- 2387              	.LVL74:
- 2388 03b8 0030A0E1 		mov	r3, r0
- 2389              		.loc 1 569 16 discriminator 1
- 2390 03bc E0229FE5 		ldr	r2, .L116+172
- 2391 03c0 D020D2E1 		ldrsb	r2, [r2]
- 2392              		.loc 1 569 29 discriminator 1
- 2393 03c4 033CA0E1 		lsl	r3, r3, #24
- 2394 03c8 433CA0E1 		asr	r3, r3, #24
- 2395 03cc 033082E1 		orr	r3, r2, r3
- 2396 03d0 033CA0E1 		lsl	r3, r3, #24
- 2397 03d4 432CA0E1 		asr	r2, r3, #24
- 2398 03d8 C4329FE5 		ldr	r3, .L116+172
- 2399 03dc 0020C3E5 		strb	r2, [r3]
- 2400              	.L102:
- 570:main.c        ****           "' verletzt\n\r" VT100_VORDERGRUND_DEFAULT, ASYNCSYNC_NONBLOCK);
- 571:main.c        ****     }
- 572:main.c        ****     // Zeitscheibe erhöhen
- 573:main.c        ****     zeitscheibe++;
- 2401              		.loc 1 573 16
- 2402 03e0 0C301BE5 		ldr	r3, [fp, #-12]
- 2403 03e4 013083E2 		add	r3, r3, #1
- 2404 03e8 0C300BE5 		str	r3, [fp, #-12]
- 2405              	.LBB10:
- 2406              	.LBB11:
+ 512:main.c        **** #endif
+ 513:main.c        ****   // Vorangegangenen Stackaufbau 'löschen'
+ 514:main.c        ****   stack_fill();
+ 515:main.c        ****   // Label, so das mit 'go start' hierin gesprungen werden kann
+ 516:main.c        **** start:
+ 517:main.c        ****   __attribute__((unused));
+ 518:main.c        ****   uint32_t start_tick = systick_get_ms();
+ 2159              		.loc 1 518 25
+ 2160 014c FC349FE5 		ldr	r3, .L116+88
+ 2161 0150 0FE0A0E1 		mov	lr, pc
+ 2162 0154 13FF2FE1 		bx	r3
+ 2163              	.LVL60:
+ 2164 0158 08000BE5 		str	r0, [fp, #-8]
+ 519:main.c        ****   uint32_t zeitscheibe = 0;
+ 2165              		.loc 1 519 12
+ 2166 015c 0030A0E3 		mov	r3, #0
+ 2167 0160 0C300BE5 		str	r3, [fp, #-12]
+ 520:main.c        ****   char *task_aktiv = "";
+ 2168              		.loc 1 520 9
+ 2169 0164 E8349FE5 		ldr	r3, .L116+92
+ 2170 0168 10300BE5 		str	r3, [fp, #-16]
+ 2171              	.L115:
+ 521:main.c        ****   while (1) {
+ 522:main.c        ****     // Warten bis zum nächsten TimeSlot
+ 523:main.c        ****     while ((int)(start_tick - systick_get_ms()) > 0)
+ 2172              		.loc 1 523 11
+ 2173 016c 0000A0E1 		nop
+ 2174              	.L91:
+ 2175              		.loc 1 523 31 discriminator 1
+ 2176 0170 D8349FE5 		ldr	r3, .L116+88
+ 2177 0174 0FE0A0E1 		mov	lr, pc
+ 2178 0178 13FF2FE1 		bx	r3
+ 2179              	.LVL61:
+ 2180 017c 0020A0E1 		mov	r2, r0
+ 2181              		.loc 1 523 29 discriminator 1
+ 2182 0180 08301BE5 		ldr	r3, [fp, #-8]
+ 2183 0184 023043E0 		sub	r3, r3, r2
+ 2184              		.loc 1 523 49 discriminator 1
+ 2185 0188 000053E3 		cmp	r3, #0
+ 2186 018c F7FFFFCA 		bgt	.L91
+ 524:main.c        ****       ;
+ 525:main.c        ****     start_tick += ZYKLUS_MS;
+ 2187              		.loc 1 525 16
+ 2188 0190 08301BE5 		ldr	r3, [fp, #-8]
+ 2189 0194 043083E2 		add	r3, r3, #4
+ 2190 0198 08300BE5 		str	r3, [fp, #-8]
+ 2191              	.L92:
+ 526:main.c        ****     // Label, so das mit 'go zyklus' hierhin gesprungen werden kann
+ 527:main.c        ****   zyklus:
+ 528:main.c        ****     __attribute__((unused)) if ((zeitscheibe & 0b000000001) == 0b000000001) {
+ 2192              		.loc 1 528 46
+ 2193 019c 0C301BE5 		ldr	r3, [fp, #-12]
+ 2194 01a0 013003E2 		and	r3, r3, #1
+ 2195              		.loc 1 528 32
+ 2196 01a4 000053E3 		cmp	r3, #0
+ 2197 01a8 0500000A 		beq	.L93
+ 529:main.c        ****       task_aktiv = "8ms";
+ 2198              		.loc 1 529 18
+ 2199 01ac A4349FE5 		ldr	r3, .L116+96
+ 2200 01b0 10300BE5 		str	r3, [fp, #-16]
+ 530:main.c        ****       task_8ms();
+ 2201              		.loc 1 530 7
+ 2202 01b4 A0349FE5 		ldr	r3, .L116+100
+ 2203 01b8 0FE0A0E1 		mov	lr, pc
+ 2204 01bc 13FF2FE1 		bx	r3
+ 2205              	.LVL62:
+ 2206 01c0 440000EA 		b	.L94
+ 2207              	.L93:
+ 531:main.c        ****     }
+ 532:main.c        ****     else if ((zeitscheibe & 0b000000011) == 0b000000010) {
+ 2208              		.loc 1 532 27
+ 2209 01c4 0C301BE5 		ldr	r3, [fp, #-12]
+ 2210 01c8 033003E2 		and	r3, r3, #3
+ 2211              		.loc 1 532 13
+ 2212 01cc 020053E3 		cmp	r3, #2
+ 2213 01d0 0500001A 		bne	.L95
+ 533:main.c        ****       task_aktiv = "16ms";
+ 2214              		.loc 1 533 18
+ 2215 01d4 84349FE5 		ldr	r3, .L116+104
+ 2216 01d8 10300BE5 		str	r3, [fp, #-16]
+ 534:main.c        ****       task_16ms();
+ 2217              		.loc 1 534 7
+ 2218 01dc 80349FE5 		ldr	r3, .L116+108
+ 2219 01e0 0FE0A0E1 		mov	lr, pc
+ 2220 01e4 13FF2FE1 		bx	r3
+ 2221              	.LVL63:
+ 2222 01e8 3A0000EA 		b	.L94
+ 2223              	.L95:
+ 535:main.c        ****     }
+ 536:main.c        ****     else if ((zeitscheibe & 0b000000111) == 0b000000100) {
+ 2224              		.loc 1 536 27
+ 2225 01ec 0C301BE5 		ldr	r3, [fp, #-12]
+ 2226 01f0 073003E2 		and	r3, r3, #7
+ 2227              		.loc 1 536 13
+ 2228 01f4 040053E3 		cmp	r3, #4
+ 2229 01f8 0500001A 		bne	.L96
+ 537:main.c        ****       task_aktiv = "32ms";
+ 2230              		.loc 1 537 18
+ 2231 01fc 64349FE5 		ldr	r3, .L116+112
+ 2232 0200 10300BE5 		str	r3, [fp, #-16]
+ 538:main.c        ****       task_32ms();
+ 2233              		.loc 1 538 7
+ 2234 0204 60349FE5 		ldr	r3, .L116+116
+ 2235 0208 0FE0A0E1 		mov	lr, pc
+ 2236 020c 13FF2FE1 		bx	r3
+ 2237              	.LVL64:
+ 2238 0210 300000EA 		b	.L94
+ 2239              	.L96:
+ 539:main.c        ****     }
+ 540:main.c        ****     else if ((zeitscheibe & 0b000001111) == 0b000001000) {
+ 2240              		.loc 1 540 27
+ 2241 0214 0C301BE5 		ldr	r3, [fp, #-12]
+ 2242 0218 0F3003E2 		and	r3, r3, #15
+ 2243              		.loc 1 540 13
+ 2244 021c 080053E3 		cmp	r3, #8
+ 2245 0220 0500001A 		bne	.L97
+ 541:main.c        ****       task_aktiv = "64ms";
+ 2246              		.loc 1 541 18
+ 2247 0224 44349FE5 		ldr	r3, .L116+120
+ 2248 0228 10300BE5 		str	r3, [fp, #-16]
+ 542:main.c        ****       task_64ms();
+ 2249              		.loc 1 542 7
+ 2250 022c 40349FE5 		ldr	r3, .L116+124
+ 2251 0230 0FE0A0E1 		mov	lr, pc
+ 2252 0234 13FF2FE1 		bx	r3
+ 2253              	.LVL65:
+ 2254 0238 260000EA 		b	.L94
+ 2255              	.L97:
+ 543:main.c        ****     }
+ 544:main.c        ****     else if ((zeitscheibe & 0b000011111) == 0b000010000) {
+ 2256              		.loc 1 544 27
+ 2257 023c 0C301BE5 		ldr	r3, [fp, #-12]
+ 2258 0240 1F3003E2 		and	r3, r3, #31
+ 2259              		.loc 1 544 13
+ 2260 0244 100053E3 		cmp	r3, #16
+ 2261 0248 0500001A 		bne	.L98
+ 545:main.c        ****       task_aktiv = "128ms";
+ 2262              		.loc 1 545 18
+ 2263 024c 24349FE5 		ldr	r3, .L116+128
+ 2264 0250 10300BE5 		str	r3, [fp, #-16]
+ 546:main.c        ****       task_128ms();
+ 2265              		.loc 1 546 7
+ 2266 0254 20349FE5 		ldr	r3, .L116+132
+ 2267 0258 0FE0A0E1 		mov	lr, pc
+ 2268 025c 13FF2FE1 		bx	r3
+ 2269              	.LVL66:
+ 2270 0260 1C0000EA 		b	.L94
+ 2271              	.L98:
+ 547:main.c        ****     }
+ 548:main.c        ****     else if ((zeitscheibe & 0b000111111) == 0b000100000) {
+ 2272              		.loc 1 548 27
+ 2273 0264 0C301BE5 		ldr	r3, [fp, #-12]
+ 2274 0268 3F3003E2 		and	r3, r3, #63
+ 2275              		.loc 1 548 13
+ 2276 026c 200053E3 		cmp	r3, #32
+ 2277 0270 0500001A 		bne	.L99
+ 549:main.c        ****       task_aktiv = "256ms";
+ 2278              		.loc 1 549 18
+ 2279 0274 04349FE5 		ldr	r3, .L116+136
+ 2280 0278 10300BE5 		str	r3, [fp, #-16]
+ 550:main.c        ****       task_256ms();
+ 2281              		.loc 1 550 7
+ 2282 027c 00349FE5 		ldr	r3, .L116+140
+ 2283 0280 0FE0A0E1 		mov	lr, pc
+ 2284 0284 13FF2FE1 		bx	r3
+ 2285              	.LVL67:
+ 2286 0288 120000EA 		b	.L94
+ 2287              	.L99:
+ 551:main.c        ****     }
+ 552:main.c        ****     else if ((zeitscheibe & 0b001111111) == 0b001000000) {
+ 2288              		.loc 1 552 27
+ 2289 028c 0C301BE5 		ldr	r3, [fp, #-12]
+ 2290 0290 7F3003E2 		and	r3, r3, #127
+ 2291              		.loc 1 552 13
+ 2292 0294 400053E3 		cmp	r3, #64
+ 2293 0298 0500001A 		bne	.L100
+ 553:main.c        ****       task_aktiv = "512ms";
+ 2294              		.loc 1 553 18
+ 2295 029c E4339FE5 		ldr	r3, .L116+144
+ 2296 02a0 10300BE5 		str	r3, [fp, #-16]
+ 554:main.c        ****       task_512ms();
+ 2297              		.loc 1 554 7
+ 2298 02a4 E0339FE5 		ldr	r3, .L116+148
+ 2299 02a8 0FE0A0E1 		mov	lr, pc
+ 2300 02ac 13FF2FE1 		bx	r3
+ 2301              	.LVL68:
+ 2302 02b0 080000EA 		b	.L94
+ 2303              	.L100:
+ 555:main.c        ****     }
+ 556:main.c        ****     else if ((zeitscheibe & 0b011111111) == 0b010000000) {
+ 2304              		.loc 1 556 27
+ 2305 02b4 0C301BE5 		ldr	r3, [fp, #-12]
+ 2306 02b8 FF3003E2 		and	r3, r3, #255
+ 2307              		.loc 1 556 13
+ 2308 02bc 800053E3 		cmp	r3, #128
+ 2309 02c0 0400001A 		bne	.L94
+ 557:main.c        ****       task_aktiv = "1024ms";
+ 2310              		.loc 1 557 18
+ 2311 02c4 C4339FE5 		ldr	r3, .L116+152
+ 2312 02c8 10300BE5 		str	r3, [fp, #-16]
+ 558:main.c        ****       task_1024ms();
+ 2313              		.loc 1 558 7
+ 2314 02cc C0339FE5 		ldr	r3, .L116+156
+ 2315 02d0 0FE0A0E1 		mov	lr, pc
+ 2316 02d4 13FF2FE1 		bx	r3
+ 2317              	.LVL69:
+ 2318              	.L94:
+ 559:main.c        ****     }
+ 560:main.c        ****     // Zeit für IDLE-Task verfügbar
+ 561:main.c        ****     if ((int)(start_tick - systick_get_ms()) >= IDLE_MS) {
+ 2319              		.loc 1 561 28
+ 2320 02d8 70339FE5 		ldr	r3, .L116+88
+ 2321 02dc 0FE0A0E1 		mov	lr, pc
+ 2322 02e0 13FF2FE1 		bx	r3
+ 2323              	.LVL70:
+ 2324 02e4 0020A0E1 		mov	r2, r0
+ 2325              		.loc 1 561 26 discriminator 1
+ 2326 02e8 08301BE5 		ldr	r3, [fp, #-8]
+ 2327 02ec 023043E0 		sub	r3, r3, r2
+ 2328              		.loc 1 561 8 discriminator 1
+ 2329 02f0 010053E3 		cmp	r3, #1
+ 2330 02f4 040000DA 		ble	.L101
+ 562:main.c        ****       task_aktiv = "Idle";
+ 2331              		.loc 1 562 18
+ 2332 02f8 98339FE5 		ldr	r3, .L116+160
+ 2333 02fc 10300BE5 		str	r3, [fp, #-16]
+ 563:main.c        ****       task_idle();
+ 2334              		.loc 1 563 7
+ 2335 0300 94339FE5 		ldr	r3, .L116+164
+ 2336 0304 0FE0A0E1 		mov	lr, pc
+ 2337 0308 13FF2FE1 		bx	r3
+ 2338              	.LVL71:
+ 2339              	.L101:
+ 564:main.c        ****     }
+ 565:main.c        ****     // Max. Zeitdauer einer Zeitscheibe überschritten?
+ 566:main.c        ****     if ((int)(start_tick - systick_get_ms()) <= 0) {
+ 2340              		.loc 1 566 28
+ 2341 030c 3C339FE5 		ldr	r3, .L116+88
+ 2342 0310 0FE0A0E1 		mov	lr, pc
+ 2343 0314 13FF2FE1 		bx	r3
+ 2344              	.LVL72:
+ 2345 0318 0020A0E1 		mov	r2, r0
+ 2346              		.loc 1 566 26 discriminator 1
+ 2347 031c 08301BE5 		ldr	r3, [fp, #-8]
+ 2348 0320 023043E0 		sub	r3, r3, r2
+ 2349              		.loc 1 566 8 discriminator 1
+ 2350 0324 000053E3 		cmp	r3, #0
+ 2351 0328 2C0000CA 		bgt	.L102
+ 567:main.c        ****       main_data.term_status |= term_string(
+ 2352              		.loc 1 567 32
+ 2353 032c 0010A0E3 		mov	r1, #0
+ 2354 0330 68039FE5 		ldr	r0, .L116+168
+ 2355 0334 EC329FE5 		ldr	r3, .L116+48
+ 2356 0338 0FE0A0E1 		mov	lr, pc
+ 2357 033c 13FF2FE1 		bx	r3
+ 2358              	.LVL73:
+ 2359 0340 0030A0E1 		mov	r3, r0
+ 2360              		.loc 1 567 16 discriminator 1
+ 2361 0344 58239FE5 		ldr	r2, .L116+172
+ 2362 0348 D020D2E1 		ldrsb	r2, [r2]
+ 2363              		.loc 1 567 29 discriminator 1
+ 2364 034c 033CA0E1 		lsl	r3, r3, #24
+ 2365 0350 433CA0E1 		asr	r3, r3, #24
+ 2366 0354 033082E1 		orr	r3, r2, r3
+ 2367 0358 033CA0E1 		lsl	r3, r3, #24
+ 2368 035c 432CA0E1 		asr	r2, r3, #24
+ 2369 0360 3C339FE5 		ldr	r3, .L116+172
+ 2370 0364 0020C3E5 		strb	r2, [r3]
+ 568:main.c        ****           VT100_VORDERGRUND_ROT "Timing durch '", ASYNCSYNC_NONBLOCK);
+ 569:main.c        ****       main_data.term_status |= term_string(task_aktiv, ASYNCSYNC_NONBLOCK);
+ 2371              		.loc 1 569 32
+ 2372 0368 0010A0E3 		mov	r1, #0
+ 2373 036c 10001BE5 		ldr	r0, [fp, #-16]
+ 2374 0370 B0329FE5 		ldr	r3, .L116+48
+ 2375 0374 0FE0A0E1 		mov	lr, pc
+ 2376 0378 13FF2FE1 		bx	r3
+ 2377              	.LVL74:
+ 2378 037c 0030A0E1 		mov	r3, r0
+ 2379              		.loc 1 569 16 discriminator 1
+ 2380 0380 1C239FE5 		ldr	r2, .L116+172
+ 2381 0384 D020D2E1 		ldrsb	r2, [r2]
+ 2382              		.loc 1 569 29 discriminator 1
+ 2383 0388 033CA0E1 		lsl	r3, r3, #24
+ 2384 038c 433CA0E1 		asr	r3, r3, #24
+ 2385 0390 033082E1 		orr	r3, r2, r3
+ 2386 0394 033CA0E1 		lsl	r3, r3, #24
+ 2387 0398 432CA0E1 		asr	r2, r3, #24
+ 2388 039c 00339FE5 		ldr	r3, .L116+172
+ 2389 03a0 0020C3E5 		strb	r2, [r3]
+ 570:main.c        ****       main_data.term_status |= term_string(
+ 2390              		.loc 1 570 32
+ 2391 03a4 0010A0E3 		mov	r1, #0
+ 2392 03a8 F8029FE5 		ldr	r0, .L116+176
+ 2393 03ac 74329FE5 		ldr	r3, .L116+48
+ 2394 03b0 0FE0A0E1 		mov	lr, pc
+ 2395 03b4 13FF2FE1 		bx	r3
+ 2396              	.LVL75:
+ 2397 03b8 0030A0E1 		mov	r3, r0
+ 2398              		.loc 1 570 16 discriminator 1
+ 2399 03bc E0229FE5 		ldr	r2, .L116+172
+ 2400 03c0 D020D2E1 		ldrsb	r2, [r2]
+ 2401              		.loc 1 570 29 discriminator 1
+ 2402 03c4 033CA0E1 		lsl	r3, r3, #24
+ 2403 03c8 433CA0E1 		asr	r3, r3, #24
+ 2404 03cc 033082E1 		orr	r3, r2, r3
+ 2405 03d0 033CA0E1 		lsl	r3, r3, #24
+ 2406 03d4 432CA0E1 		asr	r2, r3, #24
+ 2407 03d8 C4329FE5 		ldr	r3, .L116+172
+ 2408 03dc 0020C3E5 		strb	r2, [r3]
+ 2409              	.L102:
+ 571:main.c        ****           "' verletzt\n\r" VT100_VORDERGRUND_DEFAULT, ASYNCSYNC_NONBLOCK);
+ 572:main.c        ****     }
+ 573:main.c        ****     // Zeitscheibe erhöhen
+ 574:main.c        ****     zeitscheibe++;
+ 2410              		.loc 1 574 16
+ 2411 03e0 0C301BE5 		ldr	r3, [fp, #-12]
+ 2412 03e4 013083E2 		add	r3, r3, #1
+ 2413 03e8 0C300BE5 		str	r3, [fp, #-12]
+ 2414              	.LBB10:
+ 2415              	.LBB11:
  123:lib/../main.h **** 
  124:lib/../main.h **** static __inline__ int32_t stack_check(void) __attribute__((always_inline));
  125:lib/../main.h **** static __inline__ int32_t stack_check(void)
@@ -3268,416 +3275,417 @@
  127:lib/../main.h **** 	         uint32_t *ptr;
  128:lib/../main.h **** //	register uint32_t *sp asm("r13");
  129:lib/../main.h **** 	for(ptr=&__stack_start__[0];*ptr==STACK_FILL;++ptr);
- 2407              		.loc 4 129 9
- 2408 03ec 54329FE5 		ldr	r3, .L116+80
- 2409 03f0 18300BE5 		str	r3, [fp, #-24]
- 2410              		.loc 4 129 2
- 2411 03f4 020000EA 		b	.L103
- 2412              	.L104:
- 2413              		.loc 4 129 47 discriminator 3
- 2414 03f8 18301BE5 		ldr	r3, [fp, #-24]
- 2415 03fc 043083E2 		add	r3, r3, #4
- 2416 0400 18300BE5 		str	r3, [fp, #-24]
- 2417              	.L103:
- 2418              		.loc 4 129 30 discriminator 1
- 2419 0404 18301BE5 		ldr	r3, [fp, #-24]
- 2420 0408 003093E5 		ldr	r3, [r3]
- 2421              		.loc 4 129 34 discriminator 1
- 2422 040c 38229FE5 		ldr	r2, .L116+84
- 2423 0410 020053E1 		cmp	r3, r2
- 2424 0414 F7FFFF0A 		beq	.L104
+ 2416              		.loc 4 129 9
+ 2417 03ec 54329FE5 		ldr	r3, .L116+80
+ 2418 03f0 18300BE5 		str	r3, [fp, #-24]
+ 2419              		.loc 4 129 2
+ 2420 03f4 020000EA 		b	.L103
+ 2421              	.L104:
+ 2422              		.loc 4 129 47 discriminator 3
+ 2423 03f8 18301BE5 		ldr	r3, [fp, #-24]
+ 2424 03fc 043083E2 		add	r3, r3, #4
+ 2425 0400 18300BE5 		str	r3, [fp, #-24]
+ 2426              	.L103:
+ 2427              		.loc 4 129 30 discriminator 1
+ 2428 0404 18301BE5 		ldr	r3, [fp, #-24]
+ 2429 0408 003093E5 		ldr	r3, [r3]
+ 2430              		.loc 4 129 34 discriminator 1
+ 2431 040c 38229FE5 		ldr	r2, .L116+84
+ 2432 0410 020053E1 		cmp	r3, r2
+ 2433 0414 F7FFFF0A 		beq	.L104
  130:lib/../main.h **** 	return (int32_t)(ptr-&__stack_start__[0]);
- 2425              		.loc 4 130 22
- 2426 0418 18301BE5 		ldr	r3, [fp, #-24]
- 2427 041c 24229FE5 		ldr	r2, .L116+80
- 2428 0420 023043E0 		sub	r3, r3, r2
- 2429              		.loc 4 130 9
- 2430 0424 4331A0E1 		asr	r3, r3, #2
- 2431              	.LBE11:
- 2432              	.LBE10:
- 574:main.c        **** 
- 575:main.c        ****     // Stack Testen
- 576:main.c        ****     if (stack_check() < (1 * 4)) {
- 2433              		.loc 1 576 8 discriminator 1
- 2434 0428 030053E3 		cmp	r3, #3
- 2435 042c 350000CA 		bgt	.L106
- 2436              	.LBB12:
- 577:main.c        ****       static uint8_t stack_cnt = 0;
- 578:main.c        ****       if (stack_cnt == 0) {
- 2437              		.loc 1 578 21
- 2438 0430 74329FE5 		ldr	r3, .L116+180
- 2439 0434 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
- 2440              		.loc 1 578 10
- 2441 0438 000053E3 		cmp	r3, #0
- 2442 043c 3100001A 		bne	.L106
- 579:main.c        ****         stack_cnt = 1;
- 2443              		.loc 1 579 19
- 2444 0440 64329FE5 		ldr	r3, .L116+180
- 2445 0444 0120A0E3 		mov	r2, #1
- 2446 0448 0020C3E5 		strb	r2, [r3]
- 580:main.c        ****         main_data.term_status |= term_string(
- 2447              		.loc 1 580 34
- 2448 044c 0010A0E3 		mov	r1, #0
- 2449 0450 58029FE5 		ldr	r0, .L116+184
- 2450 0454 CC319FE5 		ldr	r3, .L116+48
- 2451 0458 0FE0A0E1 		mov	lr, pc
- 2452 045c 13FF2FE1 		bx	r3
- 2453              	.LVL75:
- 2454 0460 0030A0E1 		mov	r3, r0
- 2455              		.loc 1 580 18 discriminator 1
- 2456 0464 38229FE5 		ldr	r2, .L116+172
- 2457 0468 D020D2E1 		ldrsb	r2, [r2]
- 2458              		.loc 1 580 31 discriminator 1
- 2459 046c 033CA0E1 		lsl	r3, r3, #24
- 2460 0470 433CA0E1 		asr	r3, r3, #24
- 2461 0474 033082E1 		orr	r3, r2, r3
- 2462 0478 033CA0E1 		lsl	r3, r3, #24
- 2463 047c 432CA0E1 		asr	r2, r3, #24
- 2464 0480 1C329FE5 		ldr	r3, .L116+172
- 2465 0484 0020C3E5 		strb	r2, [r3]
- 581:main.c        ****             VT100_VORDERGRUND_ROT "Stack overflow durch '", ASYNCSYNC_NONBLOCK);
- 582:main.c        ****         main_data.term_status |= term_string(task_aktiv, ASYNCSYNC_NONBLOCK);
- 2466              		.loc 1 582 34
- 2467 0488 0010A0E3 		mov	r1, #0
- 2468 048c 10001BE5 		ldr	r0, [fp, #-16]
- 2469 0490 90319FE5 		ldr	r3, .L116+48
- 2470 0494 0FE0A0E1 		mov	lr, pc
- 2471 0498 13FF2FE1 		bx	r3
- 2472              	.LVL76:
- 2473 049c 0030A0E1 		mov	r3, r0
- 2474              		.loc 1 582 18 discriminator 1
- 2475 04a0 FC219FE5 		ldr	r2, .L116+172
- 2476 04a4 D020D2E1 		ldrsb	r2, [r2]
- 2477              		.loc 1 582 31 discriminator 1
- 2478 04a8 033CA0E1 		lsl	r3, r3, #24
- 2479 04ac 433CA0E1 		asr	r3, r3, #24
- 2480 04b0 033082E1 		orr	r3, r2, r3
- 2481 04b4 033CA0E1 		lsl	r3, r3, #24
- 2482 04b8 432CA0E1 		asr	r2, r3, #24
- 2483 04bc E0319FE5 		ldr	r3, .L116+172
- 2484 04c0 0020C3E5 		strb	r2, [r3]
- 583:main.c        ****         main_data.term_status |=
- 584:main.c        ****             term_string("'\n\r" VT100_VORDERGRUND_DEFAULT, ASYNCSYNC_NONBLOCK);
- 2485              		.loc 1 584 13
- 2486 04c4 0010A0E3 		mov	r1, #0
- 2487 04c8 E4019FE5 		ldr	r0, .L116+188
- 2488 04cc 54319FE5 		ldr	r3, .L116+48
- 2489 04d0 0FE0A0E1 		mov	lr, pc
- 2490 04d4 13FF2FE1 		bx	r3
- 2491              	.LVL77:
- 2492 04d8 0030A0E1 		mov	r3, r0
- 583:main.c        ****         main_data.term_status |=
- 2493              		.loc 1 583 18
- 2494 04dc C0219FE5 		ldr	r2, .L116+172
- 2495 04e0 D020D2E1 		ldrsb	r2, [r2]
- 583:main.c        ****         main_data.term_status |=
- 2496              		.loc 1 583 31
- 2497 04e4 033CA0E1 		lsl	r3, r3, #24
- 2498 04e8 433CA0E1 		asr	r3, r3, #24
- 2499 04ec 033082E1 		orr	r3, r2, r3
- 2500 04f0 033CA0E1 		lsl	r3, r3, #24
- 2501 04f4 432CA0E1 		asr	r2, r3, #24
- 2502 04f8 A4319FE5 		ldr	r3, .L116+172
- 2503 04fc 0020C3E5 		strb	r2, [r3]
- 2504              	.L107:
- 585:main.c        ****         while (1)
- 2505              		.loc 1 585 15
- 2506 0500 0000A0E1 		nop
- 2507 0504 FDFFFFEA 		b	.L107
- 2508              	.L106:
- 2509              	.LBE12:
- 586:main.c        ****           ;
- 587:main.c        ****       }
- 588:main.c        ****     }
- 589:main.c        **** 
- 590:main.c        ****     // Batteriespannung überprüfen
- 591:main.c        ****     // Ggf. schlägt die Unterspannungsprüfung im Akku zuvor ein!
- 592:main.c        ****     if (nxt_avr_get_battery_raw() < ((2 * 3000 /*mV*/) << 10) / 14180) {
- 2510              		.loc 1 592 9
- 2511 0508 A8319FE5 		ldr	r3, .L116+192
- 2512 050c 0FE0A0E1 		mov	lr, pc
- 2513 0510 13FF2FE1 		bx	r3
- 2514              	.LVL78:
- 2515 0514 0030A0E1 		mov	r3, r0
- 2516              		.loc 1 592 8 discriminator 1
- 2517 0518 1B0E53E3 		cmp	r3, #432
- 2518 051c 1D00008A 		bhi	.L108
- 593:main.c        ****       if (main_data.lowbat_cnt++ > 100)
- 2519              		.loc 1 593 20
- 2520 0520 7C319FE5 		ldr	r3, .L116+172
- 2521 0524 0230D3E5 		ldrb	r3, [r3, #2]	@ zero_extendqisi2
- 2522              		.loc 1 593 31
- 2523 0528 012083E2 		add	r2, r3, #1
- 2524 052c FF1002E2 		and	r1, r2, #255
- 2525 0530 6C219FE5 		ldr	r2, .L116+172
- 2526 0534 0210C2E5 		strb	r1, [r2, #2]
- 2527              		.loc 1 593 10
- 2528 0538 640053E3 		cmp	r3, #100
- 2529 053c 0100009A 		bls	.L109
- 2530              	.L110:
- 594:main.c        ****         while (1)
- 2531              		.loc 1 594 15
- 2532 0540 0000A0E1 		nop
- 2533 0544 FDFFFFEA 		b	.L110
- 2534              	.L109:
- 595:main.c        ****           ;
- 596:main.c        ****       else if (main_data.lowbat_cnt == 10)
- 2535              		.loc 1 596 25
- 2536 0548 54319FE5 		ldr	r3, .L116+172
- 2537 054c 0230D3E5 		ldrb	r3, [r3, #2]	@ zero_extendqisi2
- 2538              		.loc 1 596 15
- 2539 0550 0A0053E3 		cmp	r3, #10
- 2540 0554 1200001A 		bne	.L111
- 597:main.c        ****         main_data.term_status |=
- 598:main.c        ****             term_string(VT100_VORDERGRUND_ROT
- 2541              		.loc 1 598 13
- 2542 0558 0010A0E3 		mov	r1, #0
- 2543 055c 58019FE5 		ldr	r0, .L116+196
- 2544 0560 C0309FE5 		ldr	r3, .L116+48
- 2545 0564 0FE0A0E1 		mov	lr, pc
- 2546 0568 13FF2FE1 		bx	r3
- 2547              	.LVL79:
- 2548 056c 0030A0E1 		mov	r3, r0
- 597:main.c        ****         main_data.term_status |=
- 2549              		.loc 1 597 18
- 2550 0570 2C219FE5 		ldr	r2, .L116+172
- 2551 0574 D020D2E1 		ldrsb	r2, [r2]
- 597:main.c        ****         main_data.term_status |=
- 2552              		.loc 1 597 31
- 2553 0578 033CA0E1 		lsl	r3, r3, #24
- 2554 057c 433CA0E1 		asr	r3, r3, #24
- 2555 0580 033082E1 		orr	r3, r2, r3
- 2556 0584 033CA0E1 		lsl	r3, r3, #24
- 2557 0588 432CA0E1 		asr	r2, r3, #24
- 2558 058c 10319FE5 		ldr	r3, .L116+172
- 2559 0590 0020C3E5 		strb	r2, [r3]
- 2560 0594 020000EA 		b	.L111
- 2561              	.L108:
- 599:main.c        ****                         "\n\rLow Battery\n\r" VT100_VORDERGRUND_DEFAULT,
- 600:main.c        ****                         ASYNCSYNC_NONBLOCK);
- 601:main.c        ****     } else {
- 602:main.c        ****       main_data.lowbat_cnt = 0;
- 2562              		.loc 1 602 28
- 2563 0598 04319FE5 		ldr	r3, .L116+172
- 2564 059c 0020A0E3 		mov	r2, #0
- 2565 05a0 0220C3E5 		strb	r2, [r3, #2]
- 2566              	.L111:
- 603:main.c        ****     }
- 604:main.c        **** 
- 605:main.c        ****     // Termstatus ueberpruefen
- 606:main.c        ****     if (main_data.term_cnt == 0 && main_data.term_status != 0) {
- 2567              		.loc 1 606 18
- 2568 05a4 F8309FE5 		ldr	r3, .L116+172
- 2569 05a8 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
- 2570              		.loc 1 606 8
- 2571 05ac 000053E3 		cmp	r3, #0
- 2572 05b0 EDFEFF1A 		bne	.L115
- 2573              		.loc 1 606 45 discriminator 1
- 2574 05b4 E8309FE5 		ldr	r3, .L116+172
- 2575 05b8 D030D3E1 		ldrsb	r3, [r3]
- 2576              		.loc 1 606 33 discriminator 1
- 2577 05bc 000053E3 		cmp	r3, #0
- 2578 05c0 E9FEFF0A 		beq	.L115
- 607:main.c        ****       main_data.term_cnt++;
- 2579              		.loc 1 607 16
- 2580 05c4 D8309FE5 		ldr	r3, .L116+172
- 2581 05c8 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
- 2582              		.loc 1 607 25
- 2583 05cc 013083E2 		add	r3, r3, #1
- 2584 05d0 FF2003E2 		and	r2, r3, #255
- 2585 05d4 C8309FE5 		ldr	r3, .L116+172
- 2586 05d8 0120C3E5 		strb	r2, [r3, #1]
- 2587              	.L113:
- 608:main.c        ****     overflow:
- 609:main.c        ****       __attribute__((unused));
- 610:main.c        **** 
- 611:main.c        ****       (void)term_string(VT100_VORDERGRUND_ROT
- 2588              		.loc 1 611 13
- 2589 05dc 0110A0E3 		mov	r1, #1
- 2590 05e0 D8009FE5 		ldr	r0, .L116+200
- 2591 05e4 3C309FE5 		ldr	r3, .L116+48
- 2592 05e8 0FE0A0E1 		mov	lr, pc
- 2593 05ec 13FF2FE1 		bx	r3
- 2594              	.LVL80:
- 2595              	.L114:
- 612:main.c        ****                         "\n\rTerminal Overflow\n\r" VT100_VORDERGRUND_DEFAULT,
- 613:main.c        ****                         ASYNCSYNC_BLOCK);
- 614:main.c        ****       while (1)
- 2596              		.loc 1 614 13
- 2597 05f0 0000A0E1 		nop
- 2598 05f4 FDFFFFEA 		b	.L114
- 2599              	.L117:
- 2600              		.align	2
- 2601              	.L116:
- 2602 05f8 00000000 		.word	aic_init
- 2603 05fc 00000000 		.word	systick_init
- 2604 0600 00000000 		.word	interrupts_enable
- 2605 0604 00000000 		.word	nxt_avr_init
- 2606 0608 00000000 		.word	udmon3_init
- 2607 060c 00000000 		.word	term_init
- 2608 0610 00000000 		.word	display_init
- 2609 0614 00000000 		.word	display_clear
- 2610 0618 50000000 		.word	.LC9
- 2611 061c 00000000 		.word	display_string
- 2612 0620 00000000 		.word	display_update
- 2613 0624 60000000 		.word	.LC10
- 2614 0628 00000000 		.word	term_string
- 2615 062c 6C000000 		.word	.LC11
- 2616 0630 9C000000 		.word	.LC12
- 2617 0634 E0000000 		.word	.LC13
- 2618 0638 14010000 		.word	.LC14
- 2619 063c 40010000 		.word	.LC15
- 2620 0640 40FDFFFF 		.word	-704
- 2621 0644 FF8F0030 		.word	805343231
- 2622 0648 00000000 		.word	__stack_start__
- 2623 064c 11111111 		.word	286331153
- 2624 0650 00000000 		.word	systick_get_ms
- 2625 0654 50010000 		.word	.LC16
- 2626 0658 54010000 		.word	.LC17
- 2627 065c 00000000 		.word	task_8ms
- 2628 0660 58010000 		.word	.LC18
- 2629 0664 00000000 		.word	task_16ms
- 2630 0668 60010000 		.word	.LC19
- 2631 066c 00000000 		.word	task_32ms
- 2632 0670 68010000 		.word	.LC20
- 2633 0674 00000000 		.word	task_64ms
- 2634 0678 70010000 		.word	.LC21
- 2635 067c 00000000 		.word	task_128ms
- 2636 0680 78010000 		.word	.LC22
- 2637 0684 00000000 		.word	task_256ms
- 2638 0688 80010000 		.word	.LC23
- 2639 068c 00000000 		.word	task_512ms
- 2640 0690 88010000 		.word	.LC24
- 2641 0694 00000000 		.word	task_1024ms
- 2642 0698 90010000 		.word	.LC25
- 2643 069c 00000000 		.word	task_idle
- 2644 06a0 98010000 		.word	.LC26
- 2645 06a4 00000000 		.word	main_data
- 2646 06a8 AC010000 		.word	.LC27
- 2647 06ac E2040000 		.word	stack_cnt.0
- 2648 06b0 C0010000 		.word	.LC28
- 2649 06b4 DC010000 		.word	.LC29
- 2650 06b8 00000000 		.word	nxt_avr_get_battery_raw
- 2651 06bc E8010000 		.word	.LC30
- 2652 06c0 04020000 		.word	.LC31
- 2653              		.cfi_endproc
- 2654              	.LFE28:
- 2656              		.bss
- 2657              		.align	2
- 2658              	trace_index.4:
- 2659 046c 00000000 		.space	4
- 2661              	strpos.3:
- 2662 0470 00       		.space	1
- 2664 0471 000000   		.align	2
- 2665              	string.2:
- 2666 0474 00000000 		.space	100
- 2666      00000000 
- 2666      00000000 
- 2666      00000000 
- 2666      00000000 
- 2668              		.align	2
- 2669              	linebuf.1:
- 2670 04d8 00000000 		.space	10
- 2670      00000000 
- 2670      0000
- 2672              	stack_cnt.0:
- 2673 04e2 00       		.space	1
- 2675              		.text
- 2676              	.Letext0:
- 2677              		.file 5 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
- 2678              		.file 6 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
- 2679              		.file 7 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
- 2680              		.file 8 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
- 2681              		.file 9 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/r
- 2682              		.file 10 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
- 2683              		.file 11 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/stdi
- 2684              		.file 12 "AT91SAM7S64.h"
- 2685              		.file 13 "lib/display.h"
- 2686              		.file 14 "lib/term.h"
- 2687              		.file 15 "trace32/udmon3.h"
- 2688              		.file 16 "lib/nxt_avr.h"
- 2689              		.file 17 "lib/isr.h"
- 2690              		.file 18 "lib/systick.h"
- 2691              		.file 19 "lib/aic.h"
- 2692              		.file 20 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 2434              		.loc 4 130 22
+ 2435 0418 18301BE5 		ldr	r3, [fp, #-24]
+ 2436 041c 24229FE5 		ldr	r2, .L116+80
+ 2437 0420 023043E0 		sub	r3, r3, r2
+ 2438              		.loc 4 130 9
+ 2439 0424 4331A0E1 		asr	r3, r3, #2
+ 2440              	.LBE11:
+ 2441              	.LBE10:
+ 575:main.c        **** 
+ 576:main.c        ****     // Stack Testen
+ 577:main.c        ****     if (stack_check() < (1 * 4)) {
+ 2442              		.loc 1 577 8 discriminator 1
+ 2443 0428 030053E3 		cmp	r3, #3
+ 2444 042c 350000CA 		bgt	.L106
+ 2445              	.LBB12:
+ 578:main.c        ****       static uint8_t stack_cnt = 0;
+ 579:main.c        ****       if (stack_cnt == 0) {
+ 2446              		.loc 1 579 21
+ 2447 0430 74329FE5 		ldr	r3, .L116+180
+ 2448 0434 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 2449              		.loc 1 579 10
+ 2450 0438 000053E3 		cmp	r3, #0
+ 2451 043c 3100001A 		bne	.L106
+ 580:main.c        ****         stack_cnt = 1;
+ 2452              		.loc 1 580 19
+ 2453 0440 64329FE5 		ldr	r3, .L116+180
+ 2454 0444 0120A0E3 		mov	r2, #1
+ 2455 0448 0020C3E5 		strb	r2, [r3]
+ 581:main.c        ****         main_data.term_status |= term_string(
+ 2456              		.loc 1 581 34
+ 2457 044c 0010A0E3 		mov	r1, #0
+ 2458 0450 58029FE5 		ldr	r0, .L116+184
+ 2459 0454 CC319FE5 		ldr	r3, .L116+48
+ 2460 0458 0FE0A0E1 		mov	lr, pc
+ 2461 045c 13FF2FE1 		bx	r3
+ 2462              	.LVL76:
+ 2463 0460 0030A0E1 		mov	r3, r0
+ 2464              		.loc 1 581 18 discriminator 1
+ 2465 0464 38229FE5 		ldr	r2, .L116+172
+ 2466 0468 D020D2E1 		ldrsb	r2, [r2]
+ 2467              		.loc 1 581 31 discriminator 1
+ 2468 046c 033CA0E1 		lsl	r3, r3, #24
+ 2469 0470 433CA0E1 		asr	r3, r3, #24
+ 2470 0474 033082E1 		orr	r3, r2, r3
+ 2471 0478 033CA0E1 		lsl	r3, r3, #24
+ 2472 047c 432CA0E1 		asr	r2, r3, #24
+ 2473 0480 1C329FE5 		ldr	r3, .L116+172
+ 2474 0484 0020C3E5 		strb	r2, [r3]
+ 582:main.c        ****             VT100_VORDERGRUND_ROT "Stack overflow durch '", ASYNCSYNC_NONBLOCK);
+ 583:main.c        ****         main_data.term_status |= term_string(task_aktiv, ASYNCSYNC_NONBLOCK);
+ 2475              		.loc 1 583 34
+ 2476 0488 0010A0E3 		mov	r1, #0
+ 2477 048c 10001BE5 		ldr	r0, [fp, #-16]
+ 2478 0490 90319FE5 		ldr	r3, .L116+48
+ 2479 0494 0FE0A0E1 		mov	lr, pc
+ 2480 0498 13FF2FE1 		bx	r3
+ 2481              	.LVL77:
+ 2482 049c 0030A0E1 		mov	r3, r0
+ 2483              		.loc 1 583 18 discriminator 1
+ 2484 04a0 FC219FE5 		ldr	r2, .L116+172
+ 2485 04a4 D020D2E1 		ldrsb	r2, [r2]
+ 2486              		.loc 1 583 31 discriminator 1
+ 2487 04a8 033CA0E1 		lsl	r3, r3, #24
+ 2488 04ac 433CA0E1 		asr	r3, r3, #24
+ 2489 04b0 033082E1 		orr	r3, r2, r3
+ 2490 04b4 033CA0E1 		lsl	r3, r3, #24
+ 2491 04b8 432CA0E1 		asr	r2, r3, #24
+ 2492 04bc E0319FE5 		ldr	r3, .L116+172
+ 2493 04c0 0020C3E5 		strb	r2, [r3]
+ 584:main.c        ****         main_data.term_status |=
+ 585:main.c        ****             term_string("'\n\r" VT100_VORDERGRUND_DEFAULT, ASYNCSYNC_NONBLOCK);
+ 2494              		.loc 1 585 13
+ 2495 04c4 0010A0E3 		mov	r1, #0
+ 2496 04c8 E4019FE5 		ldr	r0, .L116+188
+ 2497 04cc 54319FE5 		ldr	r3, .L116+48
+ 2498 04d0 0FE0A0E1 		mov	lr, pc
+ 2499 04d4 13FF2FE1 		bx	r3
+ 2500              	.LVL78:
+ 2501 04d8 0030A0E1 		mov	r3, r0
+ 584:main.c        ****         main_data.term_status |=
+ 2502              		.loc 1 584 18
+ 2503 04dc C0219FE5 		ldr	r2, .L116+172
+ 2504 04e0 D020D2E1 		ldrsb	r2, [r2]
+ 584:main.c        ****         main_data.term_status |=
+ 2505              		.loc 1 584 31
+ 2506 04e4 033CA0E1 		lsl	r3, r3, #24
+ 2507 04e8 433CA0E1 		asr	r3, r3, #24
+ 2508 04ec 033082E1 		orr	r3, r2, r3
+ 2509 04f0 033CA0E1 		lsl	r3, r3, #24
+ 2510 04f4 432CA0E1 		asr	r2, r3, #24
+ 2511 04f8 A4319FE5 		ldr	r3, .L116+172
+ 2512 04fc 0020C3E5 		strb	r2, [r3]
+ 2513              	.L107:
+ 586:main.c        ****         while (1)
+ 2514              		.loc 1 586 15
+ 2515 0500 0000A0E1 		nop
+ 2516 0504 FDFFFFEA 		b	.L107
+ 2517              	.L106:
+ 2518              	.LBE12:
+ 587:main.c        ****           ;
+ 588:main.c        ****       }
+ 589:main.c        ****     }
+ 590:main.c        **** 
+ 591:main.c        ****     // Batteriespannung überprüfen
+ 592:main.c        ****     // Ggf. schlägt die Unterspannungsprüfung im Akku zuvor ein!
+ 593:main.c        ****     if (nxt_avr_get_battery_raw() < ((2 * 3000 /*mV*/) << 10) / 14180) {
+ 2519              		.loc 1 593 9
+ 2520 0508 A8319FE5 		ldr	r3, .L116+192
+ 2521 050c 0FE0A0E1 		mov	lr, pc
+ 2522 0510 13FF2FE1 		bx	r3
+ 2523              	.LVL79:
+ 2524 0514 0030A0E1 		mov	r3, r0
+ 2525              		.loc 1 593 8 discriminator 1
+ 2526 0518 1B0E53E3 		cmp	r3, #432
+ 2527 051c 1D00008A 		bhi	.L108
+ 594:main.c        ****       if (main_data.lowbat_cnt++ > 100)
+ 2528              		.loc 1 594 20
+ 2529 0520 7C319FE5 		ldr	r3, .L116+172
+ 2530 0524 0230D3E5 		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 2531              		.loc 1 594 31
+ 2532 0528 012083E2 		add	r2, r3, #1
+ 2533 052c FF1002E2 		and	r1, r2, #255
+ 2534 0530 6C219FE5 		ldr	r2, .L116+172
+ 2535 0534 0210C2E5 		strb	r1, [r2, #2]
+ 2536              		.loc 1 594 10
+ 2537 0538 640053E3 		cmp	r3, #100
+ 2538 053c 0100009A 		bls	.L109
+ 2539              	.L110:
+ 595:main.c        ****         while (1)
+ 2540              		.loc 1 595 15
+ 2541 0540 0000A0E1 		nop
+ 2542 0544 FDFFFFEA 		b	.L110
+ 2543              	.L109:
+ 596:main.c        ****           ;
+ 597:main.c        ****       else if (main_data.lowbat_cnt == 10)
+ 2544              		.loc 1 597 25
+ 2545 0548 54319FE5 		ldr	r3, .L116+172
+ 2546 054c 0230D3E5 		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 2547              		.loc 1 597 15
+ 2548 0550 0A0053E3 		cmp	r3, #10
+ 2549 0554 1200001A 		bne	.L111
+ 598:main.c        ****         main_data.term_status |=
+ 599:main.c        ****             term_string(VT100_VORDERGRUND_ROT
+ 2550              		.loc 1 599 13
+ 2551 0558 0010A0E3 		mov	r1, #0
+ 2552 055c 58019FE5 		ldr	r0, .L116+196
+ 2553 0560 C0309FE5 		ldr	r3, .L116+48
+ 2554 0564 0FE0A0E1 		mov	lr, pc
+ 2555 0568 13FF2FE1 		bx	r3
+ 2556              	.LVL80:
+ 2557 056c 0030A0E1 		mov	r3, r0
+ 598:main.c        ****         main_data.term_status |=
+ 2558              		.loc 1 598 18
+ 2559 0570 2C219FE5 		ldr	r2, .L116+172
+ 2560 0574 D020D2E1 		ldrsb	r2, [r2]
+ 598:main.c        ****         main_data.term_status |=
+ 2561              		.loc 1 598 31
+ 2562 0578 033CA0E1 		lsl	r3, r3, #24
+ 2563 057c 433CA0E1 		asr	r3, r3, #24
+ 2564 0580 033082E1 		orr	r3, r2, r3
+ 2565 0584 033CA0E1 		lsl	r3, r3, #24
+ 2566 0588 432CA0E1 		asr	r2, r3, #24
+ 2567 058c 10319FE5 		ldr	r3, .L116+172
+ 2568 0590 0020C3E5 		strb	r2, [r3]
+ 2569 0594 020000EA 		b	.L111
+ 2570              	.L108:
+ 600:main.c        ****                         "\n\rLow Battery\n\r" VT100_VORDERGRUND_DEFAULT,
+ 601:main.c        ****                         ASYNCSYNC_NONBLOCK);
+ 602:main.c        ****     } else {
+ 603:main.c        ****       main_data.lowbat_cnt = 0;
+ 2571              		.loc 1 603 28
+ 2572 0598 04319FE5 		ldr	r3, .L116+172
+ 2573 059c 0020A0E3 		mov	r2, #0
+ 2574 05a0 0220C3E5 		strb	r2, [r3, #2]
+ 2575              	.L111:
+ 604:main.c        ****     }
+ 605:main.c        **** 
+ 606:main.c        ****     // Termstatus ueberpruefen
+ 607:main.c        ****     if (main_data.term_cnt == 0 && main_data.term_status != 0) {
+ 2576              		.loc 1 607 18
+ 2577 05a4 F8309FE5 		ldr	r3, .L116+172
+ 2578 05a8 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 2579              		.loc 1 607 8
+ 2580 05ac 000053E3 		cmp	r3, #0
+ 2581 05b0 EDFEFF1A 		bne	.L115
+ 2582              		.loc 1 607 45 discriminator 1
+ 2583 05b4 E8309FE5 		ldr	r3, .L116+172
+ 2584 05b8 D030D3E1 		ldrsb	r3, [r3]
+ 2585              		.loc 1 607 33 discriminator 1
+ 2586 05bc 000053E3 		cmp	r3, #0
+ 2587 05c0 E9FEFF0A 		beq	.L115
+ 608:main.c        ****       main_data.term_cnt++;
+ 2588              		.loc 1 608 16
+ 2589 05c4 D8309FE5 		ldr	r3, .L116+172
+ 2590 05c8 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 2591              		.loc 1 608 25
+ 2592 05cc 013083E2 		add	r3, r3, #1
+ 2593 05d0 FF2003E2 		and	r2, r3, #255
+ 2594 05d4 C8309FE5 		ldr	r3, .L116+172
+ 2595 05d8 0120C3E5 		strb	r2, [r3, #1]
+ 2596              	.L113:
+ 609:main.c        ****     overflow:
+ 610:main.c        ****       __attribute__((unused));
+ 611:main.c        **** 
+ 612:main.c        ****       (void)term_string(VT100_VORDERGRUND_ROT
+ 2597              		.loc 1 612 13
+ 2598 05dc 0110A0E3 		mov	r1, #1
+ 2599 05e0 D8009FE5 		ldr	r0, .L116+200
+ 2600 05e4 3C309FE5 		ldr	r3, .L116+48
+ 2601 05e8 0FE0A0E1 		mov	lr, pc
+ 2602 05ec 13FF2FE1 		bx	r3
+ 2603              	.LVL81:
+ 2604              	.L114:
+ 613:main.c        ****                         "\n\rTerminal Overflow\n\r" VT100_VORDERGRUND_DEFAULT,
+ 614:main.c        ****                         ASYNCSYNC_BLOCK);
+ 615:main.c        ****       while (1)
+ 2605              		.loc 1 615 13
+ 2606 05f0 0000A0E1 		nop
+ 2607 05f4 FDFFFFEA 		b	.L114
+ 2608              	.L117:
+ 2609              		.align	2
+ 2610              	.L116:
+ 2611 05f8 00000000 		.word	aic_init
+ 2612 05fc 00000000 		.word	systick_init
+ 2613 0600 00000000 		.word	interrupts_enable
+ 2614 0604 00000000 		.word	nxt_avr_init
+ 2615 0608 00000000 		.word	udmon3_init
+ 2616 060c 00000000 		.word	term_init
+ 2617 0610 00000000 		.word	display_init
+ 2618 0614 00000000 		.word	display_clear
+ 2619 0618 44000000 		.word	.LC9
+ 2620 061c 00000000 		.word	display_string
+ 2621 0620 00000000 		.word	display_update
+ 2622 0624 54000000 		.word	.LC10
+ 2623 0628 00000000 		.word	term_string
+ 2624 062c 60000000 		.word	.LC11
+ 2625 0630 90000000 		.word	.LC12
+ 2626 0634 D4000000 		.word	.LC13
+ 2627 0638 08010000 		.word	.LC14
+ 2628 063c 34010000 		.word	.LC15
+ 2629 0640 40FDFFFF 		.word	-704
+ 2630 0644 FF8F0030 		.word	805343231
+ 2631 0648 00000000 		.word	__stack_start__
+ 2632 064c 11111111 		.word	286331153
+ 2633 0650 00000000 		.word	systick_get_ms
+ 2634 0654 44010000 		.word	.LC16
+ 2635 0658 48010000 		.word	.LC17
+ 2636 065c 00000000 		.word	task_8ms
+ 2637 0660 4C010000 		.word	.LC18
+ 2638 0664 00000000 		.word	task_16ms
+ 2639 0668 54010000 		.word	.LC19
+ 2640 066c 00000000 		.word	task_32ms
+ 2641 0670 5C010000 		.word	.LC20
+ 2642 0674 00000000 		.word	task_64ms
+ 2643 0678 64010000 		.word	.LC21
+ 2644 067c 00000000 		.word	task_128ms
+ 2645 0680 6C010000 		.word	.LC22
+ 2646 0684 00000000 		.word	task_256ms
+ 2647 0688 74010000 		.word	.LC23
+ 2648 068c 00000000 		.word	task_512ms
+ 2649 0690 7C010000 		.word	.LC24
+ 2650 0694 00000000 		.word	task_1024ms
+ 2651 0698 84010000 		.word	.LC25
+ 2652 069c 00000000 		.word	task_idle
+ 2653 06a0 8C010000 		.word	.LC26
+ 2654 06a4 00000000 		.word	main_data
+ 2655 06a8 A0010000 		.word	.LC27
+ 2656 06ac E2040000 		.word	stack_cnt.0
+ 2657 06b0 B4010000 		.word	.LC28
+ 2658 06b4 D0010000 		.word	.LC29
+ 2659 06b8 00000000 		.word	nxt_avr_get_battery_raw
+ 2660 06bc DC010000 		.word	.LC30
+ 2661 06c0 F8010000 		.word	.LC31
+ 2662              		.cfi_endproc
+ 2663              	.LFE28:
+ 2665              		.bss
+ 2666              		.align	2
+ 2667              	trace_index.4:
+ 2668 046c 00000000 		.space	4
+ 2670              	strpos.3:
+ 2671 0470 00       		.space	1
+ 2673 0471 000000   		.align	2
+ 2674              	string.2:
+ 2675 0474 00000000 		.space	100
+ 2675      00000000 
+ 2675      00000000 
+ 2675      00000000 
+ 2675      00000000 
+ 2677              		.align	2
+ 2678              	linebuf.1:
+ 2679 04d8 00000000 		.space	10
+ 2679      00000000 
+ 2679      0000
+ 2681              	stack_cnt.0:
+ 2682 04e2 00       		.space	1
+ 2684              		.text
+ 2685              	.Letext0:
+ 2686              		.file 5 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 2687              		.file 6 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 2688              		.file 7 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
+ 2689              		.file 8 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 2690              		.file 9 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/r
+ 2691              		.file 10 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 2692              		.file 11 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/stdi
+ 2693              		.file 12 "AT91SAM7S64.h"
+ 2694              		.file 13 "lib/display.h"
+ 2695              		.file 14 "lib/term.h"
+ 2696              		.file 15 "trace32/udmon3.h"
+ 2697              		.file 16 "lib/nxt_avr.h"
+ 2698              		.file 17 "lib/isr.h"
+ 2699              		.file 18 "lib/systick.h"
+ 2700              		.file 19 "lib/aic.h"
+ 2701              		.file 20 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
 DEFINED SYMBOLS
                             *ABS*:00000000 main.c
-     /tmp/cc6FEUQS.s:19     .text.byte_fifo_put_possible:00000000 $a
-     /tmp/cc6FEUQS.s:23     .text.byte_fifo_put_possible:00000000 byte_fifo_put_possible
-     /tmp/cc6FEUQS.s:75     .text.byte_fifo_remain:00000000 $a
-     /tmp/cc6FEUQS.s:79     .text.byte_fifo_remain:00000000 byte_fifo_remain
-     /tmp/cc6FEUQS.s:133    .text.byte_fifo_used:00000000 $a
-     /tmp/cc6FEUQS.s:137    .text.byte_fifo_used:00000000 byte_fifo_used
-     /tmp/cc6FEUQS.s:188    .text.byte_fifo_put:00000000 $a
-     /tmp/cc6FEUQS.s:192    .text.byte_fifo_put:00000000 byte_fifo_put
-     /tmp/cc6FEUQS.s:277    .text.byte_fifo_get_possible:00000000 $a
-     /tmp/cc6FEUQS.s:281    .text.byte_fifo_get_possible:00000000 byte_fifo_get_possible
-     /tmp/cc6FEUQS.s:325    .text.byte_fifo_get:00000000 $a
-     /tmp/cc6FEUQS.s:329    .text.byte_fifo_get:00000000 byte_fifo_get
-     /tmp/cc6FEUQS.s:408    .text.byte_fifo_cb_put_possible:00000000 $a
-     /tmp/cc6FEUQS.s:412    .text.byte_fifo_cb_put_possible:00000000 byte_fifo_cb_put_possible
-     /tmp/cc6FEUQS.s:450    .text.byte_fifo_cb_put_possible:0000003c $d
-     /tmp/cc6FEUQS.s:455    .text.byte_fifo_cb_put:00000000 $a
-     /tmp/cc6FEUQS.s:459    .text.byte_fifo_cb_put:00000000 byte_fifo_cb_put
-     /tmp/cc6FEUQS.s:520    .text.byte_fifo_cb_put:0000007c $d
-     /tmp/cc6FEUQS.s:525    .text.byte_fifo_cb_get_possible:00000000 $a
-     /tmp/cc6FEUQS.s:529    .text.byte_fifo_cb_get_possible:00000000 byte_fifo_cb_get_possible
-     /tmp/cc6FEUQS.s:566    .text.byte_fifo_cb_get_possible:0000003c $d
-     /tmp/cc6FEUQS.s:571    .text.byte_fifo_cb_get:00000000 $a
-     /tmp/cc6FEUQS.s:575    .text.byte_fifo_cb_get:00000000 byte_fifo_cb_get
-     /tmp/cc6FEUQS.s:614    .text.byte_fifo_cb_get:00000044 $d
-     /tmp/cc6FEUQS.s:623    .bss:00000000 main_data
-     /tmp/cc6FEUQS.s:620    .bss:00000000 $d
-     /tmp/cc6FEUQS.s:626    .text._exit:00000000 $a
-     /tmp/cc6FEUQS.s:631    .text._exit:00000000 _exit
-     /tmp/cc6FEUQS.s:658    .bss:00000004 trace_buf0
-     /tmp/cc6FEUQS.s:664    .bss:00000194 trace_buf1
-     /tmp/cc6FEUQS.s:667    .text.trace_scope:00000000 $a
-     /tmp/cc6FEUQS.s:672    .text.trace_scope:00000000 trace_scope
-     /tmp/cc6FEUQS.s:760    .text.trace_scope:000000c8 $d
-     /tmp/cc6FEUQS.s:2658   .bss:0000046c trace_index.4
-     /tmp/cc6FEUQS.s:771    .bss:00000324 h
-     /tmp/cc6FEUQS.s:774    .rodata:00000000 $d
-     /tmp/cc6FEUQS.s:778    .text.herzschlag_process:00000000 $a
-     /tmp/cc6FEUQS.s:783    .text.herzschlag_process:00000000 herzschlag_process
-     /tmp/cc6FEUQS.s:1140   .text.herzschlag_process:0000038c $d
-     /tmp/cc6FEUQS.s:1152   .text.task_8ms:00000000 $a
-     /tmp/cc6FEUQS.s:1157   .text.task_8ms:00000000 task_8ms
-     /tmp/cc6FEUQS.s:1196   .text.task_8ms:0000003c $d
-     /tmp/cc6FEUQS.s:1202   .text.task_16ms:00000000 $a
-     /tmp/cc6FEUQS.s:1207   .text.task_16ms:00000000 task_16ms
-     /tmp/cc6FEUQS.s:1233   .text.task_32ms:00000000 $a
-     /tmp/cc6FEUQS.s:1238   .text.task_32ms:00000000 task_32ms
-     /tmp/cc6FEUQS.s:1264   .text.task_64ms:00000000 $a
-     /tmp/cc6FEUQS.s:1269   .text.task_64ms:00000000 task_64ms
-     /tmp/cc6FEUQS.s:1295   .text.task_128ms:00000000 $a
-     /tmp/cc6FEUQS.s:1300   .text.task_128ms:00000000 task_128ms
-     /tmp/cc6FEUQS.s:1345   .text.task_256ms:00000000 $a
-     /tmp/cc6FEUQS.s:1350   .text.task_256ms:00000000 task_256ms
-     /tmp/cc6FEUQS.s:1582   .text.task_256ms:0000023c $d
-     /tmp/cc6FEUQS.s:1603   .text.task_512ms:00000000 $a
-     /tmp/cc6FEUQS.s:1608   .text.task_512ms:00000000 task_512ms
-     /tmp/cc6FEUQS.s:1634   .text.task_1024ms:00000000 $a
-     /tmp/cc6FEUQS.s:1639   .text.task_1024ms:00000000 task_1024ms
-     /tmp/cc6FEUQS.s:1672   .text.task_idle:00000000 $a
-     /tmp/cc6FEUQS.s:1677   .text.task_idle:00000000 task_idle
-     /tmp/cc6FEUQS.s:1861   .text.task_idle:000001fc $d
-     /tmp/cc6FEUQS.s:2661   .bss:00000470 strpos.3
-     /tmp/cc6FEUQS.s:2665   .bss:00000474 string.2
-     /tmp/cc6FEUQS.s:1873   .text.premain_init:00000000 $a
-     /tmp/cc6FEUQS.s:1878   .text.premain_init:00000000 premain_init
-     /tmp/cc6FEUQS.s:1920   .text.premain_init:0000003c $d
-     /tmp/cc6FEUQS.s:2669   .bss:000004d8 linebuf.1
-     /tmp/cc6FEUQS.s:1927   .init_array:00000000 $d
-     /tmp/cc6FEUQS.s:2003   .text.main:00000000 $a
-     /tmp/cc6FEUQS.s:2008   .text.main:00000000 main
-     /tmp/cc6FEUQS.s:2602   .text.main:000005f8 $d
-     /tmp/cc6FEUQS.s:2672   .bss:000004e2 stack_cnt.0
+     /tmp/cc7TSauM.s:19     .text.byte_fifo_put_possible:00000000 $a
+     /tmp/cc7TSauM.s:23     .text.byte_fifo_put_possible:00000000 byte_fifo_put_possible
+     /tmp/cc7TSauM.s:75     .text.byte_fifo_remain:00000000 $a
+     /tmp/cc7TSauM.s:79     .text.byte_fifo_remain:00000000 byte_fifo_remain
+     /tmp/cc7TSauM.s:133    .text.byte_fifo_used:00000000 $a
+     /tmp/cc7TSauM.s:137    .text.byte_fifo_used:00000000 byte_fifo_used
+     /tmp/cc7TSauM.s:188    .text.byte_fifo_put:00000000 $a
+     /tmp/cc7TSauM.s:192    .text.byte_fifo_put:00000000 byte_fifo_put
+     /tmp/cc7TSauM.s:277    .text.byte_fifo_get_possible:00000000 $a
+     /tmp/cc7TSauM.s:281    .text.byte_fifo_get_possible:00000000 byte_fifo_get_possible
+     /tmp/cc7TSauM.s:325    .text.byte_fifo_get:00000000 $a
+     /tmp/cc7TSauM.s:329    .text.byte_fifo_get:00000000 byte_fifo_get
+     /tmp/cc7TSauM.s:408    .text.byte_fifo_cb_put_possible:00000000 $a
+     /tmp/cc7TSauM.s:412    .text.byte_fifo_cb_put_possible:00000000 byte_fifo_cb_put_possible
+     /tmp/cc7TSauM.s:450    .text.byte_fifo_cb_put_possible:0000003c $d
+     /tmp/cc7TSauM.s:455    .text.byte_fifo_cb_put:00000000 $a
+     /tmp/cc7TSauM.s:459    .text.byte_fifo_cb_put:00000000 byte_fifo_cb_put
+     /tmp/cc7TSauM.s:520    .text.byte_fifo_cb_put:0000007c $d
+     /tmp/cc7TSauM.s:525    .text.byte_fifo_cb_get_possible:00000000 $a
+     /tmp/cc7TSauM.s:529    .text.byte_fifo_cb_get_possible:00000000 byte_fifo_cb_get_possible
+     /tmp/cc7TSauM.s:566    .text.byte_fifo_cb_get_possible:0000003c $d
+     /tmp/cc7TSauM.s:571    .text.byte_fifo_cb_get:00000000 $a
+     /tmp/cc7TSauM.s:575    .text.byte_fifo_cb_get:00000000 byte_fifo_cb_get
+     /tmp/cc7TSauM.s:614    .text.byte_fifo_cb_get:00000044 $d
+     /tmp/cc7TSauM.s:623    .bss:00000000 main_data
+     /tmp/cc7TSauM.s:620    .bss:00000000 $d
+     /tmp/cc7TSauM.s:626    .text._exit:00000000 $a
+     /tmp/cc7TSauM.s:631    .text._exit:00000000 _exit
+     /tmp/cc7TSauM.s:658    .bss:00000004 trace_buf0
+     /tmp/cc7TSauM.s:664    .bss:00000194 trace_buf1
+     /tmp/cc7TSauM.s:667    .text.trace_scope:00000000 $a
+     /tmp/cc7TSauM.s:672    .text.trace_scope:00000000 trace_scope
+     /tmp/cc7TSauM.s:760    .text.trace_scope:000000c8 $d
+     /tmp/cc7TSauM.s:2667   .bss:0000046c trace_index.4
+     /tmp/cc7TSauM.s:771    .bss:00000324 h
+     /tmp/cc7TSauM.s:774    .rodata:00000000 $d
+     /tmp/cc7TSauM.s:778    .text.herzschlag_process:00000000 $a
+     /tmp/cc7TSauM.s:783    .text.herzschlag_process:00000000 herzschlag_process
+     /tmp/cc7TSauM.s:1148   .text.herzschlag_process:000003a4 $d
+     /tmp/cc7TSauM.s:1161   .text.task_8ms:00000000 $a
+     /tmp/cc7TSauM.s:1166   .text.task_8ms:00000000 task_8ms
+     /tmp/cc7TSauM.s:1205   .text.task_8ms:0000003c $d
+     /tmp/cc7TSauM.s:1211   .text.task_16ms:00000000 $a
+     /tmp/cc7TSauM.s:1216   .text.task_16ms:00000000 task_16ms
+     /tmp/cc7TSauM.s:1242   .text.task_32ms:00000000 $a
+     /tmp/cc7TSauM.s:1247   .text.task_32ms:00000000 task_32ms
+     /tmp/cc7TSauM.s:1273   .text.task_64ms:00000000 $a
+     /tmp/cc7TSauM.s:1278   .text.task_64ms:00000000 task_64ms
+     /tmp/cc7TSauM.s:1304   .text.task_128ms:00000000 $a
+     /tmp/cc7TSauM.s:1309   .text.task_128ms:00000000 task_128ms
+     /tmp/cc7TSauM.s:1354   .text.task_256ms:00000000 $a
+     /tmp/cc7TSauM.s:1359   .text.task_256ms:00000000 task_256ms
+     /tmp/cc7TSauM.s:1591   .text.task_256ms:0000023c $d
+     /tmp/cc7TSauM.s:1612   .text.task_512ms:00000000 $a
+     /tmp/cc7TSauM.s:1617   .text.task_512ms:00000000 task_512ms
+     /tmp/cc7TSauM.s:1643   .text.task_1024ms:00000000 $a
+     /tmp/cc7TSauM.s:1648   .text.task_1024ms:00000000 task_1024ms
+     /tmp/cc7TSauM.s:1681   .text.task_idle:00000000 $a
+     /tmp/cc7TSauM.s:1686   .text.task_idle:00000000 task_idle
+     /tmp/cc7TSauM.s:1870   .text.task_idle:000001fc $d
+     /tmp/cc7TSauM.s:2670   .bss:00000470 strpos.3
+     /tmp/cc7TSauM.s:2674   .bss:00000474 string.2
+     /tmp/cc7TSauM.s:1882   .text.premain_init:00000000 $a
+     /tmp/cc7TSauM.s:1887   .text.premain_init:00000000 premain_init
+     /tmp/cc7TSauM.s:1929   .text.premain_init:0000003c $d
+     /tmp/cc7TSauM.s:2678   .bss:000004d8 linebuf.1
+     /tmp/cc7TSauM.s:1936   .init_array:00000000 $d
+     /tmp/cc7TSauM.s:2012   .text.main:00000000 $a
+     /tmp/cc7TSauM.s:2017   .text.main:00000000 main
+     /tmp/cc7TSauM.s:2611   .text.main:000005f8 $d
+     /tmp/cc7TSauM.s:2681   .bss:000004e2 stack_cnt.0
 
 UNDEFINED SYMBOLS
 systick_get_ms
 __aeabi_uidiv
-printf
+term_int
+term_string
 nxt_avr_get_sensor_adc_raw
 display_string
 display_hex
@@ -3689,7 +3697,6 @@ display_char
 display_update
 term_read
 term_char
-term_string
 _impure_ptr
 setvbuf
 aic_init

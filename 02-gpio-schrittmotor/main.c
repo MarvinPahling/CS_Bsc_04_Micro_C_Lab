@@ -176,7 +176,7 @@ void ui_process(void)
 		if (schrittmotor_data.schritt_mode + 1 < SCHRITT_END) {
         	schrittmotor_data.schritt_mode++;
 			schrittmotor_init(schrittmotor_data.schritt_mode);
-    	} else {
+    	} else { 
         	schrittmotor_data.schritt_mode = SCHRITT_VOLL_1;
 			schrittmotor_init(schrittmotor_data.schritt_mode);
 		}	  
