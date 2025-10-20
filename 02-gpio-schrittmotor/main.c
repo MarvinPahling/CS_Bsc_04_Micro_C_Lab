@@ -91,17 +91,36 @@ void trace_scope(int channel,int16_t value)
 /*****************************************************************************/
 /*   Ihr Programm                                                            */
 /*****************************************************************************/
-
+// AT91S_PIO, *AT91PS_PIO
 #define SPULE1_PWM (1<<23)
 #define SPULE2_PWM (1<<2)
 #define SPULE1_DIR (1<<18)
 #define SPULE2_DIR (1<<30)
 #define NXT_PORT4_ENABLE (1<<7)
 
+// IN1 -> PA23
+// IN2 -> PA18
+// IN3 -> PA02
+// IN4 -> PA30
+//Ausgangs-Multiplexer für PWM auf entsprechende Peripherie setzen
+//- Die Zuordnung, auf welchen Peripheriekanal die PWM Einheit an PA23 / PA2 liegt, kann aus Kapitel 10.4 entnommen werden
+//- Für die Microstepping Aufgabe muss PA23 / PA2 weg von Ausgabe auf Peripherie A oder B umprogrammiert werden 
+//PA30 und PA18 bitte weiterhin als normale GPIO Ausgabe Konfigurieren (incl. PA7)
+//PA2 -> PWM2 Multiplexer auf A
+#define IN1 = (1 << 23)
+#define IN2 = (1 << 18)
+#define IN3 = (1 << 2)
+#define IN4 = (1 << 30)
+#define PMC_MASK IN1 | IN2 | IN3 | IN4
+#define A_SR_MASK IN3
+#define B_SR_MASK IN1 
+AT91PS_PIO pio = (AT91PS_PIO)AT91C_BASE_PIOA
+AT91PS_PMC pmc =  (AT91PS_PMC)AT91C_BASE_PMC;
 //PWM=0  DIR=x   Off=Kurzschluss
 //PWM=1  DIR=0   Positive
 //PWM=1  DIR=1   Negative
 
+//  AT91S_PMC, *AT91PS_PMC;
 //PA7=0  zum Deaktivieren des RS485 Treibers
 
 typedef enum {SCHRITT_VOLL_1, SCHRITT_VOLL_2, SCHRITT_HALB, SCHRITT_SINUS, SCHRITT_END} SCHRITT_MODE;
@@ -138,11 +157,15 @@ void schrittmotor_init(SCHRITT_MODE mode)
 //Clock für PWM aktivieren
 //- zugehörige ID kann aus Kapitel 10.2 Peripherals Identifier entnommen werden
 //- Taktfreischaltung erfolgt über den PowerManagmentController (Kap 25). Die eigentliche Taktfreischaltung für die   Peripherie ist im Kapitel 25.5 erklärt
+pmc->PMC_PCER |= PMC_MASK;   
 
 //Ausgangs-Multiplexer für PWM auf entsprechende Peripherie setzen
 //- Die Zuordnung, auf welchen Peripheriekanal die PWM Einheit an PA23 / PA2 liegt, kann aus Kapitel 10.4 entnommen werden
 //- Für die Microstepping Aufgabe muss PA23 / PA2 weg von Ausgabe auf Peripherie A oder B umprogrammiert werden 
 //PA30 und PA18 bitte weiterhin als normale GPIO Ausgabe Konfigurieren (incl. PA7)
+//PA2 -> PWM2 Multiplexer auf A
+pio->PIO_ASR = 
+pio->PIO_BSR = 
 
 //PWM-Konfigurieren (Kapitel 34)
 //- Für die korrekte Konfiguration der beiden PWM-Channels lesen sie bitte das Kapitel 34 durch. Beachten sie bitte den abschließenden Satz aus Kap 34.5.2.2: The waveform polarity must be set before enabling the channel. This immediately affects the channel output level. Changes on channel polarity are not taken into account while the channel is enabled.
