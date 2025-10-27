@@ -1,0 +1,5 @@
+./lib/twi.c:74:5:twi_status	4	static
+./lib/twi.c:91:6:twi_isr_C	8	static
+./lib/twi.c:151:5:twi_init	16	static
+./lib/twi.c:216:6:twi_start_read	24	static
+./lib/twi.c:242:6:twi_start_write	24	static

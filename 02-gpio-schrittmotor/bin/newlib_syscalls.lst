@@ -1,0 +1,2606 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"newlib_syscalls.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "newlib_syscalls.c"
+  18              		.section	.text._fork_r,"ax",%progbits
+  19              		.align	2
+  20              		.global	_fork_r
+  21              		.syntax unified
+  22              		.arm
+  24              	_fork_r:
+  25              	.LFB2:
+   1:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+   2:newlib_syscalls.c **** //newlib ist eine für embedded Systeme entwickelte Standard C und Math-Library
+   3:newlib_syscalls.c **** //newlib stellt eine breite Palette an Funktionen bereit welche in Abhängigkeit 
+   4:newlib_syscalls.c **** //des Bedarfs durch Nutzerfunktionen angepasst werden müssen 
+   5:newlib_syscalls.c **** //Grob können die Funktionalitäten wie folgt klassifiziert werden
+   6:newlib_syscalls.c **** //  - Prozessverwaltung
+   7:newlib_syscalls.c **** //     - kill() fork() system() exec() wait() getpid()
+   8:newlib_syscalls.c **** //  - Speicherverwaltung
+   9:newlib_syscalls.c **** //     - sbrk() zur Bereitstellung von Speicher für die dynamische Speicherverwaltung
+  10:newlib_syscalls.c **** //  - Dateiverwaltung (incl. read and Write Buffering)
+  11:newlib_syscalls.c **** //     - fopen() fclose() fread() fwrite()
+  12:newlib_syscalls.c **** //     - stat(), fstat(), link(), unlink(), lseek()-Anweisungen
+  13:newlib_syscalls.c **** //  - Zeitverwaltung
+  14:newlib_syscalls.c **** //     - time() gettimeofday()
+  15:newlib_syscalls.c **** //  - Mathematische Funktionen
+  16:newlib_syscalls.c **** //     - sin() sqrt() ...    für doppelte Genauigkeit
+  17:newlib_syscalls.c **** //     - sinf() sqrtf() ...  für einfache Genauigkeit
+  18:newlib_syscalls.c **** //     - matherr() für Überlauf Unterlauf
+  19:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  20:newlib_syscalls.c **** //Theoretische Konfigurationsmöglichkeiten
+  21:newlib_syscalls.c **** // - Funktionen stilllegen, dass heißt dann auch, dass keine STD-C 
+  22:newlib_syscalls.c **** //   Library Funktionen aufgerufen werden dürfen
+  23:newlib_syscalls.c **** // - Semihosting, dass heißt, dass insbesondere die Dateioperationen 
+  24:newlib_syscalls.c **** //   über den Debugger bedient werden und so auf das Dateisystem des
+  25:newlib_syscalls.c **** //   Host zugegriffen werden kann
+  26:newlib_syscalls.c **** //   https://wiki.segger.com/Semihosting
+  27:newlib_syscalls.c **** // - Teilimplementierung der Funktionen
+  28:newlib_syscalls.c **** // - Vollständige Implementierung der Funktionen
+  29:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  30:newlib_syscalls.c **** //Newlib bietet diverse Konfigurationsmöglichkeiten
+  31:newlib_syscalls.c **** //  - reentrant Fähigkeit: Für Systeme mit OS, wo mehrere Task und damit Systemaufrufe 
+  32:newlib_syscalls.c **** //    parallel laufen können 
+  33:newlib_syscalls.c **** //    - Alle Funktionen enden mit _r  (bspw. _read_r() anstatt _read() und können 
+  34:newlib_syscalls.c **** //      'gleichzeitig' laufen.
+  35:newlib_syscalls.c **** //    - Die reentrant Funktionen beinhalten einen 'struct _reent' Pointer als Parameter,
+  36:newlib_syscalls.c **** //      in dem Kontextspezifische Informationen abgelegt werden (z.B. errno)
+  37:newlib_syscalls.c **** //    - Umschaltung des impureptr notwendig
+  38:newlib_syscalls.c **** //    - Bereitstellung von void __retarget_lock_*() notwendig
+  39:newlib_syscalls.c **** //  - noreentrant Fähgikeit: Für Systeme ohne OS, dementsprechend können Systemaufrufe
+  40:newlib_syscalls.c **** //    nicht unterbrochen werden
+  41:newlib_syscalls.c **** //  - Floating / Point
+  42:newlib_syscalls.c **** //    - Integer Only
+  43:newlib_syscalls.c **** //    - Floating Point und Integer -> ist ausgewählt
+  44:newlib_syscalls.c **** //  - Malloc
+  45:newlib_syscalls.c **** //    - Malloc auf Basis von nano-Malloc(), welches klein aber nicht schnell ist
+  46:newlib_syscalls.c **** //    - Malloc von Doug Lea, welches ein Zwischending zwischen schnell und optimal ist
+  47:newlib_syscalls.c **** //      Dieses ist implementiert
+  48:newlib_syscalls.c **** //      Benötigt mindestens eine Heap-Größe von 3000 Bytes
+  49:newlib_syscalls.c **** //  - SCANF
+  50:newlib_syscalls.c **** //    - SCANF auf Basis eines nano-scanf()
+  51:newlib_syscalls.c **** //    - SCANF auf Basis von ??, 
+  52:newlib_syscalls.c **** //      Dieses ist implementiert
+  53:newlib_syscalls.c **** //
+  54:newlib_syscalls.c **** //         Ohne   IPRINTF   PRINTF     SCANF      PRINTF/SCANF
+  55:newlib_syscalls.c **** // RAM     3324    5038      5038       5160         5160
+  56:newlib_syscalls.c **** // ROM     3e80    b698     10d60      185b0        1c9b8
+  57:newlib_syscalls.c **** // STACK        6b0h=1712  700h=1792  408h=1032
+  58:newlib_syscalls.c **** //
+  59:newlib_syscalls.c **** //Sonstige Informationen
+  60:newlib_syscalls.c **** //-  printf() ist sowohl für integer als auch für float-Zahlen ausgelegt und damit sehr groß
+  61:newlib_syscalls.c **** //- iprintf() ist nur für integer-Zahlen ausgelegt und damit geringer im Speicherbedarf
+  62:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  63:newlib_syscalls.c **** //Sonstiges
+  64:newlib_syscalls.c **** //- Lizenz berücksichtigen
+  65:newlib_syscalls.c **** //- Folgende Funktionen benötigen sbrk() und damit malloc()
+  66:newlib_syscalls.c **** //   - ..printf() unter Nutzung von FloatingPoing Zahlen benötigt malloc()
+  67:newlib_syscalls.c **** //   - ..scanf() 
+  68:newlib_syscalls.c **** //   - fopen() fclose() fgetc() fgets() fputc() fputs() fread()  fwrite() f....()
+  69:newlib_syscalls.c **** //   - getc() getchar() gets() putc() putchar() ungetc()
+  70:newlib_syscalls.c **** //   - perror()  setbuf()   psignal() ...
+  71:newlib_syscalls.c **** //- SourceCode der Library (als auch sin() printf()) kann über github heruntergeladen werden
+  72:newlib_syscalls.c **** //  https://sourceware.org/newlib/libc.html
+  73:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  74:newlib_syscalls.c **** //Weitere C-Library
+  75:newlib_syscalls.c **** //- clibc aus Linux
+  76:newlib_syscalls.c **** //- sglibc
+  77:newlib_syscalls.c **** //- eglibc dietlibc 
+  78:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  79:newlib_syscalls.c **** //See Also
+  80:newlib_syscalls.c **** //http://www.billgatliff.com/newlib.html
+  81:newlib_syscalls.c **** //devkitARM\arm-none-eabi\include\reent.h
+  82:newlib_syscalls.c **** //https://www.embedded.com/design/prototyping-and-development/4024867/Embedding-with-GNU-Newlib
+  83:newlib_syscalls.c **** //https://sourceware.org/newlib/libc.html#Misc 
+  84:newlib_syscalls.c **** //https://www.embecosm.com/appnotes/ean9/ean9-howto-newlib-1.0.html
+  85:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  86:newlib_syscalls.c **** //Porting
+  87:newlib_syscalls.c **** // https://sourceware.org/newlib/libc.html
+  88:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  89:newlib_syscalls.c **** #include "lib/term.h"
+  90:newlib_syscalls.c **** 
+  91:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+  92:newlib_syscalls.c **** // errno und Kontextspezifische-Informationen
+  93:newlib_syscalls.c **** //errno als Beispiel ist im jeden Kontext eigenständig vorhanden, so dass
+  94:newlib_syscalls.c **** //unterschiedliche Fehler in unterschiedlichen Kontexten nicht zur Verwirrung führen
+  95:newlib_syscalls.c **** //Auch hat jeder Kontext seinen eigenen Dateihandlerbereich (stdin, stdout, stderr) so
+  96:newlib_syscalls.c **** //dass jeder Kontext einen anderen Ein-/Ausgabekanal nutzen kann.
+  97:newlib_syscalls.c **** //Zur Speicherung dieser Daten gibt es den _impure_ptr, der zum Laufzeitbeginn eines
+  98:newlib_syscalls.c **** //jeden Kontextes gesetzt werden muss. Der Speicher zum Speichern der Kontextspezifischen
+  99:newlib_syscalls.c **** //Daten muss ebenfalls von Nuter bereitgestellt werden
+ 100:newlib_syscalls.c **** //Hinweis: errno ist in newlib nicht als Variable sondern als Rückgabewert des 
+ 101:newlib_syscalls.c **** //   Funktionsaufrufes __errno(){ return _impure_ptr->errno} definiert
+ 102:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 103:newlib_syscalls.c **** #define MODE_IMPURE_NOP 0
+ 104:newlib_syscalls.c **** #define MODE_IMPURE_ST  1
+ 105:newlib_syscalls.c **** #define MODE_IMPURE_MT  2
+ 106:newlib_syscalls.c **** //Wird spätestens dann benötigt, wenn errno und weitere FileOperationen benötigt werden
+ 107:newlib_syscalls.c **** //Für reines printf/scanf nicht notwendig
+ 108:newlib_syscalls.c **** #define MODE_IMPURE     MODE_IMPURE_NOP
+ 109:newlib_syscalls.c **** 
+ 110:newlib_syscalls.c **** #if   MODE_IMPURE == MODE_IMPURE_NOP
+ 111:newlib_syscalls.c **** #elif MODE_IMPURE == MODE_IMPURE_ST
+ 112:newlib_syscalls.c **** 	#include <reent.h>
+ 113:newlib_syscalls.c **** 	#include <string.h>
+ 114:newlib_syscalls.c **** 	struct _reent reent;
+ 115:newlib_syscalls.c **** 	static void newlib_syscalls_init(void)
+ 116:newlib_syscalls.c **** 	{
+ 117:newlib_syscalls.c **** 		_REENT_INIT_PTR(&reent);
+ 118:newlib_syscalls.c **** 		_impure_ptr = &reent;
+ 119:newlib_syscalls.c **** 	}  
+ 120:newlib_syscalls.c **** 	__attribute__((section(".preinit_array"))) static void(*fcn)(void) __attribute__((unused)) = {newl
+ 121:newlib_syscalls.c **** #elif MODE_IMPURE == MODE_IMPURE_MT
+ 122:newlib_syscalls.c **** #include <reent.h>
+ 123:newlib_syscalls.c **** 	strcut _reent rtbl[OS_MAX_TASKS];
+ 124:newlib_syscalls.c **** 	static void newlib_syscalls_init(void)
+ 125:newlib_syscalls.c **** 	{
+ 126:newlib_syscalls.c **** 		int i;
+ 127:newlib_syscalls.c **** 		for(i=0;i<OS_MAX_TASKS;i++)
+ 128:newlib_syscalls.c **** 			_REENT_INIT_PTR(&rtbl[i]);
+ 129:newlib_syscalls.c **** 		_impure_ptr = &rtbl[0];
+ 130:newlib_syscalls.c **** 	}  
+ 131:newlib_syscalls.c **** 	void OSTaskSwHook(void)
+ 132:newlib_syscalls.c **** 	{
+ 133:newlib_syscalls.c **** 		_impure_ptr = &rtbl[xyz];
+ 134:newlib_syscalls.c **** 	}
+ 135:newlib_syscalls.c **** 	__attribute__((section(".preinit_array"))) static void(*fcn)(void) __attribute__((unused)) = {newl
+ 136:newlib_syscalls.c **** 	//void func(void)
+ 137:newlib_syscalls.c **** 	//{
+ 138:newlib_syscalls.c **** 	//	...
+ 139:newlib_syscalls.c **** 	//	switch(errno)    //switch(*_errno() -> switch(*&_impure_ptr->_errno);
+ 140:newlib_syscalls.c **** 	//}
+ 141:newlib_syscalls.c **** #else
+ 142:newlib_syscalls.c **** 	#error "Inccorret MODE_IMPURE"
+ 143:newlib_syscalls.c **** #endif
+ 144:newlib_syscalls.c **** 
+ 145:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 146:newlib_syscalls.c **** //fork() execve() kill() wait() getpid()-Anweisung
+ 147:newlib_syscalls.c **** //fork aus Posix zum Erzeugen eine neuen Task als Kopie der aktuellen Task
+ 148:newlib_syscalls.c **** //execve -> Transfer control to a new process
+ 149:newlib_syscalls.c **** //kill -> Send a signal.
+ 150:newlib_syscalls.c **** //wait -> Wait for a child process
+ 151:newlib_syscalls.c **** //getpid -> Process-ID;
+ 152:newlib_syscalls.c **** //Starten/Beenden von Task ist nicht Bestandteil von newlib und muss bei Bedarf
+ 153:newlib_syscalls.c **** //über das vorhandene OS händisch nachgebildet oder eben durch eine Fehleranweisung 
+ 154:newlib_syscalls.c **** //deren Nichtexistenz dargestellt werden
+ 155:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 156:newlib_syscalls.c **** #define MODE_TASK_NOP 0
+ 157:newlib_syscalls.c **** #define MODE_TASK_ERR 1
+ 158:newlib_syscalls.c **** #define MODE_TASK     MODE_TASK_ERR
+ 159:newlib_syscalls.c **** 
+ 160:newlib_syscalls.c **** #if    MODE_TASK == MODE_TASK_NOP
+ 161:newlib_syscalls.c **** #elif MODE_TASK == MODE_TASK_ERR
+ 162:newlib_syscalls.c **** 	#include <reent.h>
+ 163:newlib_syscalls.c **** 	#include <errno.h>
+ 164:newlib_syscalls.c **** 	
+ 165:newlib_syscalls.c **** 	int _fork_r (struct _reent *ptr )
+ 166:newlib_syscalls.c **** 	{
+  26              		.loc 1 166 2
+  27              		.cfi_startproc
+  28              		@ Function supports interworking.
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32 0000 04B02DE5 		str	fp, [sp, #-4]!
+  33              		.cfi_def_cfa_offset 4
+  34              		.cfi_offset 11, -4
+  35 0004 00B08DE2 		add	fp, sp, #0
+  36              		.cfi_def_cfa_register 11
+  37 0008 0CD04DE2 		sub	sp, sp, #12
+  38 000c 08000BE5 		str	r0, [fp, #-8]
+ 167:newlib_syscalls.c **** 		ptr->_errno = ENOTSUP;
+  39              		.loc 1 167 15
+  40 0010 08301BE5 		ldr	r3, [fp, #-8]
+  41 0014 8620A0E3 		mov	r2, #134
+  42 0018 002083E5 		str	r2, [r3]
+ 168:newlib_syscalls.c **** 		return -1;
+  43              		.loc 1 168 10
+  44 001c 0030E0E3 		mvn	r3, #0
+ 169:newlib_syscalls.c **** 	}
+  45              		.loc 1 169 2
+  46 0020 0300A0E1 		mov	r0, r3
+  47 0024 00D08BE2 		add	sp, fp, #0
+  48              		.cfi_def_cfa_register 13
+  49              		@ sp needed
+  50 0028 04B09DE4 		ldr	fp, [sp], #4
+  51              		.cfi_restore 11
+  52              		.cfi_def_cfa_offset 0
+  53 002c 1EFF2FE1 		bx	lr
+  54              		.cfi_endproc
+  55              	.LFE2:
+  57              		.section	.text._execve_r,"ax",%progbits
+  58              		.align	2
+  59              		.global	_execve_r
+  60              		.syntax unified
+  61              		.arm
+  63              	_execve_r:
+  64              	.LFB3:
+ 170:newlib_syscalls.c **** 
+ 171:newlib_syscalls.c **** 	int _execve_r (struct _reent *ptr, const char *name, char *const *argv, char *const *env)
+ 172:newlib_syscalls.c **** 	{
+  65              		.loc 1 172 2
+  66              		.cfi_startproc
+  67              		@ Function supports interworking.
+  68              		@ args = 0, pretend = 0, frame = 16
+  69              		@ frame_needed = 1, uses_anonymous_args = 0
+  70              		@ link register save eliminated.
+  71 0000 04B02DE5 		str	fp, [sp, #-4]!
+  72              		.cfi_def_cfa_offset 4
+  73              		.cfi_offset 11, -4
+  74 0004 00B08DE2 		add	fp, sp, #0
+  75              		.cfi_def_cfa_register 11
+  76 0008 14D04DE2 		sub	sp, sp, #20
+  77 000c 08000BE5 		str	r0, [fp, #-8]
+  78 0010 0C100BE5 		str	r1, [fp, #-12]
+  79 0014 10200BE5 		str	r2, [fp, #-16]
+  80 0018 14300BE5 		str	r3, [fp, #-20]
+ 173:newlib_syscalls.c **** 		(void)name;
+ 174:newlib_syscalls.c **** 		(void)argv;
+ 175:newlib_syscalls.c **** 		(void)env;
+ 176:newlib_syscalls.c **** 		ptr->_errno = ENOMEM;
+  81              		.loc 1 176 15
+  82 001c 08301BE5 		ldr	r3, [fp, #-8]
+  83 0020 0C20A0E3 		mov	r2, #12
+  84 0024 002083E5 		str	r2, [r3]
+ 177:newlib_syscalls.c **** 		return -1;
+  85              		.loc 1 177 10
+  86 0028 0030E0E3 		mvn	r3, #0
+ 178:newlib_syscalls.c **** 	}
+  87              		.loc 1 178 2
+  88 002c 0300A0E1 		mov	r0, r3
+  89 0030 00D08BE2 		add	sp, fp, #0
+  90              		.cfi_def_cfa_register 13
+  91              		@ sp needed
+  92 0034 04B09DE4 		ldr	fp, [sp], #4
+  93              		.cfi_restore 11
+  94              		.cfi_def_cfa_offset 0
+  95 0038 1EFF2FE1 		bx	lr
+  96              		.cfi_endproc
+  97              	.LFE3:
+  99              		.section	.text._kill_r,"ax",%progbits
+ 100              		.align	2
+ 101              		.global	_kill_r
+ 102              		.syntax unified
+ 103              		.arm
+ 105              	_kill_r:
+ 106              	.LFB4:
+ 179:newlib_syscalls.c **** 
+ 180:newlib_syscalls.c **** 	int _kill_r (struct _reent *ptr, int pid, int sig)
+ 181:newlib_syscalls.c **** 	{
+ 107              		.loc 1 181 2
+ 108              		.cfi_startproc
+ 109              		@ Function supports interworking.
+ 110              		@ args = 0, pretend = 0, frame = 16
+ 111              		@ frame_needed = 1, uses_anonymous_args = 0
+ 112              		@ link register save eliminated.
+ 113 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 114              		.cfi_def_cfa_offset 4
+ 115              		.cfi_offset 11, -4
+ 116 0004 00B08DE2 		add	fp, sp, #0
+ 117              		.cfi_def_cfa_register 11
+ 118 0008 14D04DE2 		sub	sp, sp, #20
+ 119 000c 08000BE5 		str	r0, [fp, #-8]
+ 120 0010 0C100BE5 		str	r1, [fp, #-12]
+ 121 0014 10200BE5 		str	r2, [fp, #-16]
+ 182:newlib_syscalls.c **** 		(void)pid;
+ 183:newlib_syscalls.c **** 		(void)sig;
+ 184:newlib_syscalls.c **** 		ptr->_errno = EINVAL;
+ 122              		.loc 1 184 15
+ 123 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 124 001c 1620A0E3 		mov	r2, #22
+ 125 0020 002083E5 		str	r2, [r3]
+ 185:newlib_syscalls.c **** 		return -1;
+ 126              		.loc 1 185 10
+ 127 0024 0030E0E3 		mvn	r3, #0
+ 186:newlib_syscalls.c **** 	}
+ 128              		.loc 1 186 2
+ 129 0028 0300A0E1 		mov	r0, r3
+ 130 002c 00D08BE2 		add	sp, fp, #0
+ 131              		.cfi_def_cfa_register 13
+ 132              		@ sp needed
+ 133 0030 04B09DE4 		ldr	fp, [sp], #4
+ 134              		.cfi_restore 11
+ 135              		.cfi_def_cfa_offset 0
+ 136 0034 1EFF2FE1 		bx	lr
+ 137              		.cfi_endproc
+ 138              	.LFE4:
+ 140              		.section	.text._wait_r,"ax",%progbits
+ 141              		.align	2
+ 142              		.global	_wait_r
+ 143              		.syntax unified
+ 144              		.arm
+ 146              	_wait_r:
+ 147              	.LFB5:
+ 187:newlib_syscalls.c **** 
+ 188:newlib_syscalls.c **** 	int _wait_r (struct _reent *ptr, int *status)
+ 189:newlib_syscalls.c **** 	{
+ 148              		.loc 1 189 2
+ 149              		.cfi_startproc
+ 150              		@ Function supports interworking.
+ 151              		@ args = 0, pretend = 0, frame = 8
+ 152              		@ frame_needed = 1, uses_anonymous_args = 0
+ 153              		@ link register save eliminated.
+ 154 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 155              		.cfi_def_cfa_offset 4
+ 156              		.cfi_offset 11, -4
+ 157 0004 00B08DE2 		add	fp, sp, #0
+ 158              		.cfi_def_cfa_register 11
+ 159 0008 0CD04DE2 		sub	sp, sp, #12
+ 160 000c 08000BE5 		str	r0, [fp, #-8]
+ 161 0010 0C100BE5 		str	r1, [fp, #-12]
+ 190:newlib_syscalls.c **** 		(void)status;
+ 191:newlib_syscalls.c **** 		ptr->_errno = ECHILD;
+ 162              		.loc 1 191 15
+ 163 0014 08301BE5 		ldr	r3, [fp, #-8]
+ 164 0018 0A20A0E3 		mov	r2, #10
+ 165 001c 002083E5 		str	r2, [r3]
+ 192:newlib_syscalls.c **** 		return -1;
+ 166              		.loc 1 192 10
+ 167 0020 0030E0E3 		mvn	r3, #0
+ 193:newlib_syscalls.c **** 	}
+ 168              		.loc 1 193 2
+ 169 0024 0300A0E1 		mov	r0, r3
+ 170 0028 00D08BE2 		add	sp, fp, #0
+ 171              		.cfi_def_cfa_register 13
+ 172              		@ sp needed
+ 173 002c 04B09DE4 		ldr	fp, [sp], #4
+ 174              		.cfi_restore 11
+ 175              		.cfi_def_cfa_offset 0
+ 176 0030 1EFF2FE1 		bx	lr
+ 177              		.cfi_endproc
+ 178              	.LFE5:
+ 180              		.section	.text._getpid_r,"ax",%progbits
+ 181              		.align	2
+ 182              		.global	_getpid_r
+ 183              		.syntax unified
+ 184              		.arm
+ 186              	_getpid_r:
+ 187              	.LFB6:
+ 194:newlib_syscalls.c **** 
+ 195:newlib_syscalls.c **** //wird von printf() benötigt
+ 196:newlib_syscalls.c **** 	int _getpid_r(struct _reent *ptr)
+ 197:newlib_syscalls.c **** 	{
+ 188              		.loc 1 197 2
+ 189              		.cfi_startproc
+ 190              		@ Function supports interworking.
+ 191              		@ args = 0, pretend = 0, frame = 8
+ 192              		@ frame_needed = 1, uses_anonymous_args = 0
+ 193              		@ link register save eliminated.
+ 194 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 195              		.cfi_def_cfa_offset 4
+ 196              		.cfi_offset 11, -4
+ 197 0004 00B08DE2 		add	fp, sp, #0
+ 198              		.cfi_def_cfa_register 11
+ 199 0008 0CD04DE2 		sub	sp, sp, #12
+ 200 000c 08000BE5 		str	r0, [fp, #-8]
+ 198:newlib_syscalls.c **** 		(void)ptr;
+ 199:newlib_syscalls.c **** 		//These functions are always successful.
+ 200:newlib_syscalls.c **** 		return 1;
+ 201              		.loc 1 200 10
+ 202 0010 0130A0E3 		mov	r3, #1
+ 201:newlib_syscalls.c **** 	}
+ 203              		.loc 1 201 2
+ 204 0014 0300A0E1 		mov	r0, r3
+ 205 0018 00D08BE2 		add	sp, fp, #0
+ 206              		.cfi_def_cfa_register 13
+ 207              		@ sp needed
+ 208 001c 04B09DE4 		ldr	fp, [sp], #4
+ 209              		.cfi_restore 11
+ 210              		.cfi_def_cfa_offset 0
+ 211 0020 1EFF2FE1 		bx	lr
+ 212              		.cfi_endproc
+ 213              	.LFE6:
+ 215              		.section	.rodata
+ 216              		.align	2
+ 217              	.LC0:
+ 218 0000 48656170 		.ascii	"Heap overflow!\012\000"
+ 218      206F7665 
+ 218      72666C6F 
+ 218      77210A00 
+ 219              		.section	.text._sbrk_r,"ax",%progbits
+ 220              		.align	2
+ 221              		.global	_sbrk_r
+ 222              		.syntax unified
+ 223              		.arm
+ 225              	_sbrk_r:
+ 226              	.LFB7:
+ 202:newlib_syscalls.c **** #else	
+ 203:newlib_syscalls.c **** 	#error "Incorrect MODE_TASK"
+ 204:newlib_syscalls.c **** #endif
+ 205:newlib_syscalls.c **** 
+ 206:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 207:newlib_syscalls.c **** //malloc()- sbrk()-Anweisung
+ 208:newlib_syscalls.c **** //Anweisung für die Dynamische Speicherverwaltung. Wird immer dann aufgerufen,
+ 209:newlib_syscalls.c **** //wenn zuvor noch kein HEAP definiert wurde, bzw. der mit malloc() reservierte
+ 210:newlib_syscalls.c **** //Bereich aufgebraucht wurde. sbrk() gibt keine neuen Bereich zurück, sondern 
+ 211:newlib_syscalls.c **** //vergrößtert nur den bereits vorhandenen!
+ 212:newlib_syscalls.c **** //Für mehr Details siehe Manpage von sbrk()
+ 213:newlib_syscalls.c **** //Die Malloc() Funktionalität benötigt viel Speicher, daher kann Sie durch
+ 214:newlib_syscalls.c **** //einfaches überladen 'ausgeschaltet' werden.
+ 215:newlib_syscalls.c **** //Zur Sicherstellung der Reentrantfähigkeit müssen noch die Funktionen
+ 216:newlib_syscalls.c **** // __malloc_lock()  und __malloc_unlock() bereitgestellt werden, so dass
+ 217:newlib_syscalls.c **** // bei gleichzeitigen Zugriff keine korrupte Daten entstehen.
+ 218:newlib_syscalls.c **** //  - To permit multiple processing contexts in newlib's malloc() implementation, 
+ 219:newlib_syscalls.c **** //    you must also provide the functions __malloc_lock() and __malloc_unlock() 
+ 220:newlib_syscalls.c **** //    to protect your memory pool from corruption during simultaneous allocations. 
+ 221:newlib_syscalls.c **** //    If you are using an RTOS's reentrant memory pool implementation for dynamic 
+ 222:newlib_syscalls.c **** //    memory allocation, however, this heap protection is unnecessary—the RTOS 
+ 223:newlib_syscalls.c **** //    protects the heap itself. I will return to these functions in a moment.
+ 224:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 225:newlib_syscalls.c **** #define MODE_HEAP_NO     1
+ 226:newlib_syscalls.c **** #define MODE_HEAP_NEWLIB 2
+ 227:newlib_syscalls.c **** #define MODE_HEAP_USER   3
+ 228:newlib_syscalls.c **** #define MODE_HEAP      MODE_HEAP_NEWLIB
+ 229:newlib_syscalls.c **** 
+ 230:newlib_syscalls.c **** #if MODE_HEAP == MODE_HEAP_NO
+ 231:newlib_syscalls.c **** 	#include <stdio.h>   //für size_t
+ 232:newlib_syscalls.c **** 	
+ 233:newlib_syscalls.c **** 	void *_sbrk_r (struct _reent *ptr, ptrdiff_t incr)
+ 234:newlib_syscalls.c **** 	{
+ 235:newlib_syscalls.c **** 		return (void *)NULL;
+ 236:newlib_syscalls.c **** 	}
+ 237:newlib_syscalls.c **** 
+ 238:newlib_syscalls.c **** 	void *malloc(size_t size) 
+ 239:newlib_syscalls.c **** 	{
+ 240:newlib_syscalls.c **** 		return (void *)0;
+ 241:newlib_syscalls.c **** 	}
+ 242:newlib_syscalls.c **** 
+ 243:newlib_syscalls.c **** 	void free(void *ptr) 
+ 244:newlib_syscalls.c **** 	{
+ 245:newlib_syscalls.c **** 	}
+ 246:newlib_syscalls.c **** 
+ 247:newlib_syscalls.c **** #elif MODE_HEAP == MODE_HEAP_NEWLIB
+ 248:newlib_syscalls.c **** 	#include <reent.h>
+ 249:newlib_syscalls.c **** 	#include <stdint.h>
+ 250:newlib_syscalls.c **** 	#include <stdlib.h>   //fuer abort()
+ 251:newlib_syscalls.c **** 	#include <unistd.h>   //fuer write()
+ 252:newlib_syscalls.c **** 	#include <errno.h>
+ 253:newlib_syscalls.c **** 	
+ 254:newlib_syscalls.c **** 	extern uint32_t __heap_start__;		//Definiert in link.ld
+ 255:newlib_syscalls.c **** 	extern uint32_t __heap_end__;		//Definiert in link.ld
+ 256:newlib_syscalls.c **** 
+ 257:newlib_syscalls.c **** 	//NewLib fordert, dass _sbrk_r vorhanden ist
+ 258:newlib_syscalls.c **** 	void *_sbrk_r (struct _reent *ptr, ptrdiff_t incr)
+ 259:newlib_syscalls.c **** 	{
+ 227              		.loc 1 259 2
+ 228              		.cfi_startproc
+ 229              		@ Function supports interworking.
+ 230              		@ args = 0, pretend = 0, frame = 16
+ 231              		@ frame_needed = 1, uses_anonymous_args = 0
+ 232 0000 00482DE9 		push	{fp, lr}
+ 233              		.cfi_def_cfa_offset 8
+ 234              		.cfi_offset 11, -8
+ 235              		.cfi_offset 14, -4
+ 236 0004 04B08DE2 		add	fp, sp, #4
+ 237              		.cfi_def_cfa 11, 4
+ 238 0008 10D04DE2 		sub	sp, sp, #16
+ 239 000c 10000BE5 		str	r0, [fp, #-16]
+ 240 0010 14100BE5 		str	r1, [fp, #-20]
+ 260:newlib_syscalls.c **** 		static unsigned char *     heap_end;
+ 261:newlib_syscalls.c **** 			   unsigned char *prev_heap_end;
+ 262:newlib_syscalls.c **** 		(void) ptr;
+ 263:newlib_syscalls.c **** 		
+ 264:newlib_syscalls.c **** 		if( heap_end == 0 ) 
+ 241              		.loc 1 264 16
+ 242 0014 E0309FE5 		ldr	r3, .L17
+ 243 0018 003093E5 		ldr	r3, [r3]
+ 244              		.loc 1 264 5
+ 245 001c 000053E3 		cmp	r3, #0
+ 246 0020 0200001A 		bne	.L12
+ 265:newlib_syscalls.c **** 			heap_end = (unsigned char *)&__heap_start__;
+ 247              		.loc 1 265 13
+ 248 0024 D0309FE5 		ldr	r3, .L17
+ 249 0028 D0209FE5 		ldr	r2, .L17+4
+ 250 002c 002083E5 		str	r2, [r3]
+ 251              	.L12:
+ 266:newlib_syscalls.c **** 
+ 267:newlib_syscalls.c **** 		prev_heap_end = heap_end;
+ 252              		.loc 1 267 17
+ 253 0030 C4309FE5 		ldr	r3, .L17
+ 254 0034 003093E5 		ldr	r3, [r3]
+ 255 0038 0C300BE5 		str	r3, [fp, #-12]
+ 268:newlib_syscalls.c **** 
+ 269:newlib_syscalls.c **** 		if( heap_end + incr > (unsigned char *)&__heap_end__ ) {
+ 256              		.loc 1 269 16
+ 257 003c B8309FE5 		ldr	r3, .L17
+ 258 0040 002093E5 		ldr	r2, [r3]
+ 259 0044 14301BE5 		ldr	r3, [fp, #-20]
+ 260 0048 033082E0 		add	r3, r2, r3
+ 261              		.loc 1 269 5
+ 262 004c B0209FE5 		ldr	r2, .L17+8
+ 263 0050 020053E1 		cmp	r3, r2
+ 264 0054 0800009A 		bls	.L13
+ 270:newlib_syscalls.c **** 			#if 1
+ 271:newlib_syscalls.c **** 			//iprintf() faengt diesen Fehler nicht ab!
+ 272:newlib_syscalls.c **** 			//daher hier der radikale Lösungsweg für dieses Problem!
+ 273:newlib_syscalls.c **** 			/* heap overflow—announce on stderr */
+ 274:newlib_syscalls.c **** 			write( 2, "Heap overflow!\n", 15 );
+ 265              		.loc 1 274 4
+ 266 0058 0F20A0E3 		mov	r2, #15
+ 267 005c A4109FE5 		ldr	r1, .L17+12
+ 268 0060 0200A0E3 		mov	r0, #2
+ 269 0064 A0309FE5 		ldr	r3, .L17+16
+ 270 0068 0FE0A0E1 		mov	lr, pc
+ 271 006c 13FF2FE1 		bx	r3
+ 272              	.LVL0:
+ 275:newlib_syscalls.c **** 			abort();
+ 273              		.loc 1 275 4
+ 274 0070 98309FE5 		ldr	r3, .L17+20
+ 275 0074 0FE0A0E1 		mov	lr, pc
+ 276 0078 13FF2FE1 		bx	r3
+ 277              	.LVL1:
+ 278              	.L13:
+ 276:newlib_syscalls.c **** 			#else
+ 277:newlib_syscalls.c **** 			(ptr)->_errno=ENOMEM;
+ 278:newlib_syscalls.c **** 			return (void *)-1;
+ 279:newlib_syscalls.c **** 			#endif
+ 280:newlib_syscalls.c **** 		}
+ 281:newlib_syscalls.c **** 
+ 282:newlib_syscalls.c **** 		heap_end += incr;
+ 279              		.loc 1 282 12
+ 280 007c 78309FE5 		ldr	r3, .L17
+ 281 0080 002093E5 		ldr	r2, [r3]
+ 282 0084 14301BE5 		ldr	r3, [fp, #-20]
+ 283 0088 033082E0 		add	r3, r2, r3
+ 284 008c 68209FE5 		ldr	r2, .L17
+ 285 0090 003082E5 		str	r3, [r2]
+ 286              	.LBB2:
+ 283:newlib_syscalls.c **** #if 1
+ 284:newlib_syscalls.c **** 		static unsigned char sbrk_fill=0x47;
+ 285:newlib_syscalls.c **** 		for(unsigned char *ptr=prev_heap_end;ptr<heap_end;ptr++)
+ 287              		.loc 1 285 22
+ 288 0094 0C301BE5 		ldr	r3, [fp, #-12]
+ 289 0098 08300BE5 		str	r3, [fp, #-8]
+ 290              		.loc 1 285 3
+ 291 009c 060000EA 		b	.L14
+ 292              	.L15:
+ 286:newlib_syscalls.c **** 			*ptr=sbrk_fill;
+ 293              		.loc 1 286 8
+ 294 00a0 6C309FE5 		ldr	r3, .L17+24
+ 295 00a4 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 296 00a8 08301BE5 		ldr	r3, [fp, #-8]
+ 297 00ac 0020C3E5 		strb	r2, [r3]
+ 285:newlib_syscalls.c **** 			*ptr=sbrk_fill;
+ 298              		.loc 1 285 56 discriminator 3
+ 299 00b0 08301BE5 		ldr	r3, [fp, #-8]
+ 300 00b4 013083E2 		add	r3, r3, #1
+ 301 00b8 08300BE5 		str	r3, [fp, #-8]
+ 302              	.L14:
+ 285:newlib_syscalls.c **** 			*ptr=sbrk_fill;
+ 303              		.loc 1 285 43 discriminator 1
+ 304 00bc 38309FE5 		ldr	r3, .L17
+ 305 00c0 003093E5 		ldr	r3, [r3]
+ 306 00c4 08201BE5 		ldr	r2, [fp, #-8]
+ 307 00c8 030052E1 		cmp	r2, r3
+ 308 00cc F3FFFF3A 		bcc	.L15
+ 309              	.LBE2:
+ 287:newlib_syscalls.c **** 		sbrk_fill++;
+ 310              		.loc 1 287 12
+ 311 00d0 3C309FE5 		ldr	r3, .L17+24
+ 312 00d4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 313 00d8 013083E2 		add	r3, r3, #1
+ 314 00dc FF2003E2 		and	r2, r3, #255
+ 315 00e0 2C309FE5 		ldr	r3, .L17+24
+ 316 00e4 0020C3E5 		strb	r2, [r3]
+ 288:newlib_syscalls.c **** #endif
+ 289:newlib_syscalls.c **** 		return (void *) prev_heap_end;
+ 317              		.loc 1 289 10
+ 318 00e8 0C301BE5 		ldr	r3, [fp, #-12]
+ 290:newlib_syscalls.c **** 	}
+ 319              		.loc 1 290 2
+ 320 00ec 0300A0E1 		mov	r0, r3
+ 321 00f0 04D04BE2 		sub	sp, fp, #4
+ 322              		.cfi_def_cfa 13, 8
+ 323              		@ sp needed
+ 324 00f4 0048BDE8 		pop	{fp, lr}
+ 325              		.cfi_restore 14
+ 326              		.cfi_restore 11
+ 327              		.cfi_def_cfa_offset 0
+ 328 00f8 1EFF2FE1 		bx	lr
+ 329              	.L18:
+ 330              		.align	2
+ 331              	.L17:
+ 332 00fc 00000000 		.word	heap_end.1
+ 333 0100 00000000 		.word	__heap_start__
+ 334 0104 00000000 		.word	__heap_end__
+ 335 0108 00000000 		.word	.LC0
+ 336 010c 00000000 		.word	write
+ 337 0110 00000000 		.word	abort
+ 338 0114 00000000 		.word	sbrk_fill.0
+ 339              		.cfi_endproc
+ 340              	.LFE7:
+ 342              		.section	.text.__malloc_lock,"ax",%progbits
+ 343              		.align	2
+ 344              		.global	__malloc_lock
+ 345              		.syntax unified
+ 346              		.arm
+ 348              	__malloc_lock:
+ 349              	.LFB8:
+ 291:newlib_syscalls.c **** 	//Für Multitasking-Betrieb 
+ 292:newlib_syscalls.c **** 	void __malloc_lock(struct _reent *r)
+ 293:newlib_syscalls.c **** 	{
+ 350              		.loc 1 293 2
+ 351              		.cfi_startproc
+ 352              		@ Function supports interworking.
+ 353              		@ args = 0, pretend = 0, frame = 8
+ 354              		@ frame_needed = 1, uses_anonymous_args = 0
+ 355              		@ link register save eliminated.
+ 356 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 357              		.cfi_def_cfa_offset 4
+ 358              		.cfi_offset 11, -4
+ 359 0004 00B08DE2 		add	fp, sp, #0
+ 360              		.cfi_def_cfa_register 11
+ 361 0008 0CD04DE2 		sub	sp, sp, #12
+ 362 000c 08000BE5 		str	r0, [fp, #-8]
+ 294:newlib_syscalls.c **** 		(void) r;
+ 295:newlib_syscalls.c **** 	}
+ 363              		.loc 1 295 2
+ 364 0010 0000A0E1 		nop
+ 365 0014 00D08BE2 		add	sp, fp, #0
+ 366              		.cfi_def_cfa_register 13
+ 367              		@ sp needed
+ 368 0018 04B09DE4 		ldr	fp, [sp], #4
+ 369              		.cfi_restore 11
+ 370              		.cfi_def_cfa_offset 0
+ 371 001c 1EFF2FE1 		bx	lr
+ 372              		.cfi_endproc
+ 373              	.LFE8:
+ 375              		.section	.text.__malloc_unlock,"ax",%progbits
+ 376              		.align	2
+ 377              		.global	__malloc_unlock
+ 378              		.syntax unified
+ 379              		.arm
+ 381              	__malloc_unlock:
+ 382              	.LFB9:
+ 296:newlib_syscalls.c **** 	void __malloc_unlock(struct _reent *r)
+ 297:newlib_syscalls.c **** 	{
+ 383              		.loc 1 297 2
+ 384              		.cfi_startproc
+ 385              		@ Function supports interworking.
+ 386              		@ args = 0, pretend = 0, frame = 8
+ 387              		@ frame_needed = 1, uses_anonymous_args = 0
+ 388              		@ link register save eliminated.
+ 389 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 390              		.cfi_def_cfa_offset 4
+ 391              		.cfi_offset 11, -4
+ 392 0004 00B08DE2 		add	fp, sp, #0
+ 393              		.cfi_def_cfa_register 11
+ 394 0008 0CD04DE2 		sub	sp, sp, #12
+ 395 000c 08000BE5 		str	r0, [fp, #-8]
+ 298:newlib_syscalls.c **** 		(void) r;
+ 299:newlib_syscalls.c **** 	}
+ 396              		.loc 1 299 2
+ 397 0010 0000A0E1 		nop
+ 398 0014 00D08BE2 		add	sp, fp, #0
+ 399              		.cfi_def_cfa_register 13
+ 400              		@ sp needed
+ 401 0018 04B09DE4 		ldr	fp, [sp], #4
+ 402              		.cfi_restore 11
+ 403              		.cfi_def_cfa_offset 0
+ 404 001c 1EFF2FE1 		bx	lr
+ 405              		.cfi_endproc
+ 406              	.LFE9:
+ 408              		.section	.text._open_r,"ax",%progbits
+ 409              		.align	2
+ 410              		.global	_open_r
+ 411              		.syntax unified
+ 412              		.arm
+ 414              	_open_r:
+ 415              	.LFB13:
+ 300:newlib_syscalls.c **** 	
+ 301:newlib_syscalls.c **** #elif MODE_HEAP == MODE_HEAP_USER
+ 302:newlib_syscalls.c **** 	extern uint32_t __heap_start__;		//Definiert in link.ld
+ 303:newlib_syscalls.c **** 	extern uint32_t __heap_end__;		//Definiert in link.ld
+ 304:newlib_syscalls.c **** 
+ 305:newlib_syscalls.c **** 	typedef struct HEAP_ST {
+ 306:newlib_syscalls.c **** 		struct HEAP_ST *prev;	//Zeiger auf vorherigen Verwaltungsblock
+ 307:newlib_syscalls.c **** 		struct HEAP_ST *next;	//Zeiger auf nächsten Verwaltungsblock
+ 308:newlib_syscalls.c **** 		short    size;			//positive Wert  -> Speicherblock belegt
+ 309:newlib_syscalls.c **** 								//negativer Wert -> Speicherbereich frei
+ 310:newlib_syscalls.c **** 		short    crc;   		//Zum Überwachen des Speicherbereiches
+ 311:newlib_syscalls.c **** 								//= Quersumme über next, prev und size
+ 312:newlib_syscalls.c **** 	} HEAP_STRUCT;
+ 313:newlib_syscalls.c **** 
+ 314:newlib_syscalls.c **** 	void *_sbrk_r (struct _reent *ptr, ptrdiff_t incr)
+ 315:newlib_syscalls.c **** 	{
+ 316:newlib_syscalls.c **** 		return (void *)-1;
+ 317:newlib_syscalls.c **** 	}
+ 318:newlib_syscalls.c **** 	
+ 319:newlib_syscalls.c **** 	void *malloc(size_t size) 
+ 320:newlib_syscalls.c **** 	{
+ 321:newlib_syscalls.c **** 		return (void *)0;
+ 322:newlib_syscalls.c **** 	}
+ 323:newlib_syscalls.c **** 
+ 324:newlib_syscalls.c **** 	void free(void *ptr) 
+ 325:newlib_syscalls.c **** 	{
+ 326:newlib_syscalls.c **** 	}
+ 327:newlib_syscalls.c **** 
+ 328:newlib_syscalls.c **** #else
+ 329:newlib_syscalls.c **** 	#error "Incorrect MODE_HEAP"
+ 330:newlib_syscalls.c **** #endif
+ 331:newlib_syscalls.c **** 
+ 332:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 333:newlib_syscalls.c **** //read()/write()-Anweisung
+ 334:newlib_syscalls.c **** //Die read()/write() Funktionen werden sowohl für stdin/stdout/stderr als auch für alle 
+ 335:newlib_syscalls.c **** //Dateioperationen aufgerufen. In der newlib Implementierung ist gleichermaßen kein 
+ 336:newlib_syscalls.c **** //Dateisystem als auch kein Terminalsystem implementiert, so dass diese Funktionalitäten
+ 337:newlib_syscalls.c **** //durch den Anwender bei Bedarf bereitgestellt werden müssen
+ 338:newlib_syscalls.c **** //  - Die ersten 3 Dateihandler sind defaultmäßig geöffnet und wie folgt vorbelegt
+ 339:newlib_syscalls.c **** //      0 -> stdin
+ 340:newlib_syscalls.c **** //      1 -> stdout
+ 341:newlib_syscalls.c **** //      2 -> stderr
+ 342:newlib_syscalls.c **** //  - mit jeden open() werden dann Dateihandler > 2 zurückgegeben
+ 343:newlib_syscalls.c **** //  - die Aufrufhierarchie von printf() / scanf() sieht wie folgt aus:
+ 344:newlib_syscalls.c **** //      printf() -> puts() -> write(stdout,...) -> _write_r(...,1,...)
+ 345:newlib_syscalls.c **** //      scanf()  -> getc() -> read(stdin,...)   -> _read_r(...,0,...)
+ 346:newlib_syscalls.c **** //Alle IO-Operationen werden somit über _read_r() und _write_r() abgebildet,
+ 347:newlib_syscalls.c **** //welche somit entsprechend der Funktionalität bereitgestellt werden müssen
+ 348:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 349:newlib_syscalls.c **** #define MODE_RW_NOP       0
+ 350:newlib_syscalls.c **** #define MODE_RW_UARTONLY  1
+ 351:newlib_syscalls.c **** #define MODE_RW_FULL      2
+ 352:newlib_syscalls.c **** #define MODE_RW           MODE_RW_UARTONLY
+ 353:newlib_syscalls.c **** 
+ 354:newlib_syscalls.c **** #if   MODE_RW == MODE_RW_NOP
+ 355:newlib_syscalls.c **** 	_ssize_t _read_r (struct _reent *r, int fileDesc, void *ptr, size_t len)
+ 356:newlib_syscalls.c **** 	{ return -1; }
+ 357:newlib_syscalls.c **** 	_ssize_t _write_r(struct _reent *r, int fileDesc,const void *ptr,size_t len)
+ 358:newlib_syscalls.c **** 	{ return -1; }
+ 359:newlib_syscalls.c **** 	
+ 360:newlib_syscalls.c **** #elif MODE_RW == MODE_RW_UARTONLY
+ 361:newlib_syscalls.c **** 	#include <stdio.h>   //für EOF
+ 362:newlib_syscalls.c **** 	#include <sys/types.h>
+ 363:newlib_syscalls.c **** 	#include <sys/stat.h>
+ 364:newlib_syscalls.c **** 	#include <unistd.h>
+ 365:newlib_syscalls.c **** 	#include <errno.h>
+ 366:newlib_syscalls.c **** 	
+ 367:newlib_syscalls.c **** 	//NewLib doesnt call open() for stdin/stdout/stderr
+ 368:newlib_syscalls.c **** 	int _open_r ( struct _reent *r, const char *file, int flags, int mode )
+ 369:newlib_syscalls.c **** 	{
+ 416              		.loc 1 369 2
+ 417              		.cfi_startproc
+ 418              		@ Function supports interworking.
+ 419              		@ args = 0, pretend = 0, frame = 16
+ 420              		@ frame_needed = 1, uses_anonymous_args = 0
+ 421              		@ link register save eliminated.
+ 422 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 423              		.cfi_def_cfa_offset 4
+ 424              		.cfi_offset 11, -4
+ 425 0004 00B08DE2 		add	fp, sp, #0
+ 426              		.cfi_def_cfa_register 11
+ 427 0008 14D04DE2 		sub	sp, sp, #20
+ 428 000c 08000BE5 		str	r0, [fp, #-8]
+ 429 0010 0C100BE5 		str	r1, [fp, #-12]
+ 430 0014 10200BE5 		str	r2, [fp, #-16]
+ 431 0018 14300BE5 		str	r3, [fp, #-20]
+ 370:newlib_syscalls.c **** 		(void) r;
+ 371:newlib_syscalls.c **** 		(void) file;
+ 372:newlib_syscalls.c **** 		(void) flags;
+ 373:newlib_syscalls.c **** 		(void) mode;
+ 374:newlib_syscalls.c **** 		return -1; 
+ 432              		.loc 1 374 10
+ 433 001c 0030E0E3 		mvn	r3, #0
+ 375:newlib_syscalls.c **** 	}
+ 434              		.loc 1 375 2
+ 435 0020 0300A0E1 		mov	r0, r3
+ 436 0024 00D08BE2 		add	sp, fp, #0
+ 437              		.cfi_def_cfa_register 13
+ 438              		@ sp needed
+ 439 0028 04B09DE4 		ldr	fp, [sp], #4
+ 440              		.cfi_restore 11
+ 441              		.cfi_def_cfa_offset 0
+ 442 002c 1EFF2FE1 		bx	lr
+ 443              		.cfi_endproc
+ 444              	.LFE13:
+ 446              		.section	.text._close_r,"ax",%progbits
+ 447              		.align	2
+ 448              		.global	_close_r
+ 449              		.syntax unified
+ 450              		.arm
+ 452              	_close_r:
+ 453              	.LFB14:
+ 376:newlib_syscalls.c **** 
+ 377:newlib_syscalls.c **** 	int _close_r(struct _reent *r, int fd )
+ 378:newlib_syscalls.c **** 	{ 
+ 454              		.loc 1 378 2
+ 455              		.cfi_startproc
+ 456              		@ Function supports interworking.
+ 457              		@ args = 0, pretend = 0, frame = 8
+ 458              		@ frame_needed = 1, uses_anonymous_args = 0
+ 459              		@ link register save eliminated.
+ 460 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 461              		.cfi_def_cfa_offset 4
+ 462              		.cfi_offset 11, -4
+ 463 0004 00B08DE2 		add	fp, sp, #0
+ 464              		.cfi_def_cfa_register 11
+ 465 0008 0CD04DE2 		sub	sp, sp, #12
+ 466 000c 08000BE5 		str	r0, [fp, #-8]
+ 467 0010 0C100BE5 		str	r1, [fp, #-12]
+ 379:newlib_syscalls.c **** 		(void) r;
+ 380:newlib_syscalls.c **** 		(void) fd;
+ 381:newlib_syscalls.c **** 		return -1; 
+ 468              		.loc 1 381 10
+ 469 0014 0030E0E3 		mvn	r3, #0
+ 382:newlib_syscalls.c **** 	}
+ 470              		.loc 1 382 2
+ 471 0018 0300A0E1 		mov	r0, r3
+ 472 001c 00D08BE2 		add	sp, fp, #0
+ 473              		.cfi_def_cfa_register 13
+ 474              		@ sp needed
+ 475 0020 04B09DE4 		ldr	fp, [sp], #4
+ 476              		.cfi_restore 11
+ 477              		.cfi_def_cfa_offset 0
+ 478 0024 1EFF2FE1 		bx	lr
+ 479              		.cfi_endproc
+ 480              	.LFE14:
+ 482              		.section	.text._read_r,"ax",%progbits
+ 483              		.align	2
+ 484              		.global	_read_r
+ 485              		.syntax unified
+ 486              		.arm
+ 488              	_read_r:
+ 489              	.LFB15:
+ 383:newlib_syscalls.c **** 
+ 384:newlib_syscalls.c **** 	_ssize_t _read_r (struct _reent *r, int fileDesc, void *ptr, size_t len)
+ 385:newlib_syscalls.c **** 	{
+ 490              		.loc 1 385 2
+ 491              		.cfi_startproc
+ 492              		@ Function supports interworking.
+ 493              		@ args = 0, pretend = 0, frame = 32
+ 494              		@ frame_needed = 1, uses_anonymous_args = 0
+ 495 0000 00482DE9 		push	{fp, lr}
+ 496              		.cfi_def_cfa_offset 8
+ 497              		.cfi_offset 11, -8
+ 498              		.cfi_offset 14, -4
+ 499 0004 04B08DE2 		add	fp, sp, #4
+ 500              		.cfi_def_cfa 11, 4
+ 501 0008 20D04DE2 		sub	sp, sp, #32
+ 502 000c 18000BE5 		str	r0, [fp, #-24]
+ 503 0010 1C100BE5 		str	r1, [fp, #-28]
+ 504 0014 20200BE5 		str	r2, [fp, #-32]
+ 505 0018 24300BE5 		str	r3, [fp, #-36]
+ 386:newlib_syscalls.c **** 		/* GetChar : Your implementation to receive the character from the serial port.*/
+ 387:newlib_syscalls.c **** 		size_t i;
+ 388:newlib_syscalls.c **** 		char *p=ptr;
+ 506              		.loc 1 388 9
+ 507 001c 20301BE5 		ldr	r3, [fp, #-32]
+ 508 0020 0C300BE5 		str	r3, [fp, #-12]
+ 389:newlib_syscalls.c **** 		(void) r;        //wird hier nicht benötigt
+ 390:newlib_syscalls.c **** 		(void) fileDesc; //sollte aufgrund von scanf immer den Wert 0 haben
+ 391:newlib_syscalls.c **** 		for(i=0;i<len;i++) {
+ 509              		.loc 1 391 8
+ 510 0024 0030A0E3 		mov	r3, #0
+ 511 0028 08300BE5 		str	r3, [fp, #-8]
+ 512              		.loc 1 391 3
+ 513 002c 1B0000EA 		b	.L26
+ 514              	.L30:
+ 515              	.LBB3:
+ 392:newlib_syscalls.c **** 			unsigned char c;
+ 393:newlib_syscalls.c **** 			(void)term_read(&c,ASYNCSYNC_BLOCK);
+ 516              		.loc 1 393 10
+ 517 0030 0D304BE2 		sub	r3, fp, #13
+ 518 0034 0110A0E3 		mov	r1, #1
+ 519 0038 0300A0E1 		mov	r0, r3
+ 520 003c 80309FE5 		ldr	r3, .L31
+ 521 0040 0FE0A0E1 		mov	lr, pc
+ 522 0044 13FF2FE1 		bx	r3
+ 523              	.LVL2:
+ 394:newlib_syscalls.c **** 			if((c=='\n') || (c=='\r')) {
+ 524              		.loc 1 394 9
+ 525 0048 0D305BE5 		ldrb	r3, [fp, #-13]	@ zero_extendqisi2
+ 526              		.loc 1 394 6
+ 527 004c 0A0053E3 		cmp	r3, #10
+ 528 0050 0200000A 		beq	.L27
+ 529              		.loc 1 394 22 discriminator 1
+ 530 0054 0D305BE5 		ldrb	r3, [fp, #-13]	@ zero_extendqisi2
+ 531              		.loc 1 394 17 discriminator 1
+ 532 0058 0D0053E3 		cmp	r3, #13
+ 533 005c 0700001A 		bne	.L28
+ 534              	.L27:
+ 395:newlib_syscalls.c **** 				*p++=0;//EOF;
+ 535              		.loc 1 395 7
+ 536 0060 0C301BE5 		ldr	r3, [fp, #-12]
+ 537 0064 012083E2 		add	r2, r3, #1
+ 538 0068 0C200BE5 		str	r2, [fp, #-12]
+ 539              		.loc 1 395 9
+ 540 006c 0020A0E3 		mov	r2, #0
+ 541 0070 0020C3E5 		strb	r2, [r3]
+ 396:newlib_syscalls.c **** 				return i+1;
+ 542              		.loc 1 396 13
+ 543 0074 08301BE5 		ldr	r3, [fp, #-8]
+ 544 0078 013083E2 		add	r3, r3, #1
+ 545 007c 0C0000EA 		b	.L29
+ 546              	.L28:
+ 397:newlib_syscalls.c **** 			}
+ 398:newlib_syscalls.c **** 			*p++=(char)c;
+ 547              		.loc 1 398 6
+ 548 0080 0C301BE5 		ldr	r3, [fp, #-12]
+ 549 0084 012083E2 		add	r2, r3, #1
+ 550 0088 0C200BE5 		str	r2, [fp, #-12]
+ 551              		.loc 1 398 8
+ 552 008c 0D205BE5 		ldrb	r2, [fp, #-13]	@ zero_extendqisi2
+ 553 0090 0020C3E5 		strb	r2, [r3]
+ 554              	.LBE3:
+ 391:newlib_syscalls.c **** 			unsigned char c;
+ 555              		.loc 1 391 18 discriminator 2
+ 556 0094 08301BE5 		ldr	r3, [fp, #-8]
+ 557 0098 013083E2 		add	r3, r3, #1
+ 558 009c 08300BE5 		str	r3, [fp, #-8]
+ 559              	.L26:
+ 391:newlib_syscalls.c **** 			unsigned char c;
+ 560              		.loc 1 391 12 discriminator 1
+ 561 00a0 08201BE5 		ldr	r2, [fp, #-8]
+ 562 00a4 24301BE5 		ldr	r3, [fp, #-36]
+ 563 00a8 030052E1 		cmp	r2, r3
+ 564 00ac DFFFFF3A 		bcc	.L30
+ 399:newlib_syscalls.c **** 			//if(error)
+ 400:newlib_syscalls.c **** 			//  r->errno=EIO;
+ 401:newlib_syscalls.c **** 		}
+ 402:newlib_syscalls.c **** 		return (len);
+ 565              		.loc 1 402 10
+ 566 00b0 24301BE5 		ldr	r3, [fp, #-36]
+ 567              	.L29:
+ 403:newlib_syscalls.c **** 	}
+ 568              		.loc 1 403 2
+ 569 00b4 0300A0E1 		mov	r0, r3
+ 570 00b8 04D04BE2 		sub	sp, fp, #4
+ 571              		.cfi_def_cfa 13, 8
+ 572              		@ sp needed
+ 573 00bc 0048BDE8 		pop	{fp, lr}
+ 574              		.cfi_restore 14
+ 575              		.cfi_restore 11
+ 576              		.cfi_def_cfa_offset 0
+ 577 00c0 1EFF2FE1 		bx	lr
+ 578              	.L32:
+ 579              		.align	2
+ 580              	.L31:
+ 581 00c4 00000000 		.word	term_read
+ 582              		.cfi_endproc
+ 583              	.LFE15:
+ 585              		.section	.text._write_r,"ax",%progbits
+ 586              		.align	2
+ 587              		.global	_write_r
+ 588              		.syntax unified
+ 589              		.arm
+ 591              	_write_r:
+ 592              	.LFB16:
+ 404:newlib_syscalls.c **** 
+ 405:newlib_syscalls.c **** #if 1
+ 406:newlib_syscalls.c **** 	_ssize_t _write_r(struct _reent *r, int fileDesc,const void *ptr,size_t len)
+ 407:newlib_syscalls.c **** 	{
+ 593              		.loc 1 407 2
+ 594              		.cfi_startproc
+ 595              		@ Function supports interworking.
+ 596              		@ args = 0, pretend = 0, frame = 24
+ 597              		@ frame_needed = 1, uses_anonymous_args = 0
+ 598 0000 00482DE9 		push	{fp, lr}
+ 599              		.cfi_def_cfa_offset 8
+ 600              		.cfi_offset 11, -8
+ 601              		.cfi_offset 14, -4
+ 602 0004 04B08DE2 		add	fp, sp, #4
+ 603              		.cfi_def_cfa 11, 4
+ 604 0008 18D04DE2 		sub	sp, sp, #24
+ 605 000c 10000BE5 		str	r0, [fp, #-16]
+ 606 0010 14100BE5 		str	r1, [fp, #-20]
+ 607 0014 18200BE5 		str	r2, [fp, #-24]
+ 608 0018 1C300BE5 		str	r3, [fp, #-28]
+ 408:newlib_syscalls.c **** 		/* PutChar : Your implementation to send the character to the serial port.*/
+ 409:newlib_syscalls.c **** 		size_t  i;
+ 410:newlib_syscalls.c **** 		char *p=(char *)ptr;
+ 609              		.loc 1 410 9
+ 610 001c 18301BE5 		ldr	r3, [fp, #-24]
+ 611 0020 0C300BE5 		str	r3, [fp, #-12]
+ 411:newlib_syscalls.c **** 		(void) r;        //wird hier nicht benötigt
+ 412:newlib_syscalls.c **** 		(void) fileDesc; //sollte aufgrund von printf immer den Wert 1 haben
+ 413:newlib_syscalls.c **** 		for(i=0;i<len;i++) {      
+ 612              		.loc 1 413 8
+ 613 0024 0030A0E3 		mov	r3, #0
+ 614 0028 08300BE5 		str	r3, [fp, #-8]
+ 615              		.loc 1 413 3
+ 616 002c 0B0000EA 		b	.L34
+ 617              	.L35:
+ 414:newlib_syscalls.c **** 			(void)term_char(*p++,ASYNCSYNC_BLOCK);
+ 618              		.loc 1 414 22
+ 619 0030 0C301BE5 		ldr	r3, [fp, #-12]
+ 620 0034 012083E2 		add	r2, r3, #1
+ 621 0038 0C200BE5 		str	r2, [fp, #-12]
+ 622              		.loc 1 414 10
+ 623 003c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 624 0040 0110A0E3 		mov	r1, #1
+ 625 0044 0300A0E1 		mov	r0, r3
+ 626 0048 34309FE5 		ldr	r3, .L37
+ 627 004c 0FE0A0E1 		mov	lr, pc
+ 628 0050 13FF2FE1 		bx	r3
+ 629              	.LVL3:
+ 413:newlib_syscalls.c **** 			(void)term_char(*p++,ASYNCSYNC_BLOCK);
+ 630              		.loc 1 413 18 discriminator 3
+ 631 0054 08301BE5 		ldr	r3, [fp, #-8]
+ 632 0058 013083E2 		add	r3, r3, #1
+ 633 005c 08300BE5 		str	r3, [fp, #-8]
+ 634              	.L34:
+ 413:newlib_syscalls.c **** 			(void)term_char(*p++,ASYNCSYNC_BLOCK);
+ 635              		.loc 1 413 12 discriminator 1
+ 636 0060 08201BE5 		ldr	r2, [fp, #-8]
+ 637 0064 1C301BE5 		ldr	r3, [fp, #-28]
+ 638 0068 030052E1 		cmp	r2, r3
+ 639 006c EFFFFF3A 		bcc	.L35
+ 415:newlib_syscalls.c **** 			//if(error)
+ 416:newlib_syscalls.c **** 			//  r->errno=EIO;
+ 417:newlib_syscalls.c **** 		} 
+ 418:newlib_syscalls.c **** 		//Wenn hier nicht die angeforderte Länge zurückgegeben wird,
+ 419:newlib_syscalls.c **** 		//ruft newlib die _write_r() erneut auf
+ 420:newlib_syscalls.c **** 		return len;
+ 640              		.loc 1 420 10
+ 641 0070 1C301BE5 		ldr	r3, [fp, #-28]
+ 421:newlib_syscalls.c **** 	}
+ 642              		.loc 1 421 2
+ 643 0074 0300A0E1 		mov	r0, r3
+ 644 0078 04D04BE2 		sub	sp, fp, #4
+ 645              		.cfi_def_cfa 13, 8
+ 646              		@ sp needed
+ 647 007c 0048BDE8 		pop	{fp, lr}
+ 648              		.cfi_restore 14
+ 649              		.cfi_restore 11
+ 650              		.cfi_def_cfa_offset 0
+ 651 0080 1EFF2FE1 		bx	lr
+ 652              	.L38:
+ 653              		.align	2
+ 654              	.L37:
+ 655 0084 00000000 		.word	term_char
+ 656              		.cfi_endproc
+ 657              	.LFE16:
+ 659              		.section	.text._fstat_r,"ax",%progbits
+ 660              		.align	2
+ 661              		.global	_fstat_r
+ 662              		.syntax unified
+ 663              		.arm
+ 665              	_fstat_r:
+ 666              	.LFB17:
+ 422:newlib_syscalls.c **** #else 
+ 423:newlib_syscalls.c **** 	ssize_t _write(int fd, const void *buf, size_t count)
+ 424:newlib_syscalls.c **** 	{
+ 425:newlib_syscalls.c **** 		(void)fd;
+ 426:newlib_syscalls.c **** 		(void) buf;
+ 427:newlib_syscalls.c **** 		(void)count;
+ 428:newlib_syscalls.c **** 		return 0;
+ 429:newlib_syscalls.c **** 	}
+ 430:newlib_syscalls.c **** #endif
+ 431:newlib_syscalls.c **** /*	int _stat_r (  struct _reent *r, const char *file,struct stat *pstat ) */
+ 432:newlib_syscalls.c **** 	int _fstat_r ( struct _reent *r, int fd          ,struct stat *pstat )
+ 433:newlib_syscalls.c **** 	{
+ 667              		.loc 1 433 2
+ 668              		.cfi_startproc
+ 669              		@ Function supports interworking.
+ 670              		@ args = 0, pretend = 0, frame = 16
+ 671              		@ frame_needed = 1, uses_anonymous_args = 0
+ 672              		@ link register save eliminated.
+ 673 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 674              		.cfi_def_cfa_offset 4
+ 675              		.cfi_offset 11, -4
+ 676 0004 00B08DE2 		add	fp, sp, #0
+ 677              		.cfi_def_cfa_register 11
+ 678 0008 14D04DE2 		sub	sp, sp, #20
+ 679 000c 08000BE5 		str	r0, [fp, #-8]
+ 680 0010 0C100BE5 		str	r1, [fp, #-12]
+ 681 0014 10200BE5 		str	r2, [fp, #-16]
+ 434:newlib_syscalls.c **** 		(void) r;
+ 435:newlib_syscalls.c **** 		(void) fd;
+ 436:newlib_syscalls.c **** 		//Angabe, dass es sich bei diesem File um eine Character-Device handelt
+ 437:newlib_syscalls.c **** 		pstat->st_mode = S_IFCHR;
+ 682              		.loc 1 437 18
+ 683 0018 10301BE5 		ldr	r3, [fp, #-16]
+ 684 001c 022AA0E3 		mov	r2, #8192
+ 685 0020 042083E5 		str	r2, [r3, #4]
+ 438:newlib_syscalls.c **** 		pstat->st_blksize = 256; //Sollte passend zur FIFO Größe sein
+ 686              		.loc 1 438 21
+ 687 0024 10301BE5 		ldr	r3, [fp, #-16]
+ 688 0028 012CA0E3 		mov	r2, #256
+ 689 002c 482083E5 		str	r2, [r3, #72]
+ 439:newlib_syscalls.c **** 		return 0;
+ 690              		.loc 1 439 10
+ 691 0030 0030A0E3 		mov	r3, #0
+ 440:newlib_syscalls.c **** 	}
+ 692              		.loc 1 440 2
+ 693 0034 0300A0E1 		mov	r0, r3
+ 694 0038 00D08BE2 		add	sp, fp, #0
+ 695              		.cfi_def_cfa_register 13
+ 696              		@ sp needed
+ 697 003c 04B09DE4 		ldr	fp, [sp], #4
+ 698              		.cfi_restore 11
+ 699              		.cfi_def_cfa_offset 0
+ 700 0040 1EFF2FE1 		bx	lr
+ 701              		.cfi_endproc
+ 702              	.LFE17:
+ 704              		.section	.text._lseek_r,"ax",%progbits
+ 705              		.align	2
+ 706              		.global	_lseek_r
+ 707              		.syntax unified
+ 708              		.arm
+ 710              	_lseek_r:
+ 711              	.LFB18:
+ 441:newlib_syscalls.c **** 	
+ 442:newlib_syscalls.c **** 	_off_t _lseek_r( struct _reent *r, int fd, _off_t pos, int whence )
+ 443:newlib_syscalls.c **** 	{
+ 712              		.loc 1 443 2
+ 713              		.cfi_startproc
+ 714              		@ Function supports interworking.
+ 715              		@ args = 0, pretend = 0, frame = 16
+ 716              		@ frame_needed = 1, uses_anonymous_args = 0
+ 717              		@ link register save eliminated.
+ 718 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 719              		.cfi_def_cfa_offset 4
+ 720              		.cfi_offset 11, -4
+ 721 0004 00B08DE2 		add	fp, sp, #0
+ 722              		.cfi_def_cfa_register 11
+ 723 0008 14D04DE2 		sub	sp, sp, #20
+ 724 000c 08000BE5 		str	r0, [fp, #-8]
+ 725 0010 0C100BE5 		str	r1, [fp, #-12]
+ 726 0014 10200BE5 		str	r2, [fp, #-16]
+ 727 0018 14300BE5 		str	r3, [fp, #-20]
+ 444:newlib_syscalls.c **** 		(void) r;
+ 445:newlib_syscalls.c **** 		(void) fd;
+ 446:newlib_syscalls.c **** 		(void) pos;
+ 447:newlib_syscalls.c **** 		(void) whence;
+ 448:newlib_syscalls.c **** 		return 0;
+ 728              		.loc 1 448 10
+ 729 001c 0030A0E3 		mov	r3, #0
+ 449:newlib_syscalls.c **** 	}
+ 730              		.loc 1 449 2
+ 731 0020 0300A0E1 		mov	r0, r3
+ 732 0024 00D08BE2 		add	sp, fp, #0
+ 733              		.cfi_def_cfa_register 13
+ 734              		@ sp needed
+ 735 0028 04B09DE4 		ldr	fp, [sp], #4
+ 736              		.cfi_restore 11
+ 737              		.cfi_def_cfa_offset 0
+ 738 002c 1EFF2FE1 		bx	lr
+ 739              		.cfi_endproc
+ 740              	.LFE18:
+ 742              		.section	.text._isatty_r,"ax",%progbits
+ 743              		.align	2
+ 744              		.global	_isatty_r
+ 745              		.syntax unified
+ 746              		.arm
+ 748              	_isatty_r:
+ 749              	.LFB19:
+ 450:newlib_syscalls.c **** 
+ 451:newlib_syscalls.c **** 	int _isatty_r( struct _reent *r, int fd)
+ 452:newlib_syscalls.c **** 	{
+ 750              		.loc 1 452 2
+ 751              		.cfi_startproc
+ 752              		@ Function supports interworking.
+ 753              		@ args = 0, pretend = 0, frame = 8
+ 754              		@ frame_needed = 1, uses_anonymous_args = 0
+ 755              		@ link register save eliminated.
+ 756 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 757              		.cfi_def_cfa_offset 4
+ 758              		.cfi_offset 11, -4
+ 759 0004 00B08DE2 		add	fp, sp, #0
+ 760              		.cfi_def_cfa_register 11
+ 761 0008 0CD04DE2 		sub	sp, sp, #12
+ 762 000c 08000BE5 		str	r0, [fp, #-8]
+ 763 0010 0C100BE5 		str	r1, [fp, #-12]
+ 453:newlib_syscalls.c **** 		(void) r;
+ 454:newlib_syscalls.c **** 		if (fd == STDIN_FILENO || fd == STDOUT_FILENO || fd == STDERR_FILENO) {
+ 764              		.loc 1 454 6
+ 765 0014 0C301BE5 		ldr	r3, [fp, #-12]
+ 766 0018 000053E3 		cmp	r3, #0
+ 767 001c 0500000A 		beq	.L44
+ 768              		.loc 1 454 26 discriminator 1
+ 769 0020 0C301BE5 		ldr	r3, [fp, #-12]
+ 770 0024 010053E3 		cmp	r3, #1
+ 771 0028 0200000A 		beq	.L44
+ 772              		.loc 1 454 49 discriminator 2
+ 773 002c 0C301BE5 		ldr	r3, [fp, #-12]
+ 774 0030 020053E3 		cmp	r3, #2
+ 775 0034 0100001A 		bne	.L45
+ 776              	.L44:
+ 455:newlib_syscalls.c **** 			return 1;
+ 777              		.loc 1 455 11
+ 778 0038 0130A0E3 		mov	r3, #1
+ 779 003c 000000EA 		b	.L46
+ 780              	.L45:
+ 456:newlib_syscalls.c **** 		}
+ 457:newlib_syscalls.c **** 		return 0;
+ 781              		.loc 1 457 10
+ 782 0040 0030A0E3 		mov	r3, #0
+ 783              	.L46:
+ 458:newlib_syscalls.c **** 	}
+ 784              		.loc 1 458 2
+ 785 0044 0300A0E1 		mov	r0, r3
+ 786 0048 00D08BE2 		add	sp, fp, #0
+ 787              		.cfi_def_cfa_register 13
+ 788              		@ sp needed
+ 789 004c 04B09DE4 		ldr	fp, [sp], #4
+ 790              		.cfi_restore 11
+ 791              		.cfi_def_cfa_offset 0
+ 792 0050 1EFF2FE1 		bx	lr
+ 793              		.cfi_endproc
+ 794              	.LFE19:
+ 796              		.section	.text.memcpy,"ax",%progbits
+ 797              		.align	2
+ 798              		.global	memcpy
+ 799              		.syntax unified
+ 800              		.arm
+ 802              	memcpy:
+ 803              	.LFB20:
+ 459:newlib_syscalls.c **** /*
+ 460:newlib_syscalls.c **** 	int _link_r ( struct _reent *_r, const char *oldname, const char *newname )
+ 461:newlib_syscalls.c **** 	{
+ 462:newlib_syscalls.c **** 		r->errno = EMLINK;
+ 463:newlib_syscalls.c **** 		return -1;
+ 464:newlib_syscalls.c **** 	}
+ 465:newlib_syscalls.c **** 
+ 466:newlib_syscalls.c **** 	int _unlink_r ( struct _reent *_r, const char *name )
+ 467:newlib_syscalls.c **** 	{
+ 468:newlib_syscalls.c **** 		r->errno = EMLINK;
+ 469:newlib_syscalls.c **** 		return -1;
+ 470:newlib_syscalls.c **** 	}
+ 471:newlib_syscalls.c **** */
+ 472:newlib_syscalls.c **** #elif MODE_RW == MODE_RW_FULL
+ 473:newlib_syscalls.c **** 	typedef struct {
+ 474:newlib_syscalls.c **** 	   const char *name;
+ 475:newlib_syscalls.c **** 	   int    (*open_r  )(struct _reent *r, const char *path,int flags, int mode );
+ 476:newlib_syscalls.c **** 	   int    (*close_r )(struct _reent *r, int fd );
+ 477:newlib_syscalls.c **** 	   long   (*write_r )(struct _reent *r, int fd, const char *ptr, int len );
+ 478:newlib_syscalls.c **** 	   long   (*read_r  )(struct _reent *r, int fd,       char *ptr, int len );
+ 479:newlib_syscalls.c **** 	   int    (*fstat_r )(struct _reent *r, int fd,struct stat *pstat );
+ 480:newlib_syscalls.c **** 	   _off_t (*lseek_r )(struct _reent *r, int fd, _off_t pos, int whence );
+ 481:newlib_syscalls.c **** 	} devoptab_t;
+ 482:newlib_syscalls.c **** 
+ 483:newlib_syscalls.c **** 	/* devoptab for an example stream device called "com1" */
+ 484:newlib_syscalls.c **** 	const devoptab_t devoptab_com1 = { "com1",
+ 485:newlib_syscalls.c **** 									   com1_open_r,
+ 486:newlib_syscalls.c **** 									   com1_close_r,
+ 487:newlib_syscalls.c **** 									   com1_write_r,
+ 488:newlib_syscalls.c **** 									   com1_read_r };
+ 489:newlib_syscalls.c **** 									   
+ 490:newlib_syscalls.c **** 	const devoptab_t *devoptab_list[] = {	&dotab_com1,  /* standard input */
+ 491:newlib_syscalls.c **** 											&dotab_com1,  /* standard output */
+ 492:newlib_syscalls.c **** 											&dotab_com1,  /* standard error */
+ 493:newlib_syscalls.c **** 											&dotab_com2,  /* another device */
+ 494:newlib_syscalls.c **** 											... ,         /* and so on... */
+ 495:newlib_syscalls.c **** 											0             /* terminates the list */
+ 496:newlib_syscalls.c **** 	};
+ 497:newlib_syscalls.c **** 
+ 498:newlib_syscalls.c **** 	_ssize_t _write_r ( struct _reent *ptr, int fd, const void *buf, size_t cnt )
+ 499:newlib_syscalls.c **** 	{
+ 500:newlib_syscalls.c **** 	   return devoptab_list[fd].write_r( ptr, fd, buf, cnt );
+ 501:newlib_syscalls.c **** 	}
+ 502:newlib_syscalls.c **** 
+ 503:newlib_syscalls.c **** 	_ssize_t _read_r( struct _reent *ptr, int fd, void *buf, size_t cnt )
+ 504:newlib_syscalls.c **** 	{
+ 505:newlib_syscalls.c **** 	   return devoptab_list[fd].read_r( ptr, fd, buf, cnt );
+ 506:newlib_syscalls.c **** 	}
+ 507:newlib_syscalls.c **** 
+ 508:newlib_syscalls.c **** 	int _open_r ( struct _reent *ptr, const char *file, int flags, int mode )
+ 509:newlib_syscalls.c **** 	{
+ 510:newlib_syscalls.c **** 		int which_devoptab = 0;
+ 511:newlib_syscalls.c **** 		int fd = -1;
+ 512:newlib_syscalls.c **** 
+ 513:newlib_syscalls.c **** 		/* search for "file" in dotab_list[].name */
+ 514:newlib_syscalls.c **** 		do {
+ 515:newlib_syscalls.c **** 			if(strcmp(devoptab_list[which_devoptab].name, file ) == 0 ) {
+ 516:newlib_syscalls.c **** 				fd = which_devoptab;
+ 517:newlib_syscalls.c **** 				break;
+ 518:newlib_syscalls.c **** 			}
+ 519:newlib_syscalls.c **** 		} while( devoptab_list[which_devoptab++] );
+ 520:newlib_syscalls.c **** 
+ 521:newlib_syscalls.c **** 		/* if we found the requested file/device, then invoke the device's open_r() method */
+ 522:newlib_syscalls.c **** 		if( fd != -1 ) 
+ 523:newlib_syscalls.c **** 			devoptab_list[fd].open_r( ptr, file, flags, mode );
+ 524:newlib_syscalls.c **** 		else 
+ 525:newlib_syscalls.c **** 			ptr->errno = ENODEV;
+ 526:newlib_syscalls.c **** 
+ 527:newlib_syscalls.c **** 		return fd;
+ 528:newlib_syscalls.c **** 	}
+ 529:newlib_syscalls.c **** 
+ 530:newlib_syscalls.c **** 	int _close_r(struct _reent *ptr, int fd )
+ 531:newlib_syscalls.c **** 	{
+ 532:newlib_syscalls.c **** 		return devoptab_list[fd].close_r( ptr, fd );
+ 533:newlib_syscalls.c **** 	}
+ 534:newlib_syscalls.c **** 
+ 535:newlib_syscalls.c **** 	int _fstat_r ( struct _reent *ptr, int fd          ,struct stat *pstat )
+ 536:newlib_syscalls.c **** 	{
+ 537:newlib_syscalls.c **** 		return devoptab_list[fd].fstat_r(ptr,fd,pstat);
+ 538:newlib_syscalls.c **** 	}
+ 539:newlib_syscalls.c **** 
+ 540:newlib_syscalls.c **** 	_off_t _lseek_r (struct _reent *ptr, int fd, _off_t pos, int whence )
+ 541:newlib_syscalls.c **** 	{
+ 542:newlib_syscalls.c **** 		return devoptab_list[fd].lseek_r(ptr,fd,pos,whence);
+ 543:newlib_syscalls.c **** 	}
+ 544:newlib_syscalls.c **** #else
+ 545:newlib_syscalls.c **** 	#error "Incorrect MODE_RW"
+ 546:newlib_syscalls.c **** #endif
+ 547:newlib_syscalls.c **** 
+ 548:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 549:newlib_syscalls.c **** // time() Funktion
+ 550:newlib_syscalls.c **** // Für Zeitabfragen muss die Funktion _time_r() bereitgestellt werden
+ 551:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 552:newlib_syscalls.c **** #if 0
+ 553:newlib_syscalls.c **** #include <time.h>
+ 554:newlib_syscalls.c **** /*  Get Process Times, P1003.1b-1993, p. 92 */
+ 555:newlib_syscalls.c **** struct tms {
+ 556:newlib_syscalls.c **** };
+ 557:newlib_syscalls.c **** _CLOCK_T_ _times_r        (struct _reent *ptr, struct tms *tms)
+ 558:newlib_syscalls.c **** {
+ 559:newlib_syscalls.c **** 	tms->tms_utime  = (clock_t)xyz;		/* user time */
+ 560:newlib_syscalls.c **** 	tms->tms_stime  = (clock_t)xyz;		/* system time */
+ 561:newlib_syscalls.c **** 	tms->tms_cutime = (clock_t)xyz;		/* user time, children */
+ 562:newlib_syscalls.c **** 	tms->tms_cstime = (clock_t)xyz;		/* system time, children */
+ 563:newlib_syscalls.c **** 	
+ 564:newlib_syscalls.c **** 	return((clock_t)xyz);
+ 565:newlib_syscalls.c **** }
+ 566:newlib_syscalls.c **** 
+ 567:newlib_syscalls.c **** /* This one is not guaranteed to be available on all targets.  */
+ 568:newlib_syscalls.c **** int       _gettimeofday_r (struct _reent *, struct timeval *__tp, void *__tzp));
+ 569:newlib_syscalls.c **** 
+ 570:newlib_syscalls.c **** #endif
+ 571:newlib_syscalls.c **** 
+ 572:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 573:newlib_syscalls.c **** //setenv() / getenv()
+ 574:newlib_syscalls.c **** //Zum setzen und lesen der Environment Variablen (z.B. PATH)
+ 575:newlib_syscalls.c **** //Zur Sicherstellung der Reentrantfähigkeit müssen noch die Funktionen
+ 576:newlib_syscalls.c **** //__env_lock() und __env_unlock() bereitgestellt werden
+ 577:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 578:newlib_syscalls.c **** 
+ 579:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 580:newlib_syscalls.c **** //weitere Funktionen, die bei Bedarf bereitgestellt werden müssen
+ 581:newlib_syscalls.c **** //-----------------------------------------------------------------------------------
+ 582:newlib_syscalls.c **** #if 0
+ 583:newlib_syscalls.c **** int       _fcntl_r        (struct _reent *, int, int, int)
+ 584:newlib_syscalls.c **** int       _isatty_r       (struct _reent *, int)
+ 585:newlib_syscalls.c **** int       _mkdir_r        (struct _reent *, const char *, int)
+ 586:newlib_syscalls.c **** int       _rename_r       (struct _reent *, const char *, const char *)
+ 587:newlib_syscalls.c **** #endif
+ 588:newlib_syscalls.c **** 
+ 589:newlib_syscalls.c **** //#define DEBUG_MEMCPY
+ 590:newlib_syscalls.c **** #ifdef DEBUG_MEMCPY
+ 591:newlib_syscalls.c **** #define MEMCPY_RPL(aaa) aaa
+ 592:newlib_syscalls.c **** #else
+ 593:newlib_syscalls.c **** #define MEMCPY_RPL(aaa)
+ 594:newlib_syscalls.c **** #endif
+ 595:newlib_syscalls.c **** void *memcpy(void *dst,void *src,size_t n) {
+ 804              		.loc 1 595 44
+ 805              		.cfi_startproc
+ 806              		@ Function supports interworking.
+ 807              		@ args = 0, pretend = 0, frame = 104
+ 808              		@ frame_needed = 1, uses_anonymous_args = 0
+ 809              		@ link register save eliminated.
+ 810 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 811              		.cfi_def_cfa_offset 4
+ 812              		.cfi_offset 11, -4
+ 813 0004 00B08DE2 		add	fp, sp, #0
+ 814              		.cfi_def_cfa_register 11
+ 815 0008 6CD04DE2 		sub	sp, sp, #108
+ 816 000c 60000BE5 		str	r0, [fp, #-96]
+ 817 0010 64100BE5 		str	r1, [fp, #-100]
+ 818 0014 68200BE5 		str	r2, [fp, #-104]
+ 596:newlib_syscalls.c **** 	void *ret=dst;
+ 819              		.loc 1 596 8
+ 820 0018 60301BE5 		ldr	r3, [fp, #-96]
+ 821 001c 3C300BE5 		str	r3, [fp, #-60]
+ 597:newlib_syscalls.c ****     if(n<8) {
+ 822              		.loc 1 597 7
+ 823 0020 68301BE5 		ldr	r3, [fp, #-104]
+ 824 0024 070053E3 		cmp	r3, #7
+ 825 0028 1600008A 		bhi	.L48
+ 826              	.LBB4:
+ 598:newlib_syscalls.c **** 		uint8_t *s =src;
+ 827              		.loc 1 598 12
+ 828 002c 64301BE5 		ldr	r3, [fp, #-100]
+ 829 0030 08300BE5 		str	r3, [fp, #-8]
+ 599:newlib_syscalls.c **** 		uint8_t *se=src+n;
+ 830              		.loc 1 599 12
+ 831 0034 64201BE5 		ldr	r2, [fp, #-100]
+ 832 0038 68301BE5 		ldr	r3, [fp, #-104]
+ 833 003c 033082E0 		add	r3, r2, r3
+ 834 0040 5C300BE5 		str	r3, [fp, #-92]
+ 600:newlib_syscalls.c **** 		uint8_t *d =dst;
+ 835              		.loc 1 600 12
+ 836 0044 60301BE5 		ldr	r3, [fp, #-96]
+ 837 0048 0C300BE5 		str	r3, [fp, #-12]
+ 601:newlib_syscalls.c **** 		while(s < se) {
+ 838              		.loc 1 601 8
+ 839 004c 070000EA 		b	.L49
+ 840              	.L50:
+ 602:newlib_syscalls.c **** 			*d++=*s++;
+ 841              		.loc 1 602 11
+ 842 0050 08201BE5 		ldr	r2, [fp, #-8]
+ 843 0054 013082E2 		add	r3, r2, #1
+ 844 0058 08300BE5 		str	r3, [fp, #-8]
+ 845              		.loc 1 602 6
+ 846 005c 0C301BE5 		ldr	r3, [fp, #-12]
+ 847 0060 011083E2 		add	r1, r3, #1
+ 848 0064 0C100BE5 		str	r1, [fp, #-12]
+ 849              		.loc 1 602 9
+ 850 0068 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 851              		.loc 1 602 8
+ 852 006c 0020C3E5 		strb	r2, [r3]
+ 853              	.L49:
+ 601:newlib_syscalls.c **** 		while(s < se) {
+ 854              		.loc 1 601 11
+ 855 0070 08201BE5 		ldr	r2, [fp, #-8]
+ 856 0074 5C301BE5 		ldr	r3, [fp, #-92]
+ 857 0078 030052E1 		cmp	r2, r3
+ 858 007c F3FFFF3A 		bcc	.L50
+ 603:newlib_syscalls.c **** 		}
+ 604:newlib_syscalls.c ****         return ret;
+ 859              		.loc 1 604 16
+ 860 0080 3C301BE5 		ldr	r3, [fp, #-60]
+ 861 0084 BE0100EA 		b	.L51
+ 862              	.L48:
+ 863              	.LBE4:
+ 605:newlib_syscalls.c **** 	}
+ 606:newlib_syscalls.c **** 
+ 607:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %zd\n",src,dst,n));
+ 608:newlib_syscalls.c ****     switch( (((uintptr_t)src&0x03)<<0) | 
+ 864              		.loc 1 608 15
+ 865 0088 64301BE5 		ldr	r3, [fp, #-100]
+ 866              		.loc 1 608 35
+ 867 008c 032003E2 		and	r2, r3, #3
+ 609:newlib_syscalls.c ****             (((uintptr_t)dst&0x03)<<2) )  {
+ 868              		.loc 1 609 15
+ 869 0090 60301BE5 		ldr	r3, [fp, #-96]
+ 870              		.loc 1 609 35
+ 871 0094 0331A0E1 		lsl	r3, r3, #2
+ 872 0098 0C3003E2 		and	r3, r3, #12
+ 608:newlib_syscalls.c ****             (((uintptr_t)dst&0x03)<<2) )  {
+ 873              		.loc 1 608 40
+ 874 009c 032082E1 		orr	r2, r2, r3
+ 608:newlib_syscalls.c ****             (((uintptr_t)dst&0x03)<<2) )  {
+ 875              		.loc 1 608 5
+ 876 00a0 EC369FE5 		ldr	r3, .L111
+ 877 00a4 0F0052E3 		cmp	r2, #15
+ 878 00a8 B401008A 		bhi	.L52
+ 879 00ac 02F193E7 		ldr	pc, [r3, r2, lsl #2]
+ 880              	.Lrtx54:
+ 881 00b0 0000A0E1 		nop
+ 882              		.section	.rodata
+ 883              		.align	2
+ 884              	.L54:
+ 885 0010 38010000 		.word	.L69
+ 886 0014 A0050000 		.word	.L68
+ 887 0018 3C020000 		.word	.L67
+ 888 001c 34040000 		.word	.L66
+ 889 0020 60040000 		.word	.L65
+ 890 0024 B4000000 		.word	.L64
+ 891 0028 CC050000 		.word	.L63
+ 892 002c 68020000 		.word	.L62
+ 893 0030 94020000 		.word	.L61
+ 894 0034 DC030000 		.word	.L60
+ 895 0038 E0000000 		.word	.L59
+ 896 003c F8050000 		.word	.L58
+ 897 0040 24060000 		.word	.L57
+ 898 0044 10020000 		.word	.L56
+ 899 0048 08040000 		.word	.L55
+ 900 004c 0C010000 		.word	.L53
+ 901              		.section	.text.memcpy
+ 902              		.p2align 2
+ 903              	.L64:
+ 904              	.LBB5:
+ 610:newlib_syscalls.c ****         {
+ 611:newlib_syscalls.c ****         case 0b0101: 
+ 612:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 905              		.loc 1 612 32
+ 906 00b4 64201BE5 		ldr	r2, [fp, #-100]
+ 907 00b8 013082E2 		add	r3, r2, #1
+ 908 00bc 64300BE5 		str	r3, [fp, #-100]
+ 909              		.loc 1 612 15
+ 910 00c0 60301BE5 		ldr	r3, [fp, #-96]
+ 911 00c4 011083E2 		add	r1, r3, #1
+ 912 00c8 60100BE5 		str	r1, [fp, #-96]
+ 913              		.loc 1 612 30
+ 914 00cc 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 915              		.loc 1 612 29
+ 916 00d0 0020C3E5 		strb	r2, [r3]
+ 917              		.loc 1 612 49
+ 918 00d4 68301BE5 		ldr	r3, [fp, #-104]
+ 919 00d8 013043E2 		sub	r3, r3, #1
+ 920 00dc 68300BE5 		str	r3, [fp, #-104]
+ 921              	.L59:
+ 613:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 614:newlib_syscalls.c ****         case 0b1010: 
+ 615:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 922              		.loc 1 615 32
+ 923 00e0 64201BE5 		ldr	r2, [fp, #-100]
+ 924 00e4 013082E2 		add	r3, r2, #1
+ 925 00e8 64300BE5 		str	r3, [fp, #-100]
+ 926              		.loc 1 615 15
+ 927 00ec 60301BE5 		ldr	r3, [fp, #-96]
+ 928 00f0 011083E2 		add	r1, r3, #1
+ 929 00f4 60100BE5 		str	r1, [fp, #-96]
+ 930              		.loc 1 615 30
+ 931 00f8 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 932              		.loc 1 615 29
+ 933 00fc 0020C3E5 		strb	r2, [r3]
+ 934              		.loc 1 615 49
+ 935 0100 68301BE5 		ldr	r3, [fp, #-104]
+ 936 0104 013043E2 		sub	r3, r3, #1
+ 937 0108 68300BE5 		str	r3, [fp, #-104]
+ 938              	.L53:
+ 616:newlib_syscalls.c ****             __attribute__((fallthrough));
+ 617:newlib_syscalls.c ****         case 0b1111:
+ 618:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 939              		.loc 1 618 32
+ 940 010c 64201BE5 		ldr	r2, [fp, #-100]
+ 941 0110 013082E2 		add	r3, r2, #1
+ 942 0114 64300BE5 		str	r3, [fp, #-100]
+ 943              		.loc 1 618 15
+ 944 0118 60301BE5 		ldr	r3, [fp, #-96]
+ 945 011c 011083E2 		add	r1, r3, #1
+ 946 0120 60100BE5 		str	r1, [fp, #-96]
+ 947              		.loc 1 618 30
+ 948 0124 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 949              		.loc 1 618 29
+ 950 0128 0020C3E5 		strb	r2, [r3]
+ 951              		.loc 1 618 49
+ 952 012c 68301BE5 		ldr	r3, [fp, #-104]
+ 953 0130 013043E2 		sub	r3, r3, #1
+ 954 0134 68300BE5 		str	r3, [fp, #-104]
+ 955              	.L69:
+ 619:newlib_syscalls.c ****             __attribute__((fallthrough));
+ 620:newlib_syscalls.c ****         case 0b0000: 
+ 621:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 622:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 623:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 624:newlib_syscalls.c **** //Src|  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 625:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 626:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 627:newlib_syscalls.c **** //Dst|  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 628:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 629:newlib_syscalls.c ****             int *s =src;
+ 956              		.loc 1 629 18
+ 957 0138 64301BE5 		ldr	r3, [fp, #-100]
+ 958 013c 10300BE5 		str	r3, [fp, #-16]
+ 630:newlib_syscalls.c ****             int *se=(int *)src+(n/4);
+ 959              		.loc 1 630 31
+ 960 0140 68301BE5 		ldr	r3, [fp, #-104]
+ 961 0144 0330C3E3 		bic	r3, r3, #3
+ 962              		.loc 1 630 18
+ 963 0148 64201BE5 		ldr	r2, [fp, #-100]
+ 964 014c 033082E0 		add	r3, r2, r3
+ 965 0150 58300BE5 		str	r3, [fp, #-88]
+ 631:newlib_syscalls.c ****             int *d =dst;
+ 966              		.loc 1 631 18
+ 967 0154 60301BE5 		ldr	r3, [fp, #-96]
+ 968 0158 14300BE5 		str	r3, [fp, #-20]
+ 632:newlib_syscalls.c **** 
+ 633:newlib_syscalls.c ****             while(s<se) {
+ 969              		.loc 1 633 18
+ 970 015c 070000EA 		b	.L70
+ 971              	.L71:
+ 634:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)s&3) || ((uintptr_t)d&3)) printf(VT100_RED "%p %p\n" VT100_OFF,s,d));
+ 635:newlib_syscalls.c ****                 *d++=*s++;
+ 972              		.loc 1 635 24
+ 973 0160 10201BE5 		ldr	r2, [fp, #-16]
+ 974 0164 043082E2 		add	r3, r2, #4
+ 975 0168 10300BE5 		str	r3, [fp, #-16]
+ 976              		.loc 1 635 19
+ 977 016c 14301BE5 		ldr	r3, [fp, #-20]
+ 978 0170 041083E2 		add	r1, r3, #4
+ 979 0174 14100BE5 		str	r1, [fp, #-20]
+ 980              		.loc 1 635 22
+ 981 0178 002092E5 		ldr	r2, [r2]
+ 982              		.loc 1 635 21
+ 983 017c 002083E5 		str	r2, [r3]
+ 984              	.L70:
+ 633:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)s&3) || ((uintptr_t)d&3)) printf(VT100_RED "%p %p\n" VT100_OFF,s,d));
+ 985              		.loc 1 633 20
+ 986 0180 10201BE5 		ldr	r2, [fp, #-16]
+ 987 0184 58301BE5 		ldr	r3, [fp, #-88]
+ 988 0188 030052E1 		cmp	r2, r3
+ 989 018c F3FFFF3A 		bcc	.L71
+ 636:newlib_syscalls.c ****             }
+ 637:newlib_syscalls.c ****             switch(n&3) {
+ 990              		.loc 1 637 21
+ 991 0190 68301BE5 		ldr	r3, [fp, #-104]
+ 992 0194 033003E2 		and	r3, r3, #3
+ 993              		.loc 1 637 13
+ 994 0198 030053E3 		cmp	r3, #3
+ 995 019c 0600000A 		beq	.L72
+ 996 01a0 030053E3 		cmp	r3, #3
+ 997 01a4 6E01008A 		bhi	.L94
+ 998 01a8 010053E3 		cmp	r3, #1
+ 999 01ac 1100000A 		beq	.L74
+ 1000 01b0 020053E3 		cmp	r3, #2
+ 1001 01b4 0A00000A 		beq	.L75
+ 638:newlib_syscalls.c ****                 case 3: *((short *)d  )=*((short *)s  );
+ 639:newlib_syscalls.c ****                         *((char  *)d+2)=*((char  *)s+2);
+ 640:newlib_syscalls.c ****                         break;
+ 641:newlib_syscalls.c ****                 case 2: *((short *)d  )=*((short *)s  );
+ 642:newlib_syscalls.c ****                         break;
+ 643:newlib_syscalls.c ****                 case 1: *((char  *)d  )=*((char  *)s  );
+ 644:newlib_syscalls.c ****                         break;
+ 645:newlib_syscalls.c ****             }
+ 646:newlib_syscalls.c ****             break;
+ 1002              		.loc 1 646 13
+ 1003 01b8 690100EA 		b	.L94
+ 1004              	.L72:
+ 638:newlib_syscalls.c ****                 case 3: *((short *)d  )=*((short *)s  );
+ 1005              		.loc 1 638 41
+ 1006 01bc 10301BE5 		ldr	r3, [fp, #-16]
+ 1007 01c0 F020D3E1 		ldrsh	r2, [r3]
+ 638:newlib_syscalls.c ****                 case 3: *((short *)d  )=*((short *)s  );
+ 1008              		.loc 1 638 40
+ 1009 01c4 14301BE5 		ldr	r3, [fp, #-20]
+ 1010 01c8 B020C3E1 		strh	r2, [r3]	@ movhi
+ 639:newlib_syscalls.c ****                         break;
+ 1011              		.loc 1 639 37
+ 1012 01cc 14301BE5 		ldr	r3, [fp, #-20]
+ 1013 01d0 023083E2 		add	r3, r3, #2
+ 639:newlib_syscalls.c ****                         break;
+ 1014              		.loc 1 639 40
+ 1015 01d4 10201BE5 		ldr	r2, [fp, #-16]
+ 1016 01d8 0220D2E5 		ldrb	r2, [r2, #2]	@ zero_extendqisi2
+ 1017 01dc 0020C3E5 		strb	r2, [r3]
+ 640:newlib_syscalls.c ****                 case 2: *((short *)d  )=*((short *)s  );
+ 1018              		.loc 1 640 25
+ 1019 01e0 090000EA 		b	.L73
+ 1020              	.L75:
+ 641:newlib_syscalls.c ****                         break;
+ 1021              		.loc 1 641 41
+ 1022 01e4 10301BE5 		ldr	r3, [fp, #-16]
+ 1023 01e8 F020D3E1 		ldrsh	r2, [r3]
+ 641:newlib_syscalls.c ****                         break;
+ 1024              		.loc 1 641 40
+ 1025 01ec 14301BE5 		ldr	r3, [fp, #-20]
+ 1026 01f0 B020C3E1 		strh	r2, [r3]	@ movhi
+ 642:newlib_syscalls.c ****                 case 1: *((char  *)d  )=*((char  *)s  );
+ 1027              		.loc 1 642 25
+ 1028 01f4 040000EA 		b	.L73
+ 1029              	.L74:
+ 643:newlib_syscalls.c ****                         break;
+ 1030              		.loc 1 643 41
+ 1031 01f8 10301BE5 		ldr	r3, [fp, #-16]
+ 1032 01fc 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 643:newlib_syscalls.c ****                         break;
+ 1033              		.loc 1 643 40
+ 1034 0200 14301BE5 		ldr	r3, [fp, #-20]
+ 1035 0204 0020C3E5 		strb	r2, [r3]
+ 644:newlib_syscalls.c ****             }
+ 1036              		.loc 1 644 25
+ 1037 0208 0000A0E1 		nop
+ 1038              	.L73:
+ 1039              		.loc 1 646 13
+ 1040 020c 540100EA 		b	.L94
+ 1041              	.L56:
+ 1042              	.LBE5:
+ 1043              	.LBB6:
+ 647:newlib_syscalls.c ****         }
+ 648:newlib_syscalls.c ****         {
+ 649:newlib_syscalls.c ****         case 0b1101:
+ 650:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 651:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 652:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 653:newlib_syscalls.c **** //Src   |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 654:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 655:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 656:newlib_syscalls.c **** //Dst         |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 657:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 658:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1044              		.loc 1 658 32
+ 1045 0210 64201BE5 		ldr	r2, [fp, #-100]
+ 1046 0214 013082E2 		add	r3, r2, #1
+ 1047 0218 64300BE5 		str	r3, [fp, #-100]
+ 1048              		.loc 1 658 15
+ 1049 021c 60301BE5 		ldr	r3, [fp, #-96]
+ 1050 0220 011083E2 		add	r1, r3, #1
+ 1051 0224 60100BE5 		str	r1, [fp, #-96]
+ 1052              		.loc 1 658 30
+ 1053 0228 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1054              		.loc 1 658 29
+ 1055 022c 0020C3E5 		strb	r2, [r3]
+ 1056              		.loc 1 658 49
+ 1057 0230 68301BE5 		ldr	r3, [fp, #-104]
+ 1058 0234 013043E2 		sub	r3, r3, #1
+ 1059 0238 68300BE5 		str	r3, [fp, #-104]
+ 1060              	.L67:
+ 659:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 660:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 661:newlib_syscalls.c ****         case 0b0010:
+ 662:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 663:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 664:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 665:newlib_syscalls.c **** //Src      |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 666:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 667:newlib_syscalls.c **** //               +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 668:newlib_syscalls.c **** //Dst            |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 669:newlib_syscalls.c **** //               +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 670:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1061              		.loc 1 670 32
+ 1062 023c 64201BE5 		ldr	r2, [fp, #-100]
+ 1063 0240 013082E2 		add	r3, r2, #1
+ 1064 0244 64300BE5 		str	r3, [fp, #-100]
+ 1065              		.loc 1 670 15
+ 1066 0248 60301BE5 		ldr	r3, [fp, #-96]
+ 1067 024c 011083E2 		add	r1, r3, #1
+ 1068 0250 60100BE5 		str	r1, [fp, #-96]
+ 1069              		.loc 1 670 30
+ 1070 0254 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1071              		.loc 1 670 29
+ 1072 0258 0020C3E5 		strb	r2, [r3]
+ 1073              		.loc 1 670 49
+ 1074 025c 68301BE5 		ldr	r3, [fp, #-104]
+ 1075 0260 013043E2 		sub	r3, r3, #1
+ 1076 0264 68300BE5 		str	r3, [fp, #-104]
+ 1077              	.L62:
+ 671:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 672:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 673:newlib_syscalls.c ****         case 0b0111:
+ 674:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 675:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 676:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 677:newlib_syscalls.c **** //Src         |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 678:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 679:newlib_syscalls.c **** //                  +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 680:newlib_syscalls.c **** //Dst               |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 681:newlib_syscalls.c **** //                  +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 682:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1078              		.loc 1 682 32
+ 1079 0268 64201BE5 		ldr	r2, [fp, #-100]
+ 1080 026c 013082E2 		add	r3, r2, #1
+ 1081 0270 64300BE5 		str	r3, [fp, #-100]
+ 1082              		.loc 1 682 15
+ 1083 0274 60301BE5 		ldr	r3, [fp, #-96]
+ 1084 0278 011083E2 		add	r1, r3, #1
+ 1085 027c 60100BE5 		str	r1, [fp, #-96]
+ 1086              		.loc 1 682 30
+ 1087 0280 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1088              		.loc 1 682 29
+ 1089 0284 0020C3E5 		strb	r2, [r3]
+ 1090              		.loc 1 682 49
+ 1091 0288 68301BE5 		ldr	r3, [fp, #-104]
+ 1092 028c 013043E2 		sub	r3, r3, #1
+ 1093 0290 68300BE5 		str	r3, [fp, #-104]
+ 1094              	.L61:
+ 683:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 684:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 685:newlib_syscalls.c ****         case 0b1000:
+ 686:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 687:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 688:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 689:newlib_syscalls.c **** //Src|LL|LH|HL|HH|LL|LH|HL|HH|  |  |  |  |  |
+ 690:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 691:newlib_syscalls.c **** // ARM32 = x86 = LittleEndian = Niederwertiges Byte zuerst
+ 692:newlib_syscalls.c **** //   +-----------+-----------+
+ 693:newlib_syscalls.c **** //   |HH HL LH LL|HH HL LH LL|
+ 694:newlib_syscalls.c **** //   +---tmp1----+---tmp2----+
+ 695:newlib_syscalls.c **** //         +-----+-----------+-----+
+ 696:newlib_syscalls.c **** //         |LH LL|HH HL LH LL|HL HH|
+ 697:newlib_syscalls.c **** //         +tmp1-+tmp1--tmp2-+tmp1-+
+ 698:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 699:newlib_syscalls.c **** //Dst      |LL|LH|LL|LH|HL|HH|  |  |  |  |  |  |  |
+ 700:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 701:newlib_syscalls.c ****             uint32_t *s =src;
+ 1095              		.loc 1 701 23
+ 1096 0294 64301BE5 		ldr	r3, [fp, #-100]
+ 1097 0298 18300BE5 		str	r3, [fp, #-24]
+ 702:newlib_syscalls.c ****             uint32_t *se=s+(n/4);
+ 1098              		.loc 1 702 27
+ 1099 029c 68301BE5 		ldr	r3, [fp, #-104]
+ 1100 02a0 0330C3E3 		bic	r3, r3, #3
+ 1101              		.loc 1 702 23
+ 1102 02a4 18201BE5 		ldr	r2, [fp, #-24]
+ 1103 02a8 033082E0 		add	r3, r2, r3
+ 1104 02ac 48300BE5 		str	r3, [fp, #-72]
+ 703:newlib_syscalls.c ****             uint32_t *d =dst+2; //Zwecks Start auf gerade Adresse
+ 1105              		.loc 1 703 23
+ 1106 02b0 60301BE5 		ldr	r3, [fp, #-96]
+ 1107 02b4 023083E2 		add	r3, r3, #2
+ 1108 02b8 1C300BE5 		str	r3, [fp, #-28]
+ 704:newlib_syscalls.c ****             uint32_t  tmp1=*s++;
+ 1109              		.loc 1 704 30
+ 1110 02bc 18301BE5 		ldr	r3, [fp, #-24]
+ 1111 02c0 042083E2 		add	r2, r3, #4
+ 1112 02c4 18200BE5 		str	r2, [fp, #-24]
+ 1113              		.loc 1 704 23
+ 1114 02c8 003093E5 		ldr	r3, [r3]
+ 1115 02cc 20300BE5 		str	r3, [fp, #-32]
+ 705:newlib_syscalls.c ****             uint32_t  tmp2;
+ 706:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)d&1)) printf(VT100_RED "%p\n" VT100_OFF,d));
+ 707:newlib_syscalls.c ****             *((uint16_t *)dst)=tmp1&0xffff;
+ 1116              		.loc 1 707 31
+ 1117 02d0 20301BE5 		ldr	r3, [fp, #-32]
+ 1118 02d4 0338A0E1 		lsl	r3, r3, #16
+ 1119 02d8 2328A0E1 		lsr	r2, r3, #16
+ 1120 02dc 60301BE5 		ldr	r3, [fp, #-96]
+ 1121 02e0 B020C3E1 		strh	r2, [r3]	@ movhi
+ 708:newlib_syscalls.c ****             while(s<se) {
+ 1122              		.loc 1 708 18
+ 1123 02e4 0F0000EA 		b	.L76
+ 1124              	.L77:
+ 709:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %p\n",s,d,se));
+ 710:newlib_syscalls.c ****                 tmp2=*s++;
+ 1125              		.loc 1 710 24
+ 1126 02e8 18301BE5 		ldr	r3, [fp, #-24]
+ 1127 02ec 042083E2 		add	r2, r3, #4
+ 1128 02f0 18200BE5 		str	r2, [fp, #-24]
+ 1129              		.loc 1 710 21
+ 1130 02f4 003093E5 		ldr	r3, [r3]
+ 1131 02f8 4C300BE5 		str	r3, [fp, #-76]
+ 711:newlib_syscalls.c ****                 *d++=((tmp1>>16)&0xffff) | ((tmp2<<16)&0xffff0000);
+ 1132              		.loc 1 711 28
+ 1133 02fc 20301BE5 		ldr	r3, [fp, #-32]
+ 1134 0300 2318A0E1 		lsr	r1, r3, #16
+ 1135              		.loc 1 711 55
+ 1136 0304 4C301BE5 		ldr	r3, [fp, #-76]
+ 1137 0308 0328A0E1 		lsl	r2, r3, #16
+ 1138              		.loc 1 711 19
+ 1139 030c 1C301BE5 		ldr	r3, [fp, #-28]
+ 1140 0310 040083E2 		add	r0, r3, #4
+ 1141 0314 1C000BE5 		str	r0, [fp, #-28]
+ 1142              		.loc 1 711 42
+ 1143 0318 022081E1 		orr	r2, r1, r2
+ 1144              		.loc 1 711 21
+ 1145 031c 002083E5 		str	r2, [r3]
+ 712:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)s&3) || ((uintptr_t)d&3)) printf(VT100_RED "%p %p\n" VT100_OFF,s,d));
+ 713:newlib_syscalls.c ****                 tmp1=tmp2;
+ 1146              		.loc 1 713 21
+ 1147 0320 4C301BE5 		ldr	r3, [fp, #-76]
+ 1148 0324 20300BE5 		str	r3, [fp, #-32]
+ 1149              	.L76:
+ 708:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %p\n",s,d,se));
+ 1150              		.loc 1 708 20
+ 1151 0328 18201BE5 		ldr	r2, [fp, #-24]
+ 1152 032c 48301BE5 		ldr	r3, [fp, #-72]
+ 1153 0330 030052E1 		cmp	r2, r3
+ 1154 0334 EBFFFF3A 		bcc	.L77
+ 714:newlib_syscalls.c ****             }
+ 715:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)d&1)) printf(VT100_RED "%p\n" VT100_OFF,d));
+ 716:newlib_syscalls.c ****             *((uint16_t *)d)=tmp1>>16;
+ 1155              		.loc 1 716 34
+ 1156 0338 20301BE5 		ldr	r3, [fp, #-32]
+ 1157 033c 2338A0E1 		lsr	r3, r3, #16
+ 1158              		.loc 1 716 29
+ 1159 0340 0338A0E1 		lsl	r3, r3, #16
+ 1160 0344 2328A0E1 		lsr	r2, r3, #16
+ 1161 0348 1C301BE5 		ldr	r3, [fp, #-28]
+ 1162 034c B020C3E1 		strh	r2, [r3]	@ movhi
+ 717:newlib_syscalls.c ****             switch(n&3) {
+ 1163              		.loc 1 717 21
+ 1164 0350 68301BE5 		ldr	r3, [fp, #-104]
+ 1165 0354 033003E2 		and	r3, r3, #3
+ 1166              		.loc 1 717 13
+ 1167 0358 030053E3 		cmp	r3, #3
+ 1168 035c 0600000A 		beq	.L78
+ 1169 0360 030053E3 		cmp	r3, #3
+ 1170 0364 0001008A 		bhi	.L95
+ 1171 0368 010053E3 		cmp	r3, #1
+ 1172 036c 1300000A 		beq	.L80
+ 1173 0370 020053E3 		cmp	r3, #2
+ 1174 0374 0B00000A 		beq	.L81
+ 718:newlib_syscalls.c ****                 case 3: *((uint16_t *)d+1)=*((uint16_t *)s);
+ 719:newlib_syscalls.c ****                         *((uint8_t  *)d+4)=*((uint8_t  *)s+2);
+ 720:newlib_syscalls.c **** MEMCPY_RPL(printf("+2+1\n"));
+ 721:newlib_syscalls.c ****                         break;
+ 722:newlib_syscalls.c ****                 case 2: *((uint16_t *)d+1)=*((uint16_t *)s);
+ 723:newlib_syscalls.c **** MEMCPY_RPL(printf("+2\n"));
+ 724:newlib_syscalls.c ****                         break;
+ 725:newlib_syscalls.c ****                 case 1: *((uint8_t  *)d+2)=*((uint8_t  *)s);
+ 726:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 727:newlib_syscalls.c ****                         break;
+ 728:newlib_syscalls.c ****             }
+ 729:newlib_syscalls.c ****         break;
+ 1175              		.loc 1 729 9
+ 1176 0378 FB0000EA 		b	.L95
+ 1177              	.L78:
+ 718:newlib_syscalls.c ****                 case 3: *((uint16_t *)d+1)=*((uint16_t *)s);
+ 1178              		.loc 1 718 40
+ 1179 037c 1C301BE5 		ldr	r3, [fp, #-28]
+ 1180 0380 023083E2 		add	r3, r3, #2
+ 718:newlib_syscalls.c ****                 case 3: *((uint16_t *)d+1)=*((uint16_t *)s);
+ 1181              		.loc 1 718 44
+ 1182 0384 18201BE5 		ldr	r2, [fp, #-24]
+ 1183 0388 B020D2E1 		ldrh	r2, [r2]
+ 718:newlib_syscalls.c ****                 case 3: *((uint16_t *)d+1)=*((uint16_t *)s);
+ 1184              		.loc 1 718 43
+ 1185 038c B020C3E1 		strh	r2, [r3]	@ movhi
+ 719:newlib_syscalls.c **** MEMCPY_RPL(printf("+2+1\n"));
+ 1186              		.loc 1 719 40
+ 1187 0390 1C301BE5 		ldr	r3, [fp, #-28]
+ 1188 0394 043083E2 		add	r3, r3, #4
+ 719:newlib_syscalls.c **** MEMCPY_RPL(printf("+2+1\n"));
+ 1189              		.loc 1 719 43
+ 1190 0398 18201BE5 		ldr	r2, [fp, #-24]
+ 1191 039c 0220D2E5 		ldrb	r2, [r2, #2]	@ zero_extendqisi2
+ 1192 03a0 0020C3E5 		strb	r2, [r3]
+ 721:newlib_syscalls.c ****                 case 2: *((uint16_t *)d+1)=*((uint16_t *)s);
+ 1193              		.loc 1 721 25
+ 1194 03a4 0B0000EA 		b	.L79
+ 1195              	.L81:
+ 722:newlib_syscalls.c **** MEMCPY_RPL(printf("+2\n"));
+ 1196              		.loc 1 722 40
+ 1197 03a8 1C301BE5 		ldr	r3, [fp, #-28]
+ 1198 03ac 023083E2 		add	r3, r3, #2
+ 722:newlib_syscalls.c **** MEMCPY_RPL(printf("+2\n"));
+ 1199              		.loc 1 722 44
+ 1200 03b0 18201BE5 		ldr	r2, [fp, #-24]
+ 1201 03b4 B020D2E1 		ldrh	r2, [r2]
+ 722:newlib_syscalls.c **** MEMCPY_RPL(printf("+2\n"));
+ 1202              		.loc 1 722 43
+ 1203 03b8 B020C3E1 		strh	r2, [r3]	@ movhi
+ 724:newlib_syscalls.c ****                 case 1: *((uint8_t  *)d+2)=*((uint8_t  *)s);
+ 1204              		.loc 1 724 25
+ 1205 03bc 050000EA 		b	.L79
+ 1206              	.L80:
+ 725:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1207              		.loc 1 725 40
+ 1208 03c0 1C301BE5 		ldr	r3, [fp, #-28]
+ 1209 03c4 023083E2 		add	r3, r3, #2
+ 725:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1210              		.loc 1 725 44
+ 1211 03c8 18201BE5 		ldr	r2, [fp, #-24]
+ 1212 03cc 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 725:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1213              		.loc 1 725 43
+ 1214 03d0 0020C3E5 		strb	r2, [r3]
+ 727:newlib_syscalls.c ****             }
+ 1215              		.loc 1 727 25
+ 1216 03d4 0000A0E1 		nop
+ 1217              	.L79:
+ 1218              		.loc 1 729 9
+ 1219 03d8 E30000EA 		b	.L95
+ 1220              	.L60:
+ 1221              	.LBE6:
+ 1222              	.LBB7:
+ 730:newlib_syscalls.c ****         }
+ 731:newlib_syscalls.c ****         {   
+ 732:newlib_syscalls.c ****         case 0b1001:
+ 733:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 734:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 735:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 736:newlib_syscalls.c **** //Src   |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 737:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 738:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 739:newlib_syscalls.c **** //Dst      |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 740:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 741:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1223              		.loc 1 741 32
+ 1224 03dc 64201BE5 		ldr	r2, [fp, #-100]
+ 1225 03e0 013082E2 		add	r3, r2, #1
+ 1226 03e4 64300BE5 		str	r3, [fp, #-100]
+ 1227              		.loc 1 741 15
+ 1228 03e8 60301BE5 		ldr	r3, [fp, #-96]
+ 1229 03ec 011083E2 		add	r1, r3, #1
+ 1230 03f0 60100BE5 		str	r1, [fp, #-96]
+ 1231              		.loc 1 741 30
+ 1232 03f4 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1233              		.loc 1 741 29
+ 1234 03f8 0020C3E5 		strb	r2, [r3]
+ 1235              		.loc 1 741 49
+ 1236 03fc 68301BE5 		ldr	r3, [fp, #-104]
+ 1237 0400 013043E2 		sub	r3, r3, #1
+ 1238 0404 68300BE5 		str	r3, [fp, #-104]
+ 1239              	.L55:
+ 742:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 743:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 744:newlib_syscalls.c ****         case 0b1110:
+ 745:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 746:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 747:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 748:newlib_syscalls.c **** //Src      |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 749:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 750:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 751:newlib_syscalls.c **** //Dst         |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 752:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 753:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1240              		.loc 1 753 32
+ 1241 0408 64201BE5 		ldr	r2, [fp, #-100]
+ 1242 040c 013082E2 		add	r3, r2, #1
+ 1243 0410 64300BE5 		str	r3, [fp, #-100]
+ 1244              		.loc 1 753 15
+ 1245 0414 60301BE5 		ldr	r3, [fp, #-96]
+ 1246 0418 011083E2 		add	r1, r3, #1
+ 1247 041c 60100BE5 		str	r1, [fp, #-96]
+ 1248              		.loc 1 753 30
+ 1249 0420 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1250              		.loc 1 753 29
+ 1251 0424 0020C3E5 		strb	r2, [r3]
+ 1252              		.loc 1 753 49
+ 1253 0428 68301BE5 		ldr	r3, [fp, #-104]
+ 1254 042c 013043E2 		sub	r3, r3, #1
+ 1255 0430 68300BE5 		str	r3, [fp, #-104]
+ 1256              	.L66:
+ 754:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 755:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 756:newlib_syscalls.c ****         case 0b0011:
+ 757:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 758:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 759:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 760:newlib_syscalls.c **** //Src         |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 761:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 762:newlib_syscalls.c **** //               +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 763:newlib_syscalls.c **** //Dst            |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 764:newlib_syscalls.c **** //               +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 765:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1257              		.loc 1 765 32
+ 1258 0434 64201BE5 		ldr	r2, [fp, #-100]
+ 1259 0438 013082E2 		add	r3, r2, #1
+ 1260 043c 64300BE5 		str	r3, [fp, #-100]
+ 1261              		.loc 1 765 15
+ 1262 0440 60301BE5 		ldr	r3, [fp, #-96]
+ 1263 0444 011083E2 		add	r1, r3, #1
+ 1264 0448 60100BE5 		str	r1, [fp, #-96]
+ 1265              		.loc 1 765 30
+ 1266 044c 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1267              		.loc 1 765 29
+ 1268 0450 0020C3E5 		strb	r2, [r3]
+ 1269              		.loc 1 765 49
+ 1270 0454 68301BE5 		ldr	r3, [fp, #-104]
+ 1271 0458 013043E2 		sub	r3, r3, #1
+ 1272 045c 68300BE5 		str	r3, [fp, #-104]
+ 1273              	.L65:
+ 766:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 767:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 768:newlib_syscalls.c ****         case 0b0100:
+ 769:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 770:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 771:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 772:newlib_syscalls.c **** //Src|LL|LH|HL|HH|LL|LH|HL|HH|  |  |  |  |  |
+ 773:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 774:newlib_syscalls.c **** // ARM32 = x86 = LittleEndian = Niederwertiges Byte zuerst
+ 775:newlib_syscalls.c **** //   +-----------+-----------+
+ 776:newlib_syscalls.c **** //   |HH HL LH LL|HH HL LH LL|
+ 777:newlib_syscalls.c **** //   +---tmp1----+---tmp2----+
+ 778:newlib_syscalls.c **** //      +--+-----+-----------+--+
+ 779:newlib_syscalls.c **** //      |LL|HL LH|HL LH LL HH|HH|
+ 780:newlib_syscalls.c **** //      +t1+-t1--+t2-t2-t2-t1+t1+
+ 781:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 782:newlib_syscalls.c **** //Dst   |LL|LH|HL|HH|LL|LH|HL|HH|  |  |  |  |  |
+ 783:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 784:newlib_syscalls.c ****             uint32_t *s =src;
+ 1274              		.loc 1 784 23
+ 1275 0460 64301BE5 		ldr	r3, [fp, #-100]
+ 1276 0464 24300BE5 		str	r3, [fp, #-36]
+ 785:newlib_syscalls.c ****             uint32_t *se=s+(n/4);
+ 1277              		.loc 1 785 27
+ 1278 0468 68301BE5 		ldr	r3, [fp, #-104]
+ 1279 046c 0330C3E3 		bic	r3, r3, #3
+ 1280              		.loc 1 785 23
+ 1281 0470 24201BE5 		ldr	r2, [fp, #-36]
+ 1282 0474 033082E0 		add	r3, r2, r3
+ 1283 0478 40300BE5 		str	r3, [fp, #-64]
+ 786:newlib_syscalls.c ****             uint32_t *d =dst+3; //Zwecks Start auf gerade Adresse
+ 1284              		.loc 1 786 23
+ 1285 047c 60301BE5 		ldr	r3, [fp, #-96]
+ 1286 0480 033083E2 		add	r3, r3, #3
+ 1287 0484 28300BE5 		str	r3, [fp, #-40]
+ 787:newlib_syscalls.c ****             uint32_t  tmp1=*s++;
+ 1288              		.loc 1 787 30
+ 1289 0488 24301BE5 		ldr	r3, [fp, #-36]
+ 1290 048c 042083E2 		add	r2, r3, #4
+ 1291 0490 24200BE5 		str	r2, [fp, #-36]
+ 1292              		.loc 1 787 23
+ 1293 0494 003093E5 		ldr	r3, [r3]
+ 1294 0498 2C300BE5 		str	r3, [fp, #-44]
+ 788:newlib_syscalls.c ****             uint32_t  tmp2;
+ 789:newlib_syscalls.c ****             *((uint8_t  *) dst+0) =(tmp1>>0)&0x00ff;
+ 1295              		.loc 1 789 35
+ 1296 049c 2C301BE5 		ldr	r3, [fp, #-44]
+ 1297 04a0 FF2003E2 		and	r2, r3, #255
+ 1298 04a4 60301BE5 		ldr	r3, [fp, #-96]
+ 1299 04a8 0020C3E5 		strb	r2, [r3]
+ 790:newlib_syscalls.c ****             *((uint16_t *)(dst+1))=(tmp1>>8)&0xffff;
+ 1300              		.loc 1 790 41
+ 1301 04ac 2C301BE5 		ldr	r3, [fp, #-44]
+ 1302 04b0 2324A0E1 		lsr	r2, r3, #8
+ 1303              		.loc 1 790 31
+ 1304 04b4 60301BE5 		ldr	r3, [fp, #-96]
+ 1305 04b8 013083E2 		add	r3, r3, #1
+ 1306              		.loc 1 790 35
+ 1307 04bc 0228A0E1 		lsl	r2, r2, #16
+ 1308 04c0 2228A0E1 		lsr	r2, r2, #16
+ 1309 04c4 B020C3E1 		strh	r2, [r3]	@ movhi
+ 791:newlib_syscalls.c ****             while(s<se) {
+ 1310              		.loc 1 791 18
+ 1311 04c8 0F0000EA 		b	.L82
+ 1312              	.L83:
+ 792:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %p\n",s,d,se));
+ 793:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)s&3) || ((uintptr_t)d&3)) printf(VT100_RED "%p %p\n" VT100_OFF,s,d));
+ 794:newlib_syscalls.c ****                 tmp2=*s++;
+ 1313              		.loc 1 794 24
+ 1314 04cc 24301BE5 		ldr	r3, [fp, #-36]
+ 1315 04d0 042083E2 		add	r2, r3, #4
+ 1316 04d4 24200BE5 		str	r2, [fp, #-36]
+ 1317              		.loc 1 794 21
+ 1318 04d8 003093E5 		ldr	r3, [r3]
+ 1319 04dc 44300BE5 		str	r3, [fp, #-68]
+ 795:newlib_syscalls.c ****                 *d++=((tmp1>>24)&0xff) | ((tmp2<<8)&0xffffff00);
+ 1320              		.loc 1 795 28
+ 1321 04e0 2C301BE5 		ldr	r3, [fp, #-44]
+ 1322 04e4 231CA0E1 		lsr	r1, r3, #24
+ 1323              		.loc 1 795 52
+ 1324 04e8 44301BE5 		ldr	r3, [fp, #-68]
+ 1325 04ec 0324A0E1 		lsl	r2, r3, #8
+ 1326              		.loc 1 795 19
+ 1327 04f0 28301BE5 		ldr	r3, [fp, #-40]
+ 1328 04f4 040083E2 		add	r0, r3, #4
+ 1329 04f8 28000BE5 		str	r0, [fp, #-40]
+ 1330              		.loc 1 795 40
+ 1331 04fc 022081E1 		orr	r2, r1, r2
+ 1332              		.loc 1 795 21
+ 1333 0500 002083E5 		str	r2, [r3]
+ 796:newlib_syscalls.c ****                 tmp1=tmp2;
+ 1334              		.loc 1 796 21
+ 1335 0504 44301BE5 		ldr	r3, [fp, #-68]
+ 1336 0508 2C300BE5 		str	r3, [fp, #-44]
+ 1337              	.L82:
+ 791:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %p\n",s,d,se));
+ 1338              		.loc 1 791 20
+ 1339 050c 24201BE5 		ldr	r2, [fp, #-36]
+ 1340 0510 40301BE5 		ldr	r3, [fp, #-64]
+ 1341 0514 030052E1 		cmp	r2, r3
+ 1342 0518 EBFFFF3A 		bcc	.L83
+ 797:newlib_syscalls.c ****             }
+ 798:newlib_syscalls.c ****             *((uint8_t *)d)=(tmp1>>24)&0xff;
+ 1343              		.loc 1 798 34
+ 1344 051c 2C301BE5 		ldr	r3, [fp, #-44]
+ 1345 0520 233CA0E1 		lsr	r3, r3, #24
+ 1346              		.loc 1 798 28
+ 1347 0524 FF2003E2 		and	r2, r3, #255
+ 1348 0528 28301BE5 		ldr	r3, [fp, #-40]
+ 1349 052c 0020C3E5 		strb	r2, [r3]
+ 799:newlib_syscalls.c ****             switch(n&3) {
+ 1350              		.loc 1 799 21
+ 1351 0530 68301BE5 		ldr	r3, [fp, #-104]
+ 1352 0534 033003E2 		and	r3, r3, #3
+ 1353              		.loc 1 799 13
+ 1354 0538 030053E3 		cmp	r3, #3
+ 1355 053c 0600000A 		beq	.L84
+ 1356 0540 030053E3 		cmp	r3, #3
+ 1357 0544 8A00008A 		bhi	.L96
+ 1358 0548 010053E3 		cmp	r3, #1
+ 1359 054c 0C00000A 		beq	.L86
+ 1360 0550 020053E3 		cmp	r3, #2
+ 1361 0554 0500000A 		beq	.L87
+ 800:newlib_syscalls.c ****                 case 3: *((uint8_t  *)d+3)=*((uint8_t  *)s+2);
+ 801:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 802:newlib_syscalls.c ****                         __attribute__((fallthrough)); 
+ 803:newlib_syscalls.c ****                 case 2: *((uint8_t  *)d+2)=*((uint8_t  *)s+1);
+ 804:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 805:newlib_syscalls.c ****                         __attribute__((fallthrough)); 
+ 806:newlib_syscalls.c ****                 case 1: *((uint8_t  *)d+1)=*((uint8_t  *)s);
+ 807:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 808:newlib_syscalls.c ****                         break;
+ 809:newlib_syscalls.c ****             }
+ 810:newlib_syscalls.c **** 			break;
+ 1362              		.loc 1 810 4
+ 1363 0558 850000EA 		b	.L96
+ 1364              	.L84:
+ 800:newlib_syscalls.c ****                 case 3: *((uint8_t  *)d+3)=*((uint8_t  *)s+2);
+ 1365              		.loc 1 800 40
+ 1366 055c 28301BE5 		ldr	r3, [fp, #-40]
+ 1367 0560 033083E2 		add	r3, r3, #3
+ 800:newlib_syscalls.c ****                 case 3: *((uint8_t  *)d+3)=*((uint8_t  *)s+2);
+ 1368              		.loc 1 800 43
+ 1369 0564 24201BE5 		ldr	r2, [fp, #-36]
+ 1370 0568 0220D2E5 		ldrb	r2, [r2, #2]	@ zero_extendqisi2
+ 1371 056c 0020C3E5 		strb	r2, [r3]
+ 1372              	.L87:
+ 803:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 1373              		.loc 1 803 40
+ 1374 0570 28301BE5 		ldr	r3, [fp, #-40]
+ 1375 0574 023083E2 		add	r3, r3, #2
+ 803:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 1376              		.loc 1 803 43
+ 1377 0578 24201BE5 		ldr	r2, [fp, #-36]
+ 1378 057c 0120D2E5 		ldrb	r2, [r2, #1]	@ zero_extendqisi2
+ 1379 0580 0020C3E5 		strb	r2, [r3]
+ 1380              	.L86:
+ 806:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1381              		.loc 1 806 40
+ 1382 0584 28301BE5 		ldr	r3, [fp, #-40]
+ 1383 0588 013083E2 		add	r3, r3, #1
+ 806:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1384              		.loc 1 806 44
+ 1385 058c 24201BE5 		ldr	r2, [fp, #-36]
+ 1386 0590 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 806:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1387              		.loc 1 806 43
+ 1388 0594 0020C3E5 		strb	r2, [r3]
+ 808:newlib_syscalls.c ****             }
+ 1389              		.loc 1 808 25
+ 1390 0598 0000A0E1 		nop
+ 1391              		.loc 1 810 4
+ 1392 059c 740000EA 		b	.L96
+ 1393              	.L68:
+ 1394              	.LBE7:
+ 1395              	.LBB8:
+ 811:newlib_syscalls.c ****         }
+ 812:newlib_syscalls.c ****         {
+ 813:newlib_syscalls.c ****         case 0b0001:
+ 814:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 815:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 816:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 817:newlib_syscalls.c **** //Src   |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 818:newlib_syscalls.c **** //      +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 819:newlib_syscalls.c **** //               +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 820:newlib_syscalls.c **** //Dst            |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 821:newlib_syscalls.c **** //               +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 822:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1396              		.loc 1 822 32
+ 1397 05a0 64201BE5 		ldr	r2, [fp, #-100]
+ 1398 05a4 013082E2 		add	r3, r2, #1
+ 1399 05a8 64300BE5 		str	r3, [fp, #-100]
+ 1400              		.loc 1 822 15
+ 1401 05ac 60301BE5 		ldr	r3, [fp, #-96]
+ 1402 05b0 011083E2 		add	r1, r3, #1
+ 1403 05b4 60100BE5 		str	r1, [fp, #-96]
+ 1404              		.loc 1 822 30
+ 1405 05b8 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1406              		.loc 1 822 29
+ 1407 05bc 0020C3E5 		strb	r2, [r3]
+ 1408              		.loc 1 822 49
+ 1409 05c0 68301BE5 		ldr	r3, [fp, #-104]
+ 1410 05c4 013043E2 		sub	r3, r3, #1
+ 1411 05c8 68300BE5 		str	r3, [fp, #-104]
+ 1412              	.L63:
+ 823:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 824:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 825:newlib_syscalls.c ****         case 0b0110:
+ 826:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 827:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 828:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 829:newlib_syscalls.c **** //Src      |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 830:newlib_syscalls.c **** //         +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 831:newlib_syscalls.c **** //                  +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 832:newlib_syscalls.c **** //Dst               |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 833:newlib_syscalls.c **** //                  +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 834:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1413              		.loc 1 834 32
+ 1414 05cc 64201BE5 		ldr	r2, [fp, #-100]
+ 1415 05d0 013082E2 		add	r3, r2, #1
+ 1416 05d4 64300BE5 		str	r3, [fp, #-100]
+ 1417              		.loc 1 834 15
+ 1418 05d8 60301BE5 		ldr	r3, [fp, #-96]
+ 1419 05dc 011083E2 		add	r1, r3, #1
+ 1420 05e0 60100BE5 		str	r1, [fp, #-96]
+ 1421              		.loc 1 834 30
+ 1422 05e4 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1423              		.loc 1 834 29
+ 1424 05e8 0020C3E5 		strb	r2, [r3]
+ 1425              		.loc 1 834 49
+ 1426 05ec 68301BE5 		ldr	r3, [fp, #-104]
+ 1427 05f0 013043E2 		sub	r3, r3, #1
+ 1428 05f4 68300BE5 		str	r3, [fp, #-104]
+ 1429              	.L58:
+ 835:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 836:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 837:newlib_syscalls.c ****         case 0b1011:
+ 838:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 839:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 840:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 841:newlib_syscalls.c **** //Src         |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 842:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 843:newlib_syscalls.c **** //                     +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 844:newlib_syscalls.c **** //Dst                  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+ 845:newlib_syscalls.c **** //                     +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 846:newlib_syscalls.c ****             *((char *)dst++)=*((char *)src++); n--;
+ 1430              		.loc 1 846 32
+ 1431 05f8 64201BE5 		ldr	r2, [fp, #-100]
+ 1432 05fc 013082E2 		add	r3, r2, #1
+ 1433 0600 64300BE5 		str	r3, [fp, #-100]
+ 1434              		.loc 1 846 15
+ 1435 0604 60301BE5 		ldr	r3, [fp, #-96]
+ 1436 0608 011083E2 		add	r1, r3, #1
+ 1437 060c 60100BE5 		str	r1, [fp, #-96]
+ 1438              		.loc 1 846 30
+ 1439 0610 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 1440              		.loc 1 846 29
+ 1441 0614 0020C3E5 		strb	r2, [r3]
+ 1442              		.loc 1 846 49
+ 1443 0618 68301BE5 		ldr	r3, [fp, #-104]
+ 1444 061c 013043E2 		sub	r3, r3, #1
+ 1445 0620 68300BE5 		str	r3, [fp, #-104]
+ 1446              	.L57:
+ 847:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 848:newlib_syscalls.c ****             __attribute__((fallthrough)); 
+ 849:newlib_syscalls.c ****         case 0b1100:
+ 850:newlib_syscalls.c **** //    1  2  3  4  5  6  7  8  9  10 11 12 13
+ 851:newlib_syscalls.c **** //    0  1  2  3  0  1  2  3  0  1  2  3  0
+ 852:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 853:newlib_syscalls.c **** //Src|LL|LH|HL|HH|LL|LH|HL|HH|  |  |  |  |  |
+ 854:newlib_syscalls.c **** //   +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 855:newlib_syscalls.c **** // ARM32 = x86 = LittleEndian = Niederwertiges Byte zuerst
+ 856:newlib_syscalls.c **** //   +-----------+-----------+
+ 857:newlib_syscalls.c **** //   |HH HL LH LL|HH HL LH LL|
+ 858:newlib_syscalls.c **** //   +---tmp1----+---tmp2----+
+ 859:newlib_syscalls.c **** //            +--+-----------+-----+--+
+ 860:newlib_syscalls.c **** //            |LL|LL HH HL LH|HL LH|HH|
+ 861:newlib_syscalls.c **** //            +t1+t2 t1 t1 t1+t1-t1+t1+
+ 862:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 863:newlib_syscalls.c **** //Dst         |LL|LH|HL|HH|LL|LH|HL|HH|  |  |  |  |  |
+ 864:newlib_syscalls.c **** //            +--+--+--+--+--+--+--+--+--+--+--+--+--+
+ 865:newlib_syscalls.c ****             uint32_t *s =src;
+ 1447              		.loc 1 865 23
+ 1448 0624 64301BE5 		ldr	r3, [fp, #-100]
+ 1449 0628 30300BE5 		str	r3, [fp, #-48]
+ 866:newlib_syscalls.c ****             uint32_t *se=s+(n/4);
+ 1450              		.loc 1 866 27
+ 1451 062c 68301BE5 		ldr	r3, [fp, #-104]
+ 1452 0630 0330C3E3 		bic	r3, r3, #3
+ 1453              		.loc 1 866 23
+ 1454 0634 30201BE5 		ldr	r2, [fp, #-48]
+ 1455 0638 033082E0 		add	r3, r2, r3
+ 1456 063c 50300BE5 		str	r3, [fp, #-80]
+ 867:newlib_syscalls.c ****             uint32_t *d =dst+1; //Zwecks Start auf gerade Adresse
+ 1457              		.loc 1 867 23
+ 1458 0640 60301BE5 		ldr	r3, [fp, #-96]
+ 1459 0644 013083E2 		add	r3, r3, #1
+ 1460 0648 34300BE5 		str	r3, [fp, #-52]
+ 868:newlib_syscalls.c ****             uint32_t  tmp1=*s++;
+ 1461              		.loc 1 868 30
+ 1462 064c 30301BE5 		ldr	r3, [fp, #-48]
+ 1463 0650 042083E2 		add	r2, r3, #4
+ 1464 0654 30200BE5 		str	r2, [fp, #-48]
+ 1465              		.loc 1 868 23
+ 1466 0658 003093E5 		ldr	r3, [r3]
+ 1467 065c 38300BE5 		str	r3, [fp, #-56]
+ 869:newlib_syscalls.c ****             uint32_t  tmp2;
+ 870:newlib_syscalls.c ****             *((uint8_t *)dst)=(tmp1>>0)&0xff;
+ 1468              		.loc 1 870 30
+ 1469 0660 38301BE5 		ldr	r3, [fp, #-56]
+ 1470 0664 FF2003E2 		and	r2, r3, #255
+ 1471 0668 60301BE5 		ldr	r3, [fp, #-96]
+ 1472 066c 0020C3E5 		strb	r2, [r3]
+ 871:newlib_syscalls.c ****             while(s<se) {
+ 1473              		.loc 1 871 18
+ 1474 0670 0F0000EA 		b	.L88
+ 1475              	.L89:
+ 872:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %p\n",s,d,se));
+ 873:newlib_syscalls.c **** MEMCPY_RPL(if(((uintptr_t)s&3) || ((uintptr_t)d&3)) printf(VT100_RED "%p %p\n" VT100_OFF,s,d));
+ 874:newlib_syscalls.c ****                 tmp2=*s++;
+ 1476              		.loc 1 874 24
+ 1477 0674 30301BE5 		ldr	r3, [fp, #-48]
+ 1478 0678 042083E2 		add	r2, r3, #4
+ 1479 067c 30200BE5 		str	r2, [fp, #-48]
+ 1480              		.loc 1 874 21
+ 1481 0680 003093E5 		ldr	r3, [r3]
+ 1482 0684 54300BE5 		str	r3, [fp, #-84]
+ 875:newlib_syscalls.c ****                 *d++=((tmp1>>8)&0xffffff) | ((tmp2&0xff)<<24);
+ 1483              		.loc 1 875 28
+ 1484 0688 38301BE5 		ldr	r3, [fp, #-56]
+ 1485 068c 2314A0E1 		lsr	r1, r3, #8
+ 1486              		.loc 1 875 57
+ 1487 0690 54301BE5 		ldr	r3, [fp, #-84]
+ 1488 0694 032CA0E1 		lsl	r2, r3, #24
+ 1489              		.loc 1 875 19
+ 1490 0698 34301BE5 		ldr	r3, [fp, #-52]
+ 1491 069c 040083E2 		add	r0, r3, #4
+ 1492 06a0 34000BE5 		str	r0, [fp, #-52]
+ 1493              		.loc 1 875 43
+ 1494 06a4 022081E1 		orr	r2, r1, r2
+ 1495              		.loc 1 875 21
+ 1496 06a8 002083E5 		str	r2, [r3]
+ 876:newlib_syscalls.c ****                 tmp1=tmp2;
+ 1497              		.loc 1 876 21
+ 1498 06ac 54301BE5 		ldr	r3, [fp, #-84]
+ 1499 06b0 38300BE5 		str	r3, [fp, #-56]
+ 1500              	.L88:
+ 871:newlib_syscalls.c **** MEMCPY_RPL(printf("%p %p %p\n",s,d,se));
+ 1501              		.loc 1 871 20
+ 1502 06b4 30201BE5 		ldr	r2, [fp, #-48]
+ 1503 06b8 50301BE5 		ldr	r3, [fp, #-80]
+ 1504 06bc 030052E1 		cmp	r2, r3
+ 1505 06c0 EBFFFF3A 		bcc	.L89
+ 877:newlib_syscalls.c ****             }
+ 878:newlib_syscalls.c ****             *((uint16_t *)d  )=((tmp1>>8)&0xffff);
+ 1506              		.loc 1 878 38
+ 1507 06c4 38301BE5 		ldr	r3, [fp, #-56]
+ 1508 06c8 2334A0E1 		lsr	r3, r3, #8
+ 1509              		.loc 1 878 31
+ 1510 06cc 0338A0E1 		lsl	r3, r3, #16
+ 1511 06d0 2328A0E1 		lsr	r2, r3, #16
+ 1512 06d4 34301BE5 		ldr	r3, [fp, #-52]
+ 1513 06d8 B020C3E1 		strh	r2, [r3]	@ movhi
+ 879:newlib_syscalls.c ****             *((uint8_t  *)d+2)=(tmp1>>24)&0xff;
+ 1514              		.loc 1 879 37
+ 1515 06dc 38301BE5 		ldr	r3, [fp, #-56]
+ 1516 06e0 232CA0E1 		lsr	r2, r3, #24
+ 1517              		.loc 1 879 28
+ 1518 06e4 34301BE5 		ldr	r3, [fp, #-52]
+ 1519 06e8 023083E2 		add	r3, r3, #2
+ 1520              		.loc 1 879 31
+ 1521 06ec FF2002E2 		and	r2, r2, #255
+ 1522 06f0 0020C3E5 		strb	r2, [r3]
+ 880:newlib_syscalls.c ****             switch(n&3) {
+ 1523              		.loc 1 880 21
+ 1524 06f4 68301BE5 		ldr	r3, [fp, #-104]
+ 1525 06f8 033003E2 		and	r3, r3, #3
+ 1526              		.loc 1 880 13
+ 1527 06fc 030053E3 		cmp	r3, #3
+ 1528 0700 0600000A 		beq	.L90
+ 1529 0704 030053E3 		cmp	r3, #3
+ 1530 0708 1B00008A 		bhi	.L97
+ 1531 070c 010053E3 		cmp	r3, #1
+ 1532 0710 0C00000A 		beq	.L92
+ 1533 0714 020053E3 		cmp	r3, #2
+ 1534 0718 0500000A 		beq	.L93
+ 881:newlib_syscalls.c ****                 case 3: *((uint8_t  *)d+5)=*((uint8_t  *)s+2);
+ 882:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 883:newlib_syscalls.c ****                         __attribute__((fallthrough)); 
+ 884:newlib_syscalls.c ****                 case 2: *((uint8_t  *)d+4)=*((uint8_t  *)s+1);
+ 885:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 886:newlib_syscalls.c ****                         __attribute__((fallthrough)); 
+ 887:newlib_syscalls.c ****                 case 1: *((uint8_t  *)d+3)=*((uint8_t  *)s);
+ 888:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 889:newlib_syscalls.c ****                         break;
+ 890:newlib_syscalls.c ****             }
+ 891:newlib_syscalls.c **** 			break;
+ 1535              		.loc 1 891 4
+ 1536 071c 160000EA 		b	.L97
+ 1537              	.L90:
+ 881:newlib_syscalls.c ****                 case 3: *((uint8_t  *)d+5)=*((uint8_t  *)s+2);
+ 1538              		.loc 1 881 40
+ 1539 0720 34301BE5 		ldr	r3, [fp, #-52]
+ 1540 0724 053083E2 		add	r3, r3, #5
+ 881:newlib_syscalls.c ****                 case 3: *((uint8_t  *)d+5)=*((uint8_t  *)s+2);
+ 1541              		.loc 1 881 43
+ 1542 0728 30201BE5 		ldr	r2, [fp, #-48]
+ 1543 072c 0220D2E5 		ldrb	r2, [r2, #2]	@ zero_extendqisi2
+ 1544 0730 0020C3E5 		strb	r2, [r3]
+ 1545              	.L93:
+ 884:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 1546              		.loc 1 884 40
+ 1547 0734 34301BE5 		ldr	r3, [fp, #-52]
+ 1548 0738 043083E2 		add	r3, r3, #4
+ 884:newlib_syscalls.c **** MEMCPY_RPL(printf("+1"));
+ 1549              		.loc 1 884 43
+ 1550 073c 30201BE5 		ldr	r2, [fp, #-48]
+ 1551 0740 0120D2E5 		ldrb	r2, [r2, #1]	@ zero_extendqisi2
+ 1552 0744 0020C3E5 		strb	r2, [r3]
+ 1553              	.L92:
+ 887:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1554              		.loc 1 887 40
+ 1555 0748 34301BE5 		ldr	r3, [fp, #-52]
+ 1556 074c 033083E2 		add	r3, r3, #3
+ 887:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1557              		.loc 1 887 44
+ 1558 0750 30201BE5 		ldr	r2, [fp, #-48]
+ 1559 0754 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 887:newlib_syscalls.c **** MEMCPY_RPL(printf("+1\n"));
+ 1560              		.loc 1 887 43
+ 1561 0758 0020C3E5 		strb	r2, [r3]
+ 889:newlib_syscalls.c ****             }
+ 1562              		.loc 1 889 25
+ 1563 075c 0000A0E1 		nop
+ 1564              		.loc 1 891 4
+ 1565 0760 050000EA 		b	.L97
+ 1566              	.L94:
+ 1567              	.LBE8:
+ 1568              	.LBB9:
+ 646:newlib_syscalls.c ****         }
+ 1569              		.loc 1 646 13
+ 1570 0764 0000A0E1 		nop
+ 1571 0768 040000EA 		b	.L52
+ 1572              	.L95:
+ 1573              	.LBE9:
+ 1574              	.LBB10:
+ 729:newlib_syscalls.c ****         }
+ 1575              		.loc 1 729 9
+ 1576 076c 0000A0E1 		nop
+ 1577 0770 020000EA 		b	.L52
+ 1578              	.L96:
+ 1579              	.LBE10:
+ 1580              	.LBB11:
+ 810:newlib_syscalls.c ****         }
+ 1581              		.loc 1 810 4
+ 1582 0774 0000A0E1 		nop
+ 1583 0778 000000EA 		b	.L52
+ 1584              	.L97:
+ 1585              	.LBE11:
+ 1586              	.LBB12:
+ 1587              		.loc 1 891 4
+ 1588 077c 0000A0E1 		nop
+ 1589              	.L52:
+ 1590              	.LBE12:
+ 892:newlib_syscalls.c ****         }
+ 893:newlib_syscalls.c ****     }
+ 894:newlib_syscalls.c **** 	return ret;
+ 1591              		.loc 1 894 9
+ 1592 0780 3C301BE5 		ldr	r3, [fp, #-60]
+ 1593              	.L51:
+ 895:newlib_syscalls.c **** }
+ 1594              		.loc 1 895 1
+ 1595 0784 0300A0E1 		mov	r0, r3
+ 1596 0788 00D08BE2 		add	sp, fp, #0
+ 1597              		.cfi_def_cfa_register 13
+ 1598              		@ sp needed
+ 1599 078c 04B09DE4 		ldr	fp, [sp], #4
+ 1600              		.cfi_restore 11
+ 1601              		.cfi_def_cfa_offset 0
+ 1602 0790 1EFF2FE1 		bx	lr
+ 1603              	.L112:
+ 1604              		.align	2
+ 1605              	.L111:
+ 1606 0794 10000000 		.word	.L54
+ 1607              		.cfi_endproc
+ 1608              	.LFE20:
+ 1610              		.bss
+ 1611              		.align	2
+ 1612              	heap_end.1:
+ 1613 0000 00000000 		.space	4
+ 1615              		.data
+ 1618              	sbrk_fill.0:
+ 1619 0000 47       		.byte	71
+ 1620              		.text
+ 1621              	.Letext0:
+ 1622              		.file 2 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 1623              		.file 3 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 1624              		.file 4 "lib/../main.h"
+ 1625              		.file 5 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
+ 1626              		.file 6 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 1627              		.file 7 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/r
+ 1628              		.file 8 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/l
+ 1629              		.file 9 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 1630              		.file 10 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 1631              		.file 11 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 1632              		.file 12 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 1633              		.file 13 "lib/term.h"
+ 1634              		.file 14 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 1635              		.file 15 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/reen
+ 1636              		.file 16 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/stdl
+DEFINED SYMBOLS
+                            *ABS*:00000000 newlib_syscalls.c
+     /tmp/ccO7Qsri.s:19     .text._fork_r:00000000 $a
+     /tmp/ccO7Qsri.s:24     .text._fork_r:00000000 _fork_r
+     /tmp/ccO7Qsri.s:58     .text._execve_r:00000000 $a
+     /tmp/ccO7Qsri.s:63     .text._execve_r:00000000 _execve_r
+     /tmp/ccO7Qsri.s:100    .text._kill_r:00000000 $a
+     /tmp/ccO7Qsri.s:105    .text._kill_r:00000000 _kill_r
+     /tmp/ccO7Qsri.s:141    .text._wait_r:00000000 $a
+     /tmp/ccO7Qsri.s:146    .text._wait_r:00000000 _wait_r
+     /tmp/ccO7Qsri.s:181    .text._getpid_r:00000000 $a
+     /tmp/ccO7Qsri.s:186    .text._getpid_r:00000000 _getpid_r
+     /tmp/ccO7Qsri.s:216    .rodata:00000000 $d
+     /tmp/ccO7Qsri.s:220    .text._sbrk_r:00000000 $a
+     /tmp/ccO7Qsri.s:225    .text._sbrk_r:00000000 _sbrk_r
+     /tmp/ccO7Qsri.s:332    .text._sbrk_r:000000fc $d
+     /tmp/ccO7Qsri.s:1612   .bss:00000000 heap_end.1
+     /tmp/ccO7Qsri.s:1618   .data:00000000 sbrk_fill.0
+     /tmp/ccO7Qsri.s:343    .text.__malloc_lock:00000000 $a
+     /tmp/ccO7Qsri.s:348    .text.__malloc_lock:00000000 __malloc_lock
+     /tmp/ccO7Qsri.s:376    .text.__malloc_unlock:00000000 $a
+     /tmp/ccO7Qsri.s:381    .text.__malloc_unlock:00000000 __malloc_unlock
+     /tmp/ccO7Qsri.s:409    .text._open_r:00000000 $a
+     /tmp/ccO7Qsri.s:414    .text._open_r:00000000 _open_r
+     /tmp/ccO7Qsri.s:447    .text._close_r:00000000 $a
+     /tmp/ccO7Qsri.s:452    .text._close_r:00000000 _close_r
+     /tmp/ccO7Qsri.s:483    .text._read_r:00000000 $a
+     /tmp/ccO7Qsri.s:488    .text._read_r:00000000 _read_r
+     /tmp/ccO7Qsri.s:581    .text._read_r:000000c4 $d
+     /tmp/ccO7Qsri.s:586    .text._write_r:00000000 $a
+     /tmp/ccO7Qsri.s:591    .text._write_r:00000000 _write_r
+     /tmp/ccO7Qsri.s:655    .text._write_r:00000084 $d
+     /tmp/ccO7Qsri.s:660    .text._fstat_r:00000000 $a
+     /tmp/ccO7Qsri.s:665    .text._fstat_r:00000000 _fstat_r
+     /tmp/ccO7Qsri.s:705    .text._lseek_r:00000000 $a
+     /tmp/ccO7Qsri.s:710    .text._lseek_r:00000000 _lseek_r
+     /tmp/ccO7Qsri.s:743    .text._isatty_r:00000000 $a
+     /tmp/ccO7Qsri.s:748    .text._isatty_r:00000000 _isatty_r
+     /tmp/ccO7Qsri.s:797    .text.memcpy:00000000 $a
+     /tmp/ccO7Qsri.s:802    .text.memcpy:00000000 memcpy
+     /tmp/ccO7Qsri.s:1606   .text.memcpy:00000794 $d
+     /tmp/ccO7Qsri.s:1611   .bss:00000000 $d
+
+UNDEFINED SYMBOLS
+__heap_start__
+__heap_end__
+write
+abort
+term_read
+term_char

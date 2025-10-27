@@ -1,0 +1,1615 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"display.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "./lib/display.c"
+  18              		.bss
+  19              		.align	2
+  20              	display_buffer:
+  21 0000 00000000 		.space	900
+  21      00000000 
+  21      00000000 
+  21      00000000 
+  21      00000000 
+  23              		.global	display_x
+  24              		.align	2
+  27              	display_x:
+  28 0384 00000000 		.space	4
+  29              		.global	display_y
+  30              		.align	2
+  33              	display_y:
+  34 0388 00000000 		.space	4
+  35              		.section	.rodata
+  36              		.align	2
+  39              	font:
+  40 0000 3E362A36 		.ascii	">6*6>"
+  40      3E
+  41 0005 3E556155 		.ascii	">UaU>"
+  41      3E
+  42 000a 3E6B5F6B 		.ascii	">k_k>"
+  42      3E
+  43 000f 0C1E3C1E 		.ascii	"\014\036<\036\014"
+  43      0C
+  44 0014 081C3E1C 		.ascii	"\010\034>\034\010"
+  44      08
+  45 0019 185E7E5E 		.ascii	"\030^~^\030"
+  45      18
+  46 001e 185C7E5C 		.ascii	"\030\\~\\\030"
+  46      18
+  47 0023 3E362A36 		.ascii	">6*6>"
+  47      3E
+  48 0028 3E362A36 		.ascii	">6*6>"
+  48      3E
+  49 002d 3E362A36 		.ascii	">6*6>"
+  49      3E
+  50 0032 3E362A36 		.ascii	">6*6>"
+  50      3E
+  51 0037 3E362A36 		.ascii	">6*6>"
+  51      3E
+  52 003c 3E362A36 		.ascii	">6*6>"
+  52      3E
+  53 0041 3E362A36 		.ascii	">6*6>"
+  53      3E
+  54 0046 3E362A36 		.ascii	">6*6>"
+  54      3E
+  55 004b 3E362A36 		.ascii	">6*6>"
+  55      3E
+  56 0050 3E362A36 		.ascii	">6*6>"
+  56      3E
+  57 0055 3E362A36 		.ascii	">6*6>"
+  57      3E
+  58 005a 3E362A36 		.ascii	">6*6>"
+  58      3E
+  59 005f 3E362A36 		.ascii	">6*6>"
+  59      3E
+  60 0064 3E362A36 		.ascii	">6*6>"
+  60      3E
+  61 0069 3E362A36 		.ascii	">6*6>"
+  61      3E
+  62 006e 3E362A36 		.ascii	">6*6>"
+  62      3E
+  63 0073 3E362A36 		.ascii	">6*6>"
+  63      3E
+  64 0078 3E362A36 		.ascii	">6*6>"
+  64      3E
+  65 007d 3E362A36 		.ascii	">6*6>"
+  65      3E
+  66 0082 3E362A36 		.ascii	">6*6>"
+  66      3E
+  67 0087 3E362A36 		.ascii	">6*6>"
+  67      3E
+  68 008c 3E362A36 		.ascii	">6*6>"
+  68      3E
+  69 0091 3E362A36 		.ascii	">6*6>"
+  69      3E
+  70 0096 3E362A36 		.ascii	">6*6>"
+  70      3E
+  71 009b 3E362A36 		.ascii	">6*6>"
+  71      3E
+  72 00a0 00000000 		.ascii	"\000\000\000\000\000"
+  72      00
+  73 00a5 00005F00 		.ascii	"\000\000_\000\000"
+  73      00
+  74 00aa 00070007 		.ascii	"\000\007\000\007\000"
+  74      00
+  75 00af 143E143E 		.ascii	"\024>\024>\024"
+  75      14
+  76 00b4 042A7F2A 		.ascii	"\004*\177*\020"
+  76      10
+  77 00b9 26160834 		.ascii	"&\026\01042"
+  77      32
+  78 00be 36495926 		.ascii	"6IY&P"
+  78      50
+  79 00c3 00000700 		.ascii	"\000\000\007\000\000"
+  79      00
+  80 00c8 001C2241 		.ascii	"\000\034\"A\000"
+  80      00
+  81 00cd 0041221C 		.ascii	"\000A\"\034\000"
+  81      00
+  82 00d2 2A1C7F1C 		.ascii	"*\034\177\034*"
+  82      2A
+  83 00d7 08083E08 		.ascii	"\010\010>\010\010"
+  83      08
+  84 00dc 00503000 		.ascii	"\000P0\000\000"
+  84      00
+  85 00e1 08080808 		.ascii	"\010\010\010\010\010"
+  85      08
+  86 00e6 00606000 		.ascii	"\000``\000\000"
+  86      00
+  87 00eb 20100804 		.ascii	" \020\010\004\002"
+  87      02
+  88 00f0 3E514945 		.ascii	">QIE>"
+  88      3E
+  89 00f5 00427F40 		.ascii	"\000B\177@\000"
+  89      00
+  90 00fa 42615149 		.ascii	"BaQIF"
+  90      46
+  91 00ff 2141454B 		.ascii	"!AEK1"
+  91      31
+  92 0104 1814127F 		.ascii	"\030\024\022\177\020"
+  92      10
+  93 0109 27454545 		.ascii	"'EEE9"
+  93      39
+  94 010e 3C4A4949 		.ascii	"<JII0"
+  94      30
+  95 0113 01017905 		.ascii	"\001\001y\005\003"
+  95      03
+  96 0118 36494949 		.ascii	"6III6"
+  96      36
+  97 011d 06494929 		.ascii	"\006II)\036"
+  97      1E
+  98 0122 00363600 		.ascii	"\00066\000\000"
+  98      00
+  99 0127 00563600 		.ascii	"\000V6\000\000"
+  99      00
+ 100 012c 08142241 		.ascii	"\010\024\"A\000"
+ 100      00
+ 101 0131 14141414 		.ascii	"\024\024\024\024\024"
+ 101      14
+ 102 0136 41221408 		.ascii	"A\"\024\010\000"
+ 102      00
+ 103 013b 02015905 		.ascii	"\002\001Y\005\002"
+ 103      02
+ 104 0140 1C2A363E 		.ascii	"\034*6>\014"
+ 104      0C
+ 105 0145 7E090909 		.ascii	"~\011\011\011~"
+ 105      7E
+ 106 014a 7F494949 		.ascii	"\177III>"
+ 106      3E
+ 107 014f 3E414141 		.ascii	">AAA\""
+ 107      22
+ 108 0154 7F414122 		.ascii	"\177AA\"\034"
+ 108      1C
+ 109 0159 7F494949 		.ascii	"\177IIIA"
+ 109      41
+ 110 015e 7F090909 		.ascii	"\177\011\011\011\001"
+ 110      01
+ 111 0163 3E414149 		.ascii	">AAI:"
+ 111      3A
+ 112 0168 7F080808 		.ascii	"\177\010\010\010\177"
+ 112      7F
+ 113 016d 00417F41 		.ascii	"\000A\177A\000"
+ 113      00
+ 114 0172 2040413F 		.ascii	" @A?\001"
+ 114      01
+ 115 0177 7F081422 		.ascii	"\177\010\024\"A"
+ 115      41
+ 116 017c 7F404040 		.ascii	"\177@@@@"
+ 116      40
+ 117 0181 7F020402 		.ascii	"\177\002\004\002\177"
+ 117      7F
+ 118 0186 7F040810 		.ascii	"\177\004\010\020\177"
+ 118      7F
+ 119 018b 3E414141 		.ascii	">AAA>"
+ 119      3E
+ 120 0190 7F090909 		.ascii	"\177\011\011\011\006"
+ 120      06
+ 121 0195 3E415121 		.ascii	">AQ!^"
+ 121      5E
+ 122 019a 7F091929 		.ascii	"\177\011\031)F"
+ 122      46
+ 123 019f 26494949 		.ascii	"&III2"
+ 123      32
+ 124 01a4 01017F01 		.ascii	"\001\001\177\001\001"
+ 124      01
+ 125 01a9 3F404040 		.ascii	"?@@@?"
+ 125      3F
+ 126 01ae 1F204020 		.ascii	"\037 @ \037"
+ 126      1F
+ 127 01b3 7F201820 		.ascii	"\177 \030 \177"
+ 127      7F
+ 128 01b8 63140814 		.ascii	"c\024\010\024c"
+ 128      63
+ 129 01bd 03047804 		.ascii	"\003\004x\004\003"
+ 129      03
+ 130 01c2 61514945 		.ascii	"aQIEC"
+ 130      43
+ 131 01c7 007F4141 		.ascii	"\000\177AA\000"
+ 131      00
+ 132 01cc 02040810 		.ascii	"\002\004\010\020 "
+ 132      20
+ 133 01d1 0041417F 		.ascii	"\000AA\177\000"
+ 133      00
+ 134 01d6 04020102 		.ascii	"\004\002\001\002\004"
+ 134      04
+ 135 01db 40404040 		.ascii	"@@@@@"
+ 135      40
+ 136 01e0 00000700 		.ascii	"\000\000\007\000\000"
+ 136      00
+ 137 01e5 20545454 		.ascii	" TTTx"
+ 137      78
+ 138 01ea 7F484444 		.ascii	"\177HDD8"
+ 138      38
+ 139 01ef 30484848 		.ascii	"0HHH "
+ 139      20
+ 140 01f4 38444448 		.ascii	"8DDH\177"
+ 140      7F
+ 141 01f9 38545454 		.ascii	"8TTT\030"
+ 141      18
+ 142 01fe 087E0909 		.ascii	"\010~\011\011\002"
+ 142      02
+ 143 0203 0C525252 		.ascii	"\014RRR>"
+ 143      3E
+ 144 0208 7F080404 		.ascii	"\177\010\004\004x"
+ 144      78
+ 145 020d 00447D40 		.ascii	"\000D}@\000"
+ 145      00
+ 146 0212 2040403D 		.ascii	" @@=\000"
+ 146      00
+ 147 0217 7F102844 		.ascii	"\177\020(D\000"
+ 147      00
+ 148 021c 00417F40 		.ascii	"\000A\177@\000"
+ 148      00
+ 149 0221 7C041804 		.ascii	"|\004\030\004x"
+ 149      78
+ 150 0226 7C080404 		.ascii	"|\010\004\004x"
+ 150      78
+ 151 022b 38444444 		.ascii	"8DDD8"
+ 151      38
+ 152 0230 FC141414 		.ascii	"\374\024\024\024\010"
+ 152      08
+ 153 0235 08141418 		.ascii	"\010\024\024\030|"
+ 153      7C
+ 154 023a 7C080404 		.ascii	"|\010\004\004\010"
+ 154      08
+ 155 023f 48545454 		.ascii	"HTTT "
+ 155      20
+ 156 0244 043F4440 		.ascii	"\004?D@ "
+ 156      20
+ 157 0249 3C404020 		.ascii	"<@@ |"
+ 157      7C
+ 158 024e 1C204020 		.ascii	"\034 @ \034"
+ 158      1C
+ 159 0253 3C403840 		.ascii	"<@8@<"
+ 159      3C
+ 160 0258 44281028 		.ascii	"D(\020(D"
+ 160      44
+ 161 025d 0C505050 		.ascii	"\014PPP<"
+ 161      3C
+ 162 0262 4464544C 		.ascii	"DdTLD"
+ 162      44
+ 163 0267 00083641 		.ascii	"\000\0106A\000"
+ 163      00
+ 164 026c 00007F00 		.ascii	"\000\000\177\000\000"
+ 164      00
+ 165 0271 00413608 		.ascii	"\000A6\010\000"
+ 165      00
+ 166 0276 00070007 		.ascii	"\000\007\000\007\000"
+ 166      00
+ 167 027b 3E362A36 		.ascii	">6*6>"
+ 167      3E
+ 168              		.section	.text.display_update,"ax",%progbits
+ 169              		.align	2
+ 170              		.global	display_update
+ 171              		.syntax unified
+ 172              		.arm
+ 174              	display_update:
+ 175              	.LFB0:
+   1:./lib/display.c **** #include "display.h"
+   2:./lib/display.c **** #include "nxt_lcd.h"
+   3:./lib/display.c **** #include "systick.h"
+   4:./lib/display.c **** #include "helper.h"    //fuer unsigned2string()
+   5:./lib/display.c **** #include <string.h>
+   6:./lib/display.c **** 
+   7:./lib/display.c **** #define DISPLAY_WIDTH (NXT_LCD_WIDTH)
+   8:./lib/display.c **** #define DISPLAY_DEPTH (NXT_LCD_DEPTH)
+   9:./lib/display.c **** 
+  10:./lib/display.c **** /* NOTE
+  11:./lib/display.c ****  * The following buffer is declared with one extra line (the +1).
+  12:./lib/display.c ****  * This is to allow fast dma update of the screen (see nxt_spi.c
+  13:./lib/display.c ****  * for details). The buffer is now created wrapped inside of a Java
+  14:./lib/display.c ****  * array. This allows the buffer to be shared with Java applications.
+  15:./lib/display.c ****  */
+  16:./lib/display.c **** #if 0
+  17:./lib/display.c **** //static uint8_t display_buffer[DISPLAY_DEPTH+1][DISPLAY_WIDTH];
+  18:./lib/display.c **** static struct
+  19:./lib/display.c **** {
+  20:./lib/display.c ****   uint8_t display[DISPLAY_DEPTH+1][DISPLAY_WIDTH];
+  21:./lib/display.c **** } __attribute__((packed)) display_array;
+  22:./lib/display.c **** static uint8_t (*display_buffer)[DISPLAY_WIDTH] = display_array.display;
+  23:./lib/display.c **** #endif
+  24:./lib/display.c **** static uint8_t display_buffer[DISPLAY_DEPTH+1][DISPLAY_WIDTH];
+  25:./lib/display.c **** 
+  26:./lib/display.c **** int display_x;
+  27:./lib/display.c **** int display_y;
+  28:./lib/display.c **** 
+  29:./lib/display.c **** /* Font table for a 5x8 font. 1 pixel spacing between chars */
+  30:./lib/display.c **** #define N_CHARS 128
+  31:./lib/display.c **** #define FONT_WIDTH 5
+  32:./lib/display.c **** #define CELL_WIDTH (FONT_WIDTH + 1)
+  33:./lib/display.c **** #define DISPLAY_CHAR_WIDTH (DISPLAY_WIDTH/(CELL_WIDTH))
+  34:./lib/display.c **** #define DISPLAY_CHAR_DEPTH (DISPLAY_DEPTH)
+  35:./lib/display.c **** 
+  36:./lib/display.c **** static const uint8_t font[N_CHARS][FONT_WIDTH] = {
+  37:./lib/display.c **** /* 0x00 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  38:./lib/display.c **** /* 0x01 */ {0x3E, 0x55, 0x61, 0x55, 0x3E},
+  39:./lib/display.c **** /* 0x02 */ {0x3E, 0x6B, 0x5F, 0x6B, 0x3E},
+  40:./lib/display.c **** /* 0x03 */ {0x0C, 0x1E, 0x3C, 0x1E, 0x0C},
+  41:./lib/display.c **** /* 0x04 */ {0x08, 0x1C, 0x3E, 0x1C, 0x08},
+  42:./lib/display.c **** /* 0x05 */ {0x18, 0x5E, 0x7E, 0x5E, 0x18},
+  43:./lib/display.c **** /* 0x06 */ {0x18, 0x5C, 0x7E, 0x5C, 0x18},
+  44:./lib/display.c **** /* 0x07 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  45:./lib/display.c **** /* 0x08 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  46:./lib/display.c **** /* 0x09 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  47:./lib/display.c **** /* 0x0A */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  48:./lib/display.c **** /* 0x0B */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  49:./lib/display.c **** /* 0x0C */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  50:./lib/display.c **** /* 0x0D */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  51:./lib/display.c **** /* 0x0E */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  52:./lib/display.c **** /* 0x0F */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  53:./lib/display.c **** /* 0x10 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  54:./lib/display.c **** /* 0x11 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  55:./lib/display.c **** /* 0x12 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  56:./lib/display.c **** /* 0x13 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  57:./lib/display.c **** /* 0x14 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  58:./lib/display.c **** /* 0x15 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  59:./lib/display.c **** /* 0x16 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  60:./lib/display.c **** /* 0x17 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  61:./lib/display.c **** /* 0x18 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  62:./lib/display.c **** /* 0x19 */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  63:./lib/display.c **** /* 0x1A */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  64:./lib/display.c **** /* 0x1B */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  65:./lib/display.c **** /* 0x1C */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  66:./lib/display.c **** /* 0x1D */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  67:./lib/display.c **** /* 0x1E */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  68:./lib/display.c **** /* 0x1F */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+  69:./lib/display.c **** /* 0x20 */ {0x00, 0x00, 0x00, 0x00, 0x00},
+  70:./lib/display.c **** /* 0x21 */ {0x00, 0x00, 0x5F, 0x00, 0x00},
+  71:./lib/display.c **** /* 0x22 */ {0x00, 0x07, 0x00, 0x07, 0x00},
+  72:./lib/display.c **** /* 0x23 */ {0x14, 0x3E, 0x14, 0x3E, 0x14},
+  73:./lib/display.c **** /* 0x24 */ {0x04, 0x2A, 0x7F, 0x2A, 0x10},
+  74:./lib/display.c **** /* 0x25 */ {0x26, 0x16, 0x08, 0x34, 0x32},
+  75:./lib/display.c **** /* 0x26 */ {0x36, 0x49, 0x59, 0x26, 0x50},
+  76:./lib/display.c **** /* 0x27 */ {0x00, 0x00, 0x07, 0x00, 0x00},
+  77:./lib/display.c **** /* 0x28 */ {0x00, 0x1C, 0x22, 0x41, 0x00},
+  78:./lib/display.c **** /* 0x29 */ {0x00, 0x41, 0x22, 0x1C, 0x00},
+  79:./lib/display.c **** /* 0x2A */ {0x2A, 0x1C, 0x7F, 0x1C, 0x2A},
+  80:./lib/display.c **** /* 0x2B */ {0x08, 0x08, 0x3E, 0x08, 0x08},
+  81:./lib/display.c **** /* 0x2C */ {0x00, 0x50, 0x30, 0x00, 0x00},
+  82:./lib/display.c **** /* 0x2D */ {0x08, 0x08, 0x08, 0x08, 0x08},
+  83:./lib/display.c **** /* 0x2E */ {0x00, 0x60, 0x60, 0x00, 0x00},
+  84:./lib/display.c **** /* 0x2F */ {0x20, 0x10, 0x08, 0x04, 0x02},
+  85:./lib/display.c **** /* 0x30 */ {0x3E, 0x51, 0x49, 0x45, 0x3E},
+  86:./lib/display.c **** /* 0x31 */ {0x00, 0x42, 0x7F, 0x40, 0x00},
+  87:./lib/display.c **** /* 0x32 */ {0x42, 0x61, 0x51, 0x49, 0x46},
+  88:./lib/display.c **** /* 0x33 */ {0x21, 0x41, 0x45, 0x4B, 0x31},
+  89:./lib/display.c **** /* 0x34 */ {0x18, 0x14, 0x12, 0x7F, 0x10},
+  90:./lib/display.c **** /* 0x35 */ {0x27, 0x45, 0x45, 0x45, 0x39},
+  91:./lib/display.c **** /* 0x36 */ {0x3C, 0x4A, 0x49, 0x49, 0x30},
+  92:./lib/display.c **** /* 0x37 */ {0x01, 0x01, 0x79, 0x05, 0x03},
+  93:./lib/display.c **** /* 0x38 */ {0x36, 0x49, 0x49, 0x49, 0x36},
+  94:./lib/display.c **** /* 0x39 */ {0x06, 0x49, 0x49, 0x29, 0x1E},
+  95:./lib/display.c **** /* 0x3A */ {0x00, 0x36, 0x36, 0x00, 0x00},
+  96:./lib/display.c **** /* 0x3B */ {0x00, 0x56, 0x36, 0x00, 0x00},
+  97:./lib/display.c **** /* 0x3C */ {0x08, 0x14, 0x22, 0x41, 0x00},
+  98:./lib/display.c **** /* 0x3D */ {0x14, 0x14, 0x14, 0x14, 0x14},
+  99:./lib/display.c **** /* 0x3E */ {0x41, 0x22, 0x14, 0x08, 0x00},
+ 100:./lib/display.c **** /* 0x3F */ {0x02, 0x01, 0x59, 0x05, 0x02},
+ 101:./lib/display.c **** /* 0x40 */ {0x1C, 0x2A, 0x36, 0x3E, 0x0C},
+ 102:./lib/display.c **** /* 0x41 */ {0x7E, 0x09, 0x09, 0x09, 0x7E},
+ 103:./lib/display.c **** /* 0x42 */ {0x7F, 0x49, 0x49, 0x49, 0x3E},
+ 104:./lib/display.c **** /* 0x43 */ {0x3E, 0x41, 0x41, 0x41, 0x22},
+ 105:./lib/display.c **** /* 0x44 */ {0x7F, 0x41, 0x41, 0x22, 0x1C},
+ 106:./lib/display.c **** /* 0x45 */ {0x7F, 0x49, 0x49, 0x49, 0x41},
+ 107:./lib/display.c **** /* 0x46 */ {0x7F, 0x09, 0x09, 0x09, 0x01},
+ 108:./lib/display.c **** /* 0x47 */ {0x3E, 0x41, 0x41, 0x49, 0x3A},
+ 109:./lib/display.c **** /* 0x48 */ {0x7F, 0x08, 0x08, 0x08, 0x7F},
+ 110:./lib/display.c **** /* 0x49 */ {0x00, 0x41, 0x7F, 0x41, 0x00},
+ 111:./lib/display.c **** /* 0x4A */ {0x20, 0x40, 0x41, 0x3F, 0x01},
+ 112:./lib/display.c **** /* 0x4B */ {0x7F, 0x08, 0x14, 0x22, 0x41},
+ 113:./lib/display.c **** /* 0x4C */ {0x7F, 0x40, 0x40, 0x40, 0x40},
+ 114:./lib/display.c **** /* 0x4D */ {0x7F, 0x02, 0x04, 0x02, 0x7F},
+ 115:./lib/display.c **** /* 0x4E */ {0x7F, 0x04, 0x08, 0x10, 0x7F},
+ 116:./lib/display.c **** /* 0x4F */ {0x3E, 0x41, 0x41, 0x41, 0x3E},
+ 117:./lib/display.c **** /* 0x50 */ {0x7F, 0x09, 0x09, 0x09, 0x06},
+ 118:./lib/display.c **** /* 0x51 */ {0x3E, 0x41, 0x51, 0x21, 0x5E},
+ 119:./lib/display.c **** /* 0x52 */ {0x7F, 0x09, 0x19, 0x29, 0x46},
+ 120:./lib/display.c **** /* 0x53 */ {0x26, 0x49, 0x49, 0x49, 0x32},
+ 121:./lib/display.c **** /* 0x54 */ {0x01, 0x01, 0x7F, 0x01, 0x01},
+ 122:./lib/display.c **** /* 0x55 */ {0x3F, 0x40, 0x40, 0x40, 0x3F},
+ 123:./lib/display.c **** /* 0x56 */ {0x1F, 0x20, 0x40, 0x20, 0x1F},
+ 124:./lib/display.c **** /* 0x57 */ {0x7F, 0x20, 0x18, 0x20, 0x7F},
+ 125:./lib/display.c **** /* 0x58 */ {0x63, 0x14, 0x08, 0x14, 0x63},
+ 126:./lib/display.c **** /* 0x59 */ {0x03, 0x04, 0x78, 0x04, 0x03},
+ 127:./lib/display.c **** /* 0x5A */ {0x61, 0x51, 0x49, 0x45, 0x43},
+ 128:./lib/display.c **** /* 0x5B */ {0x00, 0x7F, 0x41, 0x41, 0x00},
+ 129:./lib/display.c **** /* 0x5C */ {0x02, 0x04, 0x08, 0x10, 0x20},
+ 130:./lib/display.c **** /* 0x5D */ {0x00, 0x41, 0x41, 0x7F, 0x00},
+ 131:./lib/display.c **** /* 0x5E */ {0x04, 0x02, 0x01, 0x02, 0x04},
+ 132:./lib/display.c **** /* 0x5F */ {0x40, 0x40, 0x40, 0x40, 0x40},
+ 133:./lib/display.c **** /* 0x60 */ {0x00, 0x00, 0x07, 0x00, 0x00},
+ 134:./lib/display.c **** /* 0x61 */ {0x20, 0x54, 0x54, 0x54, 0x78},
+ 135:./lib/display.c **** /* 0x62 */ {0x7f, 0x48, 0x44, 0x44, 0x38},
+ 136:./lib/display.c **** /* 0x63 */ {0x30, 0x48, 0x48, 0x48, 0x20},
+ 137:./lib/display.c **** /* 0x64 */ {0x38, 0x44, 0x44, 0x48, 0x7f},
+ 138:./lib/display.c **** /* 0x65 */ {0x38, 0x54, 0x54, 0x54, 0x18},
+ 139:./lib/display.c **** /* 0x66 */ {0x08, 0x7e, 0x09, 0x09, 0x02},
+ 140:./lib/display.c **** /* 0x67 */ {0x0c, 0x52, 0x52, 0x52, 0x3e},
+ 141:./lib/display.c **** /* 0x68 */ {0x7f, 0x08, 0x04, 0x04, 0x78},
+ 142:./lib/display.c **** /* 0x69 */ {0x00, 0x44, 0x7d, 0x40, 0x00},
+ 143:./lib/display.c **** /* 0x6A */ {0x20, 0x40, 0x40, 0x3d, 0x00},
+ 144:./lib/display.c **** /* 0x6B */ {0x7f, 0x10, 0x28, 0x44, 0x00},
+ 145:./lib/display.c **** /* 0x6C */ {0x00, 0x41, 0x7f, 0x40, 0x00},
+ 146:./lib/display.c **** /* 0x6D */ {0x7c, 0x04, 0x18, 0x04, 0x78},
+ 147:./lib/display.c **** /* 0x6E */ {0x7c, 0x08, 0x04, 0x04, 0x78},
+ 148:./lib/display.c **** /* 0x6F */ {0x38, 0x44, 0x44, 0x44, 0x38},
+ 149:./lib/display.c **** /* 0x70 */ {0xfc, 0x14, 0x14, 0x14, 0x08},
+ 150:./lib/display.c **** /* 0x71 */ {0x08, 0x14, 0x14, 0x18, 0x7c},
+ 151:./lib/display.c **** /* 0x72 */ {0x7c, 0x08, 0x04, 0x04, 0x08},
+ 152:./lib/display.c **** /* 0x73 */ {0x48, 0x54, 0x54, 0x54, 0x20},
+ 153:./lib/display.c **** /* 0x74 */ {0x04, 0x3f, 0x44, 0x40, 0x20},
+ 154:./lib/display.c **** /* 0x75 */ {0x3c, 0x40, 0x40, 0x20, 0x7c},
+ 155:./lib/display.c **** /* 0x76 */ {0x1c, 0x20, 0x40, 0x20, 0x1c},
+ 156:./lib/display.c **** /* 0x77 */ {0x3c, 0x40, 0x38, 0x40, 0x3c},
+ 157:./lib/display.c **** /* 0x78 */ {0x44, 0x28, 0x10, 0x28, 0x44},
+ 158:./lib/display.c **** /* 0x79 */ {0x0c, 0x50, 0x50, 0x50, 0x3c},
+ 159:./lib/display.c **** /* 0x7A */ {0x44, 0x64, 0x54, 0x4c, 0x44},
+ 160:./lib/display.c **** /* 0x7B */ {0x00, 0x08, 0x36, 0x41, 0x00},
+ 161:./lib/display.c **** /* 0x7C */ {0x00, 0x00, 0x7F, 0x00, 0x00},
+ 162:./lib/display.c **** /* 0x7D */ {0x00, 0x41, 0x36, 0x08, 0x00},
+ 163:./lib/display.c **** /* 0x7E */ {0x00, 0x07, 0x00, 0x07, 0x00},
+ 164:./lib/display.c **** /* 0x7F */ {0x3E, 0x36, 0x2A, 0x36, 0x3E},
+ 165:./lib/display.c **** };
+ 166:./lib/display.c **** 
+ 167:./lib/display.c **** 
+ 168:./lib/display.c **** void display_update(void)
+ 169:./lib/display.c **** {
+ 176              		.loc 1 169 1
+ 177              		.cfi_startproc
+ 178              		@ Function supports interworking.
+ 179              		@ args = 0, pretend = 0, frame = 0
+ 180              		@ frame_needed = 1, uses_anonymous_args = 0
+ 181 0000 00482DE9 		push	{fp, lr}
+ 182              		.cfi_def_cfa_offset 8
+ 183              		.cfi_offset 11, -8
+ 184              		.cfi_offset 14, -4
+ 185 0004 04B08DE2 		add	fp, sp, #4
+ 186              		.cfi_def_cfa 11, 4
+ 170:./lib/display.c ****   nxt_lcd_update();
+ 187              		.loc 1 170 3
+ 188 0008 14309FE5 		ldr	r3, .L2
+ 189 000c 0FE0A0E1 		mov	lr, pc
+ 190 0010 13FF2FE1 		bx	r3
+ 191              	.LVL0:
+ 171:./lib/display.c **** }
+ 192              		.loc 1 171 1
+ 193 0014 0000A0E1 		nop
+ 194 0018 04D04BE2 		sub	sp, fp, #4
+ 195              		.cfi_def_cfa 13, 8
+ 196              		@ sp needed
+ 197 001c 0048BDE8 		pop	{fp, lr}
+ 198              		.cfi_restore 14
+ 199              		.cfi_restore 11
+ 200              		.cfi_def_cfa_offset 0
+ 201 0020 1EFF2FE1 		bx	lr
+ 202              	.L3:
+ 203              		.align	2
+ 204              	.L2:
+ 205 0024 00000000 		.word	nxt_lcd_update
+ 206              		.cfi_endproc
+ 207              	.LFE0:
+ 209              		.section	.text.display_clear,"ax",%progbits
+ 210              		.align	2
+ 211              		.global	display_clear
+ 212              		.syntax unified
+ 213              		.arm
+ 215              	display_clear:
+ 216              	.LFB1:
+ 172:./lib/display.c **** 
+ 173:./lib/display.c **** void
+ 174:./lib/display.c **** display_clear(uint32_t updateToo)
+ 175:./lib/display.c **** {
+ 217              		.loc 1 175 1
+ 218              		.cfi_startproc
+ 219              		@ Function supports interworking.
+ 220              		@ args = 0, pretend = 0, frame = 8
+ 221              		@ frame_needed = 1, uses_anonymous_args = 0
+ 222 0000 00482DE9 		push	{fp, lr}
+ 223              		.cfi_def_cfa_offset 8
+ 224              		.cfi_offset 11, -8
+ 225              		.cfi_offset 14, -4
+ 226 0004 04B08DE2 		add	fp, sp, #4
+ 227              		.cfi_def_cfa 11, 4
+ 228 0008 08D04DE2 		sub	sp, sp, #8
+ 229 000c 08000BE5 		str	r0, [fp, #-8]
+ 176:./lib/display.c ****   //memset(display_buffer, 0, sizeof(display_buffer));
+ 177:./lib/display.c ****   memset(display_buffer, 0, DISPLAY_WIDTH*DISPLAY_DEPTH);
+ 230              		.loc 1 177 3
+ 231 0010 322EA0E3 		mov	r2, #800
+ 232 0014 0010A0E3 		mov	r1, #0
+ 233 0018 30009FE5 		ldr	r0, .L7
+ 234 001c 30309FE5 		ldr	r3, .L7+4
+ 235 0020 0FE0A0E1 		mov	lr, pc
+ 236 0024 13FF2FE1 		bx	r3
+ 237              	.LVL1:
+ 178:./lib/display.c ****   if (updateToo)
+ 238              		.loc 1 178 6
+ 239 0028 08301BE5 		ldr	r3, [fp, #-8]
+ 240 002c 000053E3 		cmp	r3, #0
+ 241 0030 0200000A 		beq	.L6
+ 179:./lib/display.c ****     display_update();
+ 242              		.loc 1 179 5
+ 243 0034 1C309FE5 		ldr	r3, .L7+8
+ 244 0038 0FE0A0E1 		mov	lr, pc
+ 245 003c 13FF2FE1 		bx	r3
+ 246              	.LVL2:
+ 247              	.L6:
+ 180:./lib/display.c **** }
+ 248              		.loc 1 180 1
+ 249 0040 0000A0E1 		nop
+ 250 0044 04D04BE2 		sub	sp, fp, #4
+ 251              		.cfi_def_cfa 13, 8
+ 252              		@ sp needed
+ 253 0048 0048BDE8 		pop	{fp, lr}
+ 254              		.cfi_restore 14
+ 255              		.cfi_restore 11
+ 256              		.cfi_def_cfa_offset 0
+ 257 004c 1EFF2FE1 		bx	lr
+ 258              	.L8:
+ 259              		.align	2
+ 260              	.L7:
+ 261 0050 00000000 		.word	display_buffer
+ 262 0054 00000000 		.word	memset
+ 263 0058 00000000 		.word	display_update
+ 264              		.cfi_endproc
+ 265              	.LFE1:
+ 267              		.section	.text.display_goto_xy,"ax",%progbits
+ 268              		.align	2
+ 269              		.global	display_goto_xy
+ 270              		.syntax unified
+ 271              		.arm
+ 273              	display_goto_xy:
+ 274              	.LFB2:
+ 181:./lib/display.c **** 
+ 182:./lib/display.c **** /* text functions, top left is (0,0) */
+ 183:./lib/display.c **** void
+ 184:./lib/display.c **** display_goto_xy(int x, int y)
+ 185:./lib/display.c **** {
+ 275              		.loc 1 185 1
+ 276              		.cfi_startproc
+ 277              		@ Function supports interworking.
+ 278              		@ args = 0, pretend = 0, frame = 8
+ 279              		@ frame_needed = 1, uses_anonymous_args = 0
+ 280              		@ link register save eliminated.
+ 281 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 282              		.cfi_def_cfa_offset 4
+ 283              		.cfi_offset 11, -4
+ 284 0004 00B08DE2 		add	fp, sp, #0
+ 285              		.cfi_def_cfa_register 11
+ 286 0008 0CD04DE2 		sub	sp, sp, #12
+ 287 000c 08000BE5 		str	r0, [fp, #-8]
+ 288 0010 0C100BE5 		str	r1, [fp, #-12]
+ 186:./lib/display.c ****   display_x = x;
+ 289              		.loc 1 186 13
+ 290 0014 20209FE5 		ldr	r2, .L10
+ 291 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 292 001c 003082E5 		str	r3, [r2]
+ 187:./lib/display.c ****   display_y = y;
+ 293              		.loc 1 187 13
+ 294 0020 18209FE5 		ldr	r2, .L10+4
+ 295 0024 0C301BE5 		ldr	r3, [fp, #-12]
+ 296 0028 003082E5 		str	r3, [r2]
+ 188:./lib/display.c **** }
+ 297              		.loc 1 188 1
+ 298 002c 0000A0E1 		nop
+ 299 0030 00D08BE2 		add	sp, fp, #0
+ 300              		.cfi_def_cfa_register 13
+ 301              		@ sp needed
+ 302 0034 04B09DE4 		ldr	fp, [sp], #4
+ 303              		.cfi_restore 11
+ 304              		.cfi_def_cfa_offset 0
+ 305 0038 1EFF2FE1 		bx	lr
+ 306              	.L11:
+ 307              		.align	2
+ 308              	.L10:
+ 309 003c 00000000 		.word	display_x
+ 310 0040 00000000 		.word	display_y
+ 311              		.cfi_endproc
+ 312              	.LFE2:
+ 314              		.section	.text.display_char,"ax",%progbits
+ 315              		.align	2
+ 316              		.global	display_char
+ 317              		.syntax unified
+ 318              		.arm
+ 320              	display_char:
+ 321              	.LFB3:
+ 189:./lib/display.c **** 
+ 190:./lib/display.c **** void
+ 191:./lib/display.c **** display_char(int c)
+ 192:./lib/display.c **** {
+ 322              		.loc 1 192 1
+ 323              		.cfi_startproc
+ 324              		@ Function supports interworking.
+ 325              		@ args = 0, pretend = 0, frame = 24
+ 326              		@ frame_needed = 1, uses_anonymous_args = 0
+ 327              		@ link register save eliminated.
+ 328 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 329              		.cfi_def_cfa_offset 4
+ 330              		.cfi_offset 11, -4
+ 331 0004 00B08DE2 		add	fp, sp, #0
+ 332              		.cfi_def_cfa_register 11
+ 333 0008 1CD04DE2 		sub	sp, sp, #28
+ 334 000c 18000BE5 		str	r0, [fp, #-24]
+ 193:./lib/display.c ****   int i;
+ 194:./lib/display.c ****   uint8_t *b;
+ 195:./lib/display.c ****   const uint8_t *f;
+ 196:./lib/display.c **** 
+ 197:./lib/display.c ****   if (c >= 0 && c < N_CHARS &&
+ 335              		.loc 1 197 6
+ 336 0010 18301BE5 		ldr	r3, [fp, #-24]
+ 337 0014 000053E3 		cmp	r3, #0
+ 338 0018 3F0000BA 		blt	.L13
+ 339              		.loc 1 197 14 discriminator 1
+ 340 001c 18301BE5 		ldr	r3, [fp, #-24]
+ 341 0020 7F0053E3 		cmp	r3, #127
+ 342 0024 3C0000CA 		bgt	.L13
+ 198:./lib/display.c ****       display_x >= 0 && display_x < DISPLAY_CHAR_WIDTH &&
+ 343              		.loc 1 198 17
+ 344 0028 10319FE5 		ldr	r3, .L16
+ 345 002c 003093E5 		ldr	r3, [r3]
+ 197:./lib/display.c ****       display_x >= 0 && display_x < DISPLAY_CHAR_WIDTH &&
+ 346              		.loc 1 197 29 discriminator 2
+ 347 0030 000053E3 		cmp	r3, #0
+ 348 0034 380000BA 		blt	.L13
+ 349              		.loc 1 198 35
+ 350 0038 00319FE5 		ldr	r3, .L16
+ 351 003c 003093E5 		ldr	r3, [r3]
+ 352              		.loc 1 198 22
+ 353 0040 0F0053E3 		cmp	r3, #15
+ 354 0044 340000CA 		bgt	.L13
+ 199:./lib/display.c ****       display_y >= 0 && display_y < DISPLAY_CHAR_DEPTH) {
+ 355              		.loc 1 199 17
+ 356 0048 F4309FE5 		ldr	r3, .L16+4
+ 357 004c 003093E5 		ldr	r3, [r3]
+ 198:./lib/display.c ****       display_x >= 0 && display_x < DISPLAY_CHAR_WIDTH &&
+ 358              		.loc 1 198 56 discriminator 1
+ 359 0050 000053E3 		cmp	r3, #0
+ 360 0054 300000BA 		blt	.L13
+ 361              		.loc 1 199 35
+ 362 0058 E4309FE5 		ldr	r3, .L16+4
+ 363 005c 003093E5 		ldr	r3, [r3]
+ 364              		.loc 1 199 22
+ 365 0060 070053E3 		cmp	r3, #7
+ 366 0064 2C0000CA 		bgt	.L13
+ 200:./lib/display.c ****     b = &display_buffer[display_y][display_x * CELL_WIDTH];
+ 367              		.loc 1 200 35
+ 368 0068 D4309FE5 		ldr	r3, .L16+4
+ 369 006c 002093E5 		ldr	r2, [r3]
+ 370              		.loc 1 200 46
+ 371 0070 C8309FE5 		ldr	r3, .L16
+ 372 0074 001093E5 		ldr	r1, [r3]
+ 373 0078 0130A0E1 		mov	r3, r1
+ 374 007c 8330A0E1 		lsl	r3, r3, #1
+ 375 0080 013083E0 		add	r3, r3, r1
+ 376 0084 8330A0E1 		lsl	r3, r3, #1
+ 377 0088 0310A0E1 		mov	r1, r3
+ 378              		.loc 1 200 7
+ 379 008c 0230A0E1 		mov	r3, r2
+ 380 0090 0331A0E1 		lsl	r3, r3, #2
+ 381 0094 023083E0 		add	r3, r3, r2
+ 382 0098 0321A0E1 		lsl	r2, r3, #2
+ 383 009c 023083E0 		add	r3, r3, r2
+ 384 00a0 0331A0E1 		lsl	r3, r3, #2
+ 385 00a4 013083E0 		add	r3, r3, r1
+ 386 00a8 98209FE5 		ldr	r2, .L16+8
+ 387 00ac 023083E0 		add	r3, r3, r2
+ 388 00b0 0C300BE5 		str	r3, [fp, #-12]
+ 201:./lib/display.c ****     f = font[c];
+ 389              		.loc 1 201 7
+ 390 00b4 18201BE5 		ldr	r2, [fp, #-24]
+ 391 00b8 0230A0E1 		mov	r3, r2
+ 392 00bc 0331A0E1 		lsl	r3, r3, #2
+ 393 00c0 023083E0 		add	r3, r3, r2
+ 394 00c4 80209FE5 		ldr	r2, .L16+12
+ 395 00c8 023083E0 		add	r3, r3, r2
+ 396 00cc 10300BE5 		str	r3, [fp, #-16]
+ 202:./lib/display.c ****     for (i = 0; i < FONT_WIDTH; i++) {
+ 397              		.loc 1 202 12
+ 398 00d0 0030A0E3 		mov	r3, #0
+ 399 00d4 08300BE5 		str	r3, [fp, #-8]
+ 400              		.loc 1 202 5
+ 401 00d8 0C0000EA 		b	.L14
+ 402              	.L15:
+ 203:./lib/display.c ****       *b = *f;
+ 403              		.loc 1 203 12
+ 404 00dc 10301BE5 		ldr	r3, [fp, #-16]
+ 405 00e0 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 406              		.loc 1 203 10
+ 407 00e4 0C301BE5 		ldr	r3, [fp, #-12]
+ 408 00e8 0020C3E5 		strb	r2, [r3]
+ 204:./lib/display.c ****       b++;
+ 409              		.loc 1 204 8
+ 410 00ec 0C301BE5 		ldr	r3, [fp, #-12]
+ 411 00f0 013083E2 		add	r3, r3, #1
+ 412 00f4 0C300BE5 		str	r3, [fp, #-12]
+ 205:./lib/display.c ****       f++;
+ 413              		.loc 1 205 8
+ 414 00f8 10301BE5 		ldr	r3, [fp, #-16]
+ 415 00fc 013083E2 		add	r3, r3, #1
+ 416 0100 10300BE5 		str	r3, [fp, #-16]
+ 202:./lib/display.c ****       *b = *f;
+ 417              		.loc 1 202 34 discriminator 3
+ 418 0104 08301BE5 		ldr	r3, [fp, #-8]
+ 419 0108 013083E2 		add	r3, r3, #1
+ 420 010c 08300BE5 		str	r3, [fp, #-8]
+ 421              	.L14:
+ 202:./lib/display.c ****       *b = *f;
+ 422              		.loc 1 202 19 discriminator 1
+ 423 0110 08301BE5 		ldr	r3, [fp, #-8]
+ 424 0114 040053E3 		cmp	r3, #4
+ 425 0118 EFFFFFDA 		ble	.L15
+ 426              	.L13:
+ 206:./lib/display.c ****     }
+ 207:./lib/display.c ****   }
+ 208:./lib/display.c ****   display_x++;
+ 427              		.loc 1 208 12
+ 428 011c 1C309FE5 		ldr	r3, .L16
+ 429 0120 003093E5 		ldr	r3, [r3]
+ 430 0124 013083E2 		add	r3, r3, #1
+ 431 0128 10209FE5 		ldr	r2, .L16
+ 432 012c 003082E5 		str	r3, [r2]
+ 209:./lib/display.c **** }
+ 433              		.loc 1 209 1
+ 434 0130 0000A0E1 		nop
+ 435 0134 00D08BE2 		add	sp, fp, #0
+ 436              		.cfi_def_cfa_register 13
+ 437              		@ sp needed
+ 438 0138 04B09DE4 		ldr	fp, [sp], #4
+ 439              		.cfi_restore 11
+ 440              		.cfi_def_cfa_offset 0
+ 441 013c 1EFF2FE1 		bx	lr
+ 442              	.L17:
+ 443              		.align	2
+ 444              	.L16:
+ 445 0140 00000000 		.word	display_x
+ 446 0144 00000000 		.word	display_y
+ 447 0148 00000000 		.word	display_buffer
+ 448 014c 00000000 		.word	font
+ 449              		.cfi_endproc
+ 450              	.LFE3:
+ 452              		.section	.text.display_string,"ax",%progbits
+ 453              		.align	2
+ 454              		.global	display_string
+ 455              		.syntax unified
+ 456              		.arm
+ 458              	display_string:
+ 459              	.LFB4:
+ 210:./lib/display.c **** 
+ 211:./lib/display.c **** void
+ 212:./lib/display.c **** display_string(const char *str)
+ 213:./lib/display.c **** {
+ 460              		.loc 1 213 1
+ 461              		.cfi_startproc
+ 462              		@ Function supports interworking.
+ 463              		@ args = 0, pretend = 0, frame = 8
+ 464              		@ frame_needed = 1, uses_anonymous_args = 0
+ 465 0000 00482DE9 		push	{fp, lr}
+ 466              		.cfi_def_cfa_offset 8
+ 467              		.cfi_offset 11, -8
+ 468              		.cfi_offset 14, -4
+ 469 0004 04B08DE2 		add	fp, sp, #4
+ 470              		.cfi_def_cfa 11, 4
+ 471 0008 08D04DE2 		sub	sp, sp, #8
+ 472 000c 08000BE5 		str	r0, [fp, #-8]
+ 214:./lib/display.c ****   while (*str) {
+ 473              		.loc 1 214 9
+ 474 0010 150000EA 		b	.L19
+ 475              	.L22:
+ 215:./lib/display.c ****     if (*str != '\n') {
+ 476              		.loc 1 215 9
+ 477 0014 08301BE5 		ldr	r3, [fp, #-8]
+ 478 0018 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 479              		.loc 1 215 8
+ 480 001c 0A0053E3 		cmp	r3, #10
+ 481 0020 0600000A 		beq	.L20
+ 216:./lib/display.c ****       display_char(*str);
+ 482              		.loc 1 216 20
+ 483 0024 08301BE5 		ldr	r3, [fp, #-8]
+ 484 0028 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 485              		.loc 1 216 7
+ 486 002c 0300A0E1 		mov	r0, r3
+ 487 0030 58309FE5 		ldr	r3, .L23
+ 488 0034 0FE0A0E1 		mov	lr, pc
+ 489 0038 13FF2FE1 		bx	r3
+ 490              	.LVL3:
+ 491 003c 070000EA 		b	.L21
+ 492              	.L20:
+ 217:./lib/display.c ****     } else {
+ 218:./lib/display.c ****       display_x = 0;
+ 493              		.loc 1 218 17
+ 494 0040 4C309FE5 		ldr	r3, .L23+4
+ 495 0044 0020A0E3 		mov	r2, #0
+ 496 0048 002083E5 		str	r2, [r3]
+ 219:./lib/display.c ****       display_y++;
+ 497              		.loc 1 219 16
+ 498 004c 44309FE5 		ldr	r3, .L23+8
+ 499 0050 003093E5 		ldr	r3, [r3]
+ 500 0054 013083E2 		add	r3, r3, #1
+ 501 0058 38209FE5 		ldr	r2, .L23+8
+ 502 005c 003082E5 		str	r3, [r2]
+ 503              	.L21:
+ 220:./lib/display.c ****     }
+ 221:./lib/display.c ****     str++;
+ 504              		.loc 1 221 8
+ 505 0060 08301BE5 		ldr	r3, [fp, #-8]
+ 506 0064 013083E2 		add	r3, r3, #1
+ 507 0068 08300BE5 		str	r3, [fp, #-8]
+ 508              	.L19:
+ 214:./lib/display.c ****     if (*str != '\n') {
+ 509              		.loc 1 214 10
+ 510 006c 08301BE5 		ldr	r3, [fp, #-8]
+ 511 0070 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 512 0074 000053E3 		cmp	r3, #0
+ 513 0078 E5FFFF1A 		bne	.L22
+ 222:./lib/display.c ****   }
+ 223:./lib/display.c **** }
+ 514              		.loc 1 223 1
+ 515 007c 0000A0E1 		nop
+ 516 0080 0000A0E1 		nop
+ 517 0084 04D04BE2 		sub	sp, fp, #4
+ 518              		.cfi_def_cfa 13, 8
+ 519              		@ sp needed
+ 520 0088 0048BDE8 		pop	{fp, lr}
+ 521              		.cfi_restore 14
+ 522              		.cfi_restore 11
+ 523              		.cfi_def_cfa_offset 0
+ 524 008c 1EFF2FE1 		bx	lr
+ 525              	.L24:
+ 526              		.align	2
+ 527              	.L23:
+ 528 0090 00000000 		.word	display_char
+ 529 0094 00000000 		.word	display_x
+ 530 0098 00000000 		.word	display_y
+ 531              		.cfi_endproc
+ 532              	.LFE4:
+ 534              		.section	.text.display_hex,"ax",%progbits
+ 535              		.align	2
+ 536              		.global	display_hex
+ 537              		.syntax unified
+ 538              		.arm
+ 540              	display_hex:
+ 541              	.LFB5:
+ 224:./lib/display.c **** 
+ 225:./lib/display.c **** void display_hex(uint32_t val, uint32_t places)
+ 226:./lib/display.c **** {
+ 542              		.loc 1 226 1
+ 543              		.cfi_startproc
+ 544              		@ Function supports interworking.
+ 545              		@ args = 0, pretend = 0, frame = 24
+ 546              		@ frame_needed = 1, uses_anonymous_args = 0
+ 547 0000 00482DE9 		push	{fp, lr}
+ 548              		.cfi_def_cfa_offset 8
+ 549              		.cfi_offset 11, -8
+ 550              		.cfi_offset 14, -4
+ 551 0004 04B08DE2 		add	fp, sp, #4
+ 552              		.cfi_def_cfa 11, 4
+ 553 0008 18D04DE2 		sub	sp, sp, #24
+ 554 000c 18000BE5 		str	r0, [fp, #-24]
+ 555 0010 1C100BE5 		str	r1, [fp, #-28]
+ 227:./lib/display.c ****   char buf[9];
+ 228:./lib/display.c ****   display_string(hex2string(buf,val,places));
+ 556              		.loc 1 228 18
+ 557 0014 10304BE2 		sub	r3, fp, #16
+ 558 0018 1C201BE5 		ldr	r2, [fp, #-28]
+ 559 001c 18101BE5 		ldr	r1, [fp, #-24]
+ 560 0020 0300A0E1 		mov	r0, r3
+ 561 0024 28309FE5 		ldr	r3, .L26
+ 562 0028 0FE0A0E1 		mov	lr, pc
+ 563 002c 13FF2FE1 		bx	r3
+ 564              	.LVL4:
+ 565 0030 0030A0E1 		mov	r3, r0
+ 566              		.loc 1 228 3 discriminator 1
+ 567 0034 0300A0E1 		mov	r0, r3
+ 568 0038 18309FE5 		ldr	r3, .L26+4
+ 569 003c 0FE0A0E1 		mov	lr, pc
+ 570 0040 13FF2FE1 		bx	r3
+ 571              	.LVL5:
+ 229:./lib/display.c **** }
+ 572              		.loc 1 229 1
+ 573 0044 0000A0E1 		nop
+ 574 0048 04D04BE2 		sub	sp, fp, #4
+ 575              		.cfi_def_cfa 13, 8
+ 576              		@ sp needed
+ 577 004c 0048BDE8 		pop	{fp, lr}
+ 578              		.cfi_restore 14
+ 579              		.cfi_restore 11
+ 580              		.cfi_def_cfa_offset 0
+ 581 0050 1EFF2FE1 		bx	lr
+ 582              	.L27:
+ 583              		.align	2
+ 584              	.L26:
+ 585 0054 00000000 		.word	hex2string
+ 586 0058 00000000 		.word	display_string
+ 587              		.cfi_endproc
+ 588              	.LFE5:
+ 590              		.section	.text.display_unsigned,"ax",%progbits
+ 591              		.align	2
+ 592              		.global	display_unsigned
+ 593              		.syntax unified
+ 594              		.arm
+ 596              	display_unsigned:
+ 597              	.LFB6:
+ 230:./lib/display.c **** 
+ 231:./lib/display.c **** void display_unsigned(uint32_t val, uint32_t places)
+ 232:./lib/display.c **** {
+ 598              		.loc 1 232 1
+ 599              		.cfi_startproc
+ 600              		@ Function supports interworking.
+ 601              		@ args = 0, pretend = 0, frame = 24
+ 602              		@ frame_needed = 1, uses_anonymous_args = 0
+ 603 0000 10482DE9 		push	{r4, fp, lr}
+ 604              		.cfi_def_cfa_offset 12
+ 605              		.cfi_offset 4, -12
+ 606              		.cfi_offset 11, -8
+ 607              		.cfi_offset 14, -4
+ 608 0004 08B08DE2 		add	fp, sp, #8
+ 609              		.cfi_def_cfa 11, 4
+ 610 0008 1CD04DE2 		sub	sp, sp, #28
+ 611 000c 20000BE5 		str	r0, [fp, #-32]
+ 612 0010 24100BE5 		str	r1, [fp, #-36]
+ 233:./lib/display.c ****   char buf[12];
+ 234:./lib/display.c ****   display_string(unsigned2string(buf,val,places,0));
+ 613              		.loc 1 234 18
+ 614 0014 18004BE2 		sub	r0, fp, #24
+ 615 0018 0030A0E3 		mov	r3, #0
+ 616 001c 24201BE5 		ldr	r2, [fp, #-36]
+ 617 0020 20101BE5 		ldr	r1, [fp, #-32]
+ 618 0024 28409FE5 		ldr	r4, .L29
+ 619 0028 0FE0A0E1 		mov	lr, pc
+ 620 002c 14FF2FE1 		bx	r4
+ 621              	.LVL6:
+ 622 0030 0030A0E1 		mov	r3, r0
+ 623              		.loc 1 234 3 discriminator 1
+ 624 0034 0300A0E1 		mov	r0, r3
+ 625 0038 18309FE5 		ldr	r3, .L29+4
+ 626 003c 0FE0A0E1 		mov	lr, pc
+ 627 0040 13FF2FE1 		bx	r3
+ 628              	.LVL7:
+ 235:./lib/display.c **** }
+ 629              		.loc 1 235 1
+ 630 0044 0000A0E1 		nop
+ 631 0048 08D04BE2 		sub	sp, fp, #8
+ 632              		.cfi_def_cfa 13, 12
+ 633              		@ sp needed
+ 634 004c 1048BDE8 		pop	{r4, fp, lr}
+ 635              		.cfi_restore 14
+ 636              		.cfi_restore 11
+ 637              		.cfi_restore 4
+ 638              		.cfi_def_cfa_offset 0
+ 639 0050 1EFF2FE1 		bx	lr
+ 640              	.L30:
+ 641              		.align	2
+ 642              	.L29:
+ 643 0054 00000000 		.word	unsigned2string
+ 644 0058 00000000 		.word	display_string
+ 645              		.cfi_endproc
+ 646              	.LFE6:
+ 648              		.section	.text.display_int,"ax",%progbits
+ 649              		.align	2
+ 650              		.global	display_int
+ 651              		.syntax unified
+ 652              		.arm
+ 654              	display_int:
+ 655              	.LFB7:
+ 236:./lib/display.c **** 
+ 237:./lib/display.c **** void display_int(int val, uint32_t places)
+ 238:./lib/display.c **** {
+ 656              		.loc 1 238 1
+ 657              		.cfi_startproc
+ 658              		@ Function supports interworking.
+ 659              		@ args = 0, pretend = 0, frame = 24
+ 660              		@ frame_needed = 1, uses_anonymous_args = 0
+ 661 0000 10482DE9 		push	{r4, fp, lr}
+ 662              		.cfi_def_cfa_offset 12
+ 663              		.cfi_offset 4, -12
+ 664              		.cfi_offset 11, -8
+ 665              		.cfi_offset 14, -4
+ 666 0004 08B08DE2 		add	fp, sp, #8
+ 667              		.cfi_def_cfa 11, 4
+ 668 0008 1CD04DE2 		sub	sp, sp, #28
+ 669 000c 20000BE5 		str	r0, [fp, #-32]
+ 670 0010 24100BE5 		str	r1, [fp, #-36]
+ 239:./lib/display.c ****   char buf[12];
+ 240:./lib/display.c ****   display_string(unsigned2string(buf,(val < 0) ? -val : val, places, (val < 0)));
+ 671              		.loc 1 240 55
+ 672 0014 20301BE5 		ldr	r3, [fp, #-32]
+ 673 0018 000053E3 		cmp	r3, #0
+ 674 001c 003063B2 		rsblt	r3, r3, #0
+ 675              		.loc 1 240 18
+ 676 0020 0310A0E1 		mov	r1, r3
+ 677 0024 20301BE5 		ldr	r3, [fp, #-32]
+ 678 0028 A33FA0E1 		lsr	r3, r3, #31
+ 679 002c FF3003E2 		and	r3, r3, #255
+ 680 0030 18004BE2 		sub	r0, fp, #24
+ 681 0034 24201BE5 		ldr	r2, [fp, #-36]
+ 682 0038 28409FE5 		ldr	r4, .L32
+ 683 003c 0FE0A0E1 		mov	lr, pc
+ 684 0040 14FF2FE1 		bx	r4
+ 685              	.LVL8:
+ 686 0044 0030A0E1 		mov	r3, r0
+ 687              		.loc 1 240 3 discriminator 1
+ 688 0048 0300A0E1 		mov	r0, r3
+ 689 004c 18309FE5 		ldr	r3, .L32+4
+ 690 0050 0FE0A0E1 		mov	lr, pc
+ 691 0054 13FF2FE1 		bx	r3
+ 692              	.LVL9:
+ 241:./lib/display.c **** }
+ 693              		.loc 1 241 1
+ 694 0058 0000A0E1 		nop
+ 695 005c 08D04BE2 		sub	sp, fp, #8
+ 696              		.cfi_def_cfa 13, 12
+ 697              		@ sp needed
+ 698 0060 1048BDE8 		pop	{r4, fp, lr}
+ 699              		.cfi_restore 14
+ 700              		.cfi_restore 11
+ 701              		.cfi_restore 4
+ 702              		.cfi_def_cfa_offset 0
+ 703 0064 1EFF2FE1 		bx	lr
+ 704              	.L33:
+ 705              		.align	2
+ 706              	.L32:
+ 707 0068 00000000 		.word	unsigned2string
+ 708 006c 00000000 		.word	display_string
+ 709              		.cfi_endproc
+ 710              	.LFE7:
+ 712              		.section	.text.display_bitmap_copy,"ax",%progbits
+ 713              		.align	2
+ 714              		.global	display_bitmap_copy
+ 715              		.syntax unified
+ 716              		.arm
+ 718              	display_bitmap_copy:
+ 719              	.LFB8:
+ 242:./lib/display.c **** 
+ 243:./lib/display.c **** void
+ 244:./lib/display.c **** display_bitmap_copy(const uint8_t *data, uint32_t width, uint32_t depth, uint32_t x, uint32_t y)
+ 245:./lib/display.c **** {
+ 720              		.loc 1 245 1
+ 721              		.cfi_startproc
+ 722              		@ Function supports interworking.
+ 723              		@ args = 4, pretend = 0, frame = 32
+ 724              		@ frame_needed = 1, uses_anonymous_args = 0
+ 725              		@ link register save eliminated.
+ 726 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 727              		.cfi_def_cfa_offset 4
+ 728              		.cfi_offset 11, -4
+ 729 0004 00B08DE2 		add	fp, sp, #0
+ 730              		.cfi_def_cfa_register 11
+ 731 0008 24D04DE2 		sub	sp, sp, #36
+ 732 000c 18000BE5 		str	r0, [fp, #-24]
+ 733 0010 1C100BE5 		str	r1, [fp, #-28]
+ 734 0014 20200BE5 		str	r2, [fp, #-32]
+ 735 0018 24300BE5 		str	r3, [fp, #-36]
+ 246:./lib/display.c ****   uint32_t i;
+ 247:./lib/display.c ****   uint32_t j;
+ 248:./lib/display.c ****   uint32_t dy;
+ 249:./lib/display.c ****   uint32_t dx;
+ 250:./lib/display.c **** 
+ 251:./lib/display.c ****   for (i = 0; i < depth; i++)
+ 736              		.loc 1 251 10
+ 737 001c 0030A0E3 		mov	r3, #0
+ 738 0020 08300BE5 		str	r3, [fp, #-8]
+ 739              		.loc 1 251 3
+ 740 0024 330000EA 		b	.L35
+ 741              	.L39:
+ 252:./lib/display.c ****     for (j = 0; j < width; j++) {
+ 742              		.loc 1 252 12
+ 743 0028 0030A0E3 		mov	r3, #0
+ 744 002c 0C300BE5 		str	r3, [fp, #-12]
+ 745              		.loc 1 252 5
+ 746 0030 290000EA 		b	.L36
+ 747              	.L38:
+ 253:./lib/display.c ****       dx = x + j;
+ 748              		.loc 1 253 10
+ 749 0034 24201BE5 		ldr	r2, [fp, #-36]
+ 750 0038 0C301BE5 		ldr	r3, [fp, #-12]
+ 751 003c 033082E0 		add	r3, r2, r3
+ 752 0040 10300BE5 		str	r3, [fp, #-16]
+ 254:./lib/display.c ****       dy = y + i;
+ 753              		.loc 1 254 10
+ 754 0044 04209BE5 		ldr	r2, [fp, #4]
+ 755 0048 08301BE5 		ldr	r3, [fp, #-8]
+ 756 004c 033082E0 		add	r3, r2, r3
+ 757 0050 14300BE5 		str	r3, [fp, #-20]
+ 255:./lib/display.c **** 
+ 256:./lib/display.c ****       if (dx < DISPLAY_WIDTH && dy < DISPLAY_DEPTH)
+ 758              		.loc 1 256 10
+ 759 0054 10301BE5 		ldr	r3, [fp, #-16]
+ 760 0058 630053E3 		cmp	r3, #99
+ 761 005c 1B00008A 		bhi	.L37
+ 762              		.loc 1 256 30 discriminator 1
+ 763 0060 14301BE5 		ldr	r3, [fp, #-20]
+ 764 0064 070053E3 		cmp	r3, #7
+ 765 0068 1800008A 		bhi	.L37
+ 257:./lib/display.c **** 	display_buffer[y + i][x + j] = data[width * i + j];
+ 766              		.loc 1 257 44
+ 767 006c 1C301BE5 		ldr	r3, [fp, #-28]
+ 768 0070 08201BE5 		ldr	r2, [fp, #-8]
+ 769 0074 930202E0 		mul	r2, r3, r2
+ 770              		.loc 1 257 48
+ 771 0078 0C301BE5 		ldr	r3, [fp, #-12]
+ 772 007c 033082E0 		add	r3, r2, r3
+ 773              		.loc 1 257 37
+ 774 0080 18201BE5 		ldr	r2, [fp, #-24]
+ 775 0084 033082E0 		add	r3, r2, r3
+ 776              		.loc 1 257 19
+ 777 0088 04109BE5 		ldr	r1, [fp, #4]
+ 778 008c 08201BE5 		ldr	r2, [fp, #-8]
+ 779 0090 022081E0 		add	r2, r1, r2
+ 780              		.loc 1 257 26
+ 781 0094 24001BE5 		ldr	r0, [fp, #-36]
+ 782 0098 0C101BE5 		ldr	r1, [fp, #-12]
+ 783 009c 011080E0 		add	r1, r0, r1
+ 784              		.loc 1 257 37
+ 785 00a0 00C0D3E5 		ldrb	ip, [r3]	@ zero_extendqisi2
+ 786              		.loc 1 257 31
+ 787 00a4 70009FE5 		ldr	r0, .L40
+ 788 00a8 0230A0E1 		mov	r3, r2
+ 789 00ac 0331A0E1 		lsl	r3, r3, #2
+ 790 00b0 023083E0 		add	r3, r3, r2
+ 791 00b4 0321A0E1 		lsl	r2, r3, #2
+ 792 00b8 023083E0 		add	r3, r3, r2
+ 793 00bc 0331A0E1 		lsl	r3, r3, #2
+ 794 00c0 033080E0 		add	r3, r0, r3
+ 795 00c4 013083E0 		add	r3, r3, r1
+ 796 00c8 0C20A0E1 		mov	r2, ip
+ 797 00cc 0020C3E5 		strb	r2, [r3]
+ 798              	.L37:
+ 252:./lib/display.c ****       dx = x + j;
+ 799              		.loc 1 252 29 discriminator 2
+ 800 00d0 0C301BE5 		ldr	r3, [fp, #-12]
+ 801 00d4 013083E2 		add	r3, r3, #1
+ 802 00d8 0C300BE5 		str	r3, [fp, #-12]
+ 803              	.L36:
+ 252:./lib/display.c ****       dx = x + j;
+ 804              		.loc 1 252 19 discriminator 1
+ 805 00dc 0C201BE5 		ldr	r2, [fp, #-12]
+ 806 00e0 1C301BE5 		ldr	r3, [fp, #-28]
+ 807 00e4 030052E1 		cmp	r2, r3
+ 808 00e8 D1FFFF3A 		bcc	.L38
+ 251:./lib/display.c ****     for (j = 0; j < width; j++) {
+ 809              		.loc 1 251 27 discriminator 2
+ 810 00ec 08301BE5 		ldr	r3, [fp, #-8]
+ 811 00f0 013083E2 		add	r3, r3, #1
+ 812 00f4 08300BE5 		str	r3, [fp, #-8]
+ 813              	.L35:
+ 251:./lib/display.c ****     for (j = 0; j < width; j++) {
+ 814              		.loc 1 251 17 discriminator 1
+ 815 00f8 08201BE5 		ldr	r2, [fp, #-8]
+ 816 00fc 20301BE5 		ldr	r3, [fp, #-32]
+ 817 0100 030052E1 		cmp	r2, r3
+ 818 0104 C7FFFF3A 		bcc	.L39
+ 258:./lib/display.c ****     }
+ 259:./lib/display.c **** }
+ 819              		.loc 1 259 1
+ 820 0108 0000A0E1 		nop
+ 821 010c 0000A0E1 		nop
+ 822 0110 00D08BE2 		add	sp, fp, #0
+ 823              		.cfi_def_cfa_register 13
+ 824              		@ sp needed
+ 825 0114 04B09DE4 		ldr	fp, [sp], #4
+ 826              		.cfi_restore 11
+ 827              		.cfi_def_cfa_offset 0
+ 828 0118 1EFF2FE1 		bx	lr
+ 829              	.L41:
+ 830              		.align	2
+ 831              	.L40:
+ 832 011c 00000000 		.word	display_buffer
+ 833              		.cfi_endproc
+ 834              	.LFE8:
+ 836              		.section	.text.display_get_buffer,"ax",%progbits
+ 837              		.align	2
+ 838              		.global	display_get_buffer
+ 839              		.syntax unified
+ 840              		.arm
+ 842              	display_get_buffer:
+ 843              	.LFB9:
+ 260:./lib/display.c **** 
+ 261:./lib/display.c **** uint8_t *display_get_buffer(void)
+ 262:./lib/display.c **** {
+ 844              		.loc 1 262 1
+ 845              		.cfi_startproc
+ 846              		@ Function supports interworking.
+ 847              		@ args = 0, pretend = 0, frame = 0
+ 848              		@ frame_needed = 1, uses_anonymous_args = 0
+ 849              		@ link register save eliminated.
+ 850 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 851              		.cfi_def_cfa_offset 4
+ 852              		.cfi_offset 11, -4
+ 853 0004 00B08DE2 		add	fp, sp, #0
+ 854              		.cfi_def_cfa_register 11
+ 263:./lib/display.c ****   return (uint8_t *)display_buffer;
+ 855              		.loc 1 263 10
+ 856 0008 0C309FE5 		ldr	r3, .L44
+ 264:./lib/display.c **** }
+ 857              		.loc 1 264 1
+ 858 000c 0300A0E1 		mov	r0, r3
+ 859 0010 00D08BE2 		add	sp, fp, #0
+ 860              		.cfi_def_cfa_register 13
+ 861              		@ sp needed
+ 862 0014 04B09DE4 		ldr	fp, [sp], #4
+ 863              		.cfi_restore 11
+ 864              		.cfi_def_cfa_offset 0
+ 865 0018 1EFF2FE1 		bx	lr
+ 866              	.L45:
+ 867              		.align	2
+ 868              	.L44:
+ 869 001c 00000000 		.word	display_buffer
+ 870              		.cfi_endproc
+ 871              	.LFE9:
+ 873              		.section	.text.display_init,"ax",%progbits
+ 874              		.align	2
+ 875              		.global	display_init
+ 876              		.syntax unified
+ 877              		.arm
+ 879              	display_init:
+ 880              	.LFB10:
+ 265:./lib/display.c **** 
+ 266:./lib/display.c **** void display_init(void)
+ 267:./lib/display.c **** {
+ 881              		.loc 1 267 1
+ 882              		.cfi_startproc
+ 883              		@ Function supports interworking.
+ 884              		@ args = 0, pretend = 0, frame = 0
+ 885              		@ frame_needed = 1, uses_anonymous_args = 0
+ 886 0000 00482DE9 		push	{fp, lr}
+ 887              		.cfi_def_cfa_offset 8
+ 888              		.cfi_offset 11, -8
+ 889              		.cfi_offset 14, -4
+ 890 0004 04B08DE2 		add	fp, sp, #4
+ 891              		.cfi_def_cfa 11, 4
+ 268:./lib/display.c ****   display_clear(0);
+ 892              		.loc 1 268 3
+ 893 0008 0000A0E3 		mov	r0, #0
+ 894 000c 24309FE5 		ldr	r3, .L47
+ 895 0010 0FE0A0E1 		mov	lr, pc
+ 896 0014 13FF2FE1 		bx	r3
+ 897              	.LVL10:
+ 269:./lib/display.c ****   nxt_lcd_init((uint8_t *)display_buffer);
+ 898              		.loc 1 269 3
+ 899 0018 1C009FE5 		ldr	r0, .L47+4
+ 900 001c 1C309FE5 		ldr	r3, .L47+8
+ 901 0020 0FE0A0E1 		mov	lr, pc
+ 902 0024 13FF2FE1 		bx	r3
+ 903              	.LVL11:
+ 270:./lib/display.c **** }
+ 904              		.loc 1 270 1
+ 905 0028 0000A0E1 		nop
+ 906 002c 04D04BE2 		sub	sp, fp, #4
+ 907              		.cfi_def_cfa 13, 8
+ 908              		@ sp needed
+ 909 0030 0048BDE8 		pop	{fp, lr}
+ 910              		.cfi_restore 14
+ 911              		.cfi_restore 11
+ 912              		.cfi_def_cfa_offset 0
+ 913 0034 1EFF2FE1 		bx	lr
+ 914              	.L48:
+ 915              		.align	2
+ 916              	.L47:
+ 917 0038 00000000 		.word	display_clear
+ 918 003c 00000000 		.word	display_buffer
+ 919 0040 00000000 		.word	nxt_lcd_init
+ 920              		.cfi_endproc
+ 921              	.LFE10:
+ 923              		.section	.rodata
+ 924              		.align	2
+ 925              	.LC0:
+ 926 0280 4C454A4F 		.ascii	"LEJOS NXT\000"
+ 926      53204E58 
+ 926      5400
+ 927 028a 0000     		.align	2
+ 928              	.LC1:
+ 929 028c 30313233 		.ascii	"0123456789.:/\000"
+ 929      34353637 
+ 929      38392E3A 
+ 929      2F00
+ 930 029a 0000     		.align	2
+ 931              	.LC2:
+ 932 029c 61626364 		.ascii	"abcdefghijklm\000"
+ 932      65666768 
+ 932      696A6B6C 
+ 932      6D00
+ 933 02aa 0000     		.align	2
+ 934              	.LC3:
+ 935 02ac 6E6F7071 		.ascii	"nopqrstuvwxyz\000"
+ 935      72737475 
+ 935      76777879 
+ 935      7A00
+ 936 02ba 0000     		.align	2
+ 937              	.LC4:
+ 938 02bc 41424344 		.ascii	"ABCDEFGHIJKLM\000"
+ 938      45464748 
+ 938      494A4B4C 
+ 938      4D00
+ 939 02ca 0000     		.align	2
+ 940              	.LC5:
+ 941 02cc 4E4F5051 		.ascii	"NOPQRSTUVWXYZ\000"
+ 941      52535455 
+ 941      56575859 
+ 941      5A00
+ 942 02da 0000     		.align	2
+ 943              	.LC6:
+ 944 02dc 54494D45 		.ascii	"TIME \000"
+ 944      2000
+ 945              		.section	.text.display_test,"ax",%progbits
+ 946              		.align	2
+ 947              		.global	display_test
+ 948              		.syntax unified
+ 949              		.arm
+ 951              	display_test:
+ 952              	.LFB11:
+ 271:./lib/display.c **** 
+ 272:./lib/display.c **** void
+ 273:./lib/display.c **** display_test(void)
+ 274:./lib/display.c **** {
+ 953              		.loc 1 274 1
+ 954              		.cfi_startproc
+ 955              		@ Function supports interworking.
+ 956              		@ args = 0, pretend = 0, frame = 8
+ 957              		@ frame_needed = 1, uses_anonymous_args = 0
+ 958 0000 00482DE9 		push	{fp, lr}
+ 959              		.cfi_def_cfa_offset 8
+ 960              		.cfi_offset 11, -8
+ 961              		.cfi_offset 14, -4
+ 962 0004 04B08DE2 		add	fp, sp, #4
+ 963              		.cfi_def_cfa 11, 4
+ 964 0008 08D04DE2 		sub	sp, sp, #8
+ 275:./lib/display.c ****   int iterator = 0;
+ 965              		.loc 1 275 7
+ 966 000c 0030A0E3 		mov	r3, #0
+ 967 0010 08300BE5 		str	r3, [fp, #-8]
+ 276:./lib/display.c **** 
+ 277:./lib/display.c ****   nxt_lcd_init((uint8_t *)display_buffer);
+ 968              		.loc 1 277 3
+ 969 0014 6C019FE5 		ldr	r0, .L51
+ 970 0018 6C319FE5 		ldr	r3, .L51+4
+ 971 001c 0FE0A0E1 		mov	lr, pc
+ 972 0020 13FF2FE1 		bx	r3
+ 973              	.LVL12:
+ 974              	.L50:
+ 278:./lib/display.c ****   while (1) {
+ 279:./lib/display.c ****     display_clear(0);
+ 975              		.loc 1 279 5
+ 976 0024 0000A0E3 		mov	r0, #0
+ 977 0028 60319FE5 		ldr	r3, .L51+8
+ 978 002c 0FE0A0E1 		mov	lr, pc
+ 979 0030 13FF2FE1 		bx	r3
+ 980              	.LVL13:
+ 280:./lib/display.c ****     display_goto_xy(iterator, 0);
+ 981              		.loc 1 280 5
+ 982 0034 0010A0E3 		mov	r1, #0
+ 983 0038 08001BE5 		ldr	r0, [fp, #-8]
+ 984 003c 50319FE5 		ldr	r3, .L51+12
+ 985 0040 0FE0A0E1 		mov	lr, pc
+ 986 0044 13FF2FE1 		bx	r3
+ 987              	.LVL14:
+ 281:./lib/display.c ****     display_string("LEJOS NXT");
+ 988              		.loc 1 281 5
+ 989 0048 48019FE5 		ldr	r0, .L51+16
+ 990 004c 48319FE5 		ldr	r3, .L51+20
+ 991 0050 0FE0A0E1 		mov	lr, pc
+ 992 0054 13FF2FE1 		bx	r3
+ 993              	.LVL15:
+ 282:./lib/display.c ****     display_goto_xy(0, 1);
+ 994              		.loc 1 282 5
+ 995 0058 0110A0E3 		mov	r1, #1
+ 996 005c 0000A0E3 		mov	r0, #0
+ 997 0060 2C319FE5 		ldr	r3, .L51+12
+ 998 0064 0FE0A0E1 		mov	lr, pc
+ 999 0068 13FF2FE1 		bx	r3
+ 1000              	.LVL16:
+ 283:./lib/display.c ****     display_string("0123456789.:/");
+ 1001              		.loc 1 283 5
+ 1002 006c 2C019FE5 		ldr	r0, .L51+24
+ 1003 0070 24319FE5 		ldr	r3, .L51+20
+ 1004 0074 0FE0A0E1 		mov	lr, pc
+ 1005 0078 13FF2FE1 		bx	r3
+ 1006              	.LVL17:
+ 284:./lib/display.c ****     display_goto_xy(0, 2);
+ 1007              		.loc 1 284 5
+ 1008 007c 0210A0E3 		mov	r1, #2
+ 1009 0080 0000A0E3 		mov	r0, #0
+ 1010 0084 08319FE5 		ldr	r3, .L51+12
+ 1011 0088 0FE0A0E1 		mov	lr, pc
+ 1012 008c 13FF2FE1 		bx	r3
+ 1013              	.LVL18:
+ 285:./lib/display.c ****     display_string("abcdefghijklm");
+ 1014              		.loc 1 285 5
+ 1015 0090 0C019FE5 		ldr	r0, .L51+28
+ 1016 0094 00319FE5 		ldr	r3, .L51+20
+ 1017 0098 0FE0A0E1 		mov	lr, pc
+ 1018 009c 13FF2FE1 		bx	r3
+ 1019              	.LVL19:
+ 286:./lib/display.c ****     display_goto_xy(0, 3);
+ 1020              		.loc 1 286 5
+ 1021 00a0 0310A0E3 		mov	r1, #3
+ 1022 00a4 0000A0E3 		mov	r0, #0
+ 1023 00a8 E4309FE5 		ldr	r3, .L51+12
+ 1024 00ac 0FE0A0E1 		mov	lr, pc
+ 1025 00b0 13FF2FE1 		bx	r3
+ 1026              	.LVL20:
+ 287:./lib/display.c ****     display_string("nopqrstuvwxyz");
+ 1027              		.loc 1 287 5
+ 1028 00b4 EC009FE5 		ldr	r0, .L51+32
+ 1029 00b8 DC309FE5 		ldr	r3, .L51+20
+ 1030 00bc 0FE0A0E1 		mov	lr, pc
+ 1031 00c0 13FF2FE1 		bx	r3
+ 1032              	.LVL21:
+ 288:./lib/display.c ****     display_goto_xy(0, 4);
+ 1033              		.loc 1 288 5
+ 1034 00c4 0410A0E3 		mov	r1, #4
+ 1035 00c8 0000A0E3 		mov	r0, #0
+ 1036 00cc C0309FE5 		ldr	r3, .L51+12
+ 1037 00d0 0FE0A0E1 		mov	lr, pc
+ 1038 00d4 13FF2FE1 		bx	r3
+ 1039              	.LVL22:
+ 289:./lib/display.c ****     display_string("ABCDEFGHIJKLM");
+ 1040              		.loc 1 289 5
+ 1041 00d8 CC009FE5 		ldr	r0, .L51+36
+ 1042 00dc B8309FE5 		ldr	r3, .L51+20
+ 1043 00e0 0FE0A0E1 		mov	lr, pc
+ 1044 00e4 13FF2FE1 		bx	r3
+ 1045              	.LVL23:
+ 290:./lib/display.c ****     display_goto_xy(0, 5);
+ 1046              		.loc 1 290 5
+ 1047 00e8 0510A0E3 		mov	r1, #5
+ 1048 00ec 0000A0E3 		mov	r0, #0
+ 1049 00f0 9C309FE5 		ldr	r3, .L51+12
+ 1050 00f4 0FE0A0E1 		mov	lr, pc
+ 1051 00f8 13FF2FE1 		bx	r3
+ 1052              	.LVL24:
+ 291:./lib/display.c ****     display_string("NOPQRSTUVWXYZ");
+ 1053              		.loc 1 291 5
+ 1054 00fc AC009FE5 		ldr	r0, .L51+40
+ 1055 0100 94309FE5 		ldr	r3, .L51+20
+ 1056 0104 0FE0A0E1 		mov	lr, pc
+ 1057 0108 13FF2FE1 		bx	r3
+ 1058              	.LVL25:
+ 292:./lib/display.c **** 
+ 293:./lib/display.c ****     display_goto_xy(0, 7);
+ 1059              		.loc 1 293 5
+ 1060 010c 0710A0E3 		mov	r1, #7
+ 1061 0110 0000A0E3 		mov	r0, #0
+ 1062 0114 78309FE5 		ldr	r3, .L51+12
+ 1063 0118 0FE0A0E1 		mov	lr, pc
+ 1064 011c 13FF2FE1 		bx	r3
+ 1065              	.LVL26:
+ 294:./lib/display.c ****     display_string("TIME ");
+ 1066              		.loc 1 294 5
+ 1067 0120 8C009FE5 		ldr	r0, .L51+44
+ 1068 0124 70309FE5 		ldr	r3, .L51+20
+ 1069 0128 0FE0A0E1 		mov	lr, pc
+ 1070 012c 13FF2FE1 		bx	r3
+ 1071              	.LVL27:
+ 295:./lib/display.c ****     display_unsigned(systick_get_ms(), 0);
+ 1072              		.loc 1 295 5
+ 1073 0130 80309FE5 		ldr	r3, .L51+48
+ 1074 0134 0FE0A0E1 		mov	lr, pc
+ 1075 0138 13FF2FE1 		bx	r3
+ 1076              	.LVL28:
+ 1077 013c 0030A0E1 		mov	r3, r0
+ 1078              		.loc 1 295 5 is_stmt 0 discriminator 1
+ 1079 0140 0010A0E3 		mov	r1, #0
+ 1080 0144 0300A0E1 		mov	r0, r3
+ 1081 0148 6C309FE5 		ldr	r3, .L51+52
+ 1082 014c 0FE0A0E1 		mov	lr, pc
+ 1083 0150 13FF2FE1 		bx	r3
+ 1084              	.LVL29:
+ 296:./lib/display.c ****     iterator = (iterator + 1) & 7;
+ 1085              		.loc 1 296 26 is_stmt 1
+ 1086 0154 08301BE5 		ldr	r3, [fp, #-8]
+ 1087 0158 013083E2 		add	r3, r3, #1
+ 1088              		.loc 1 296 14
+ 1089 015c 073003E2 		and	r3, r3, #7
+ 1090 0160 08300BE5 		str	r3, [fp, #-8]
+ 297:./lib/display.c ****     display_update();
+ 1091              		.loc 1 297 5
+ 1092 0164 54309FE5 		ldr	r3, .L51+56
+ 1093 0168 0FE0A0E1 		mov	lr, pc
+ 1094 016c 13FF2FE1 		bx	r3
+ 1095              	.LVL30:
+ 298:./lib/display.c ****     systick_wait_ms(2000);
+ 1096              		.loc 1 298 5 discriminator 1
+ 1097 0170 7D0EA0E3 		mov	r0, #2000
+ 1098 0174 48309FE5 		ldr	r3, .L51+60
+ 1099 0178 0FE0A0E1 		mov	lr, pc
+ 1100 017c 13FF2FE1 		bx	r3
+ 1101              	.LVL31:
+ 279:./lib/display.c ****     display_goto_xy(iterator, 0);
+ 1102              		.loc 1 279 5
+ 1103 0180 0000A0E1 		nop
+ 1104 0184 A6FFFFEA 		b	.L50
+ 1105              	.L52:
+ 1106              		.align	2
+ 1107              	.L51:
+ 1108 0188 00000000 		.word	display_buffer
+ 1109 018c 00000000 		.word	nxt_lcd_init
+ 1110 0190 00000000 		.word	display_clear
+ 1111 0194 00000000 		.word	display_goto_xy
+ 1112 0198 80020000 		.word	.LC0
+ 1113 019c 00000000 		.word	display_string
+ 1114 01a0 8C020000 		.word	.LC1
+ 1115 01a4 9C020000 		.word	.LC2
+ 1116 01a8 AC020000 		.word	.LC3
+ 1117 01ac BC020000 		.word	.LC4
+ 1118 01b0 CC020000 		.word	.LC5
+ 1119 01b4 DC020000 		.word	.LC6
+ 1120 01b8 00000000 		.word	systick_get_ms
+ 1121 01bc 00000000 		.word	display_unsigned
+ 1122 01c0 00000000 		.word	display_update
+ 1123 01c4 00000000 		.word	systick_wait_ms
+ 1124              		.cfi_endproc
+ 1125              	.LFE11:
+ 1127              		.text
+ 1128              	.Letext0:
+ 1129              		.file 2 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 1130              		.file 3 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 1131              		.file 4 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
+ 1132              		.file 5 "./lib/systick.h"
+ 1133              		.file 6 "./lib/nxt_lcd.h"
+ 1134              		.file 7 "./lib/helper.h"
+ 1135              		.file 8 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/strin
+DEFINED SYMBOLS
+                            *ABS*:00000000 display.c
+     /tmp/ccgHrJqC.s:19     .bss:00000000 $d
+     /tmp/ccgHrJqC.s:20     .bss:00000000 display_buffer
+     /tmp/ccgHrJqC.s:27     .bss:00000384 display_x
+     /tmp/ccgHrJqC.s:33     .bss:00000388 display_y
+     /tmp/ccgHrJqC.s:36     .rodata:00000000 $d
+     /tmp/ccgHrJqC.s:39     .rodata:00000000 font
+     /tmp/ccgHrJqC.s:169    .text.display_update:00000000 $a
+     /tmp/ccgHrJqC.s:174    .text.display_update:00000000 display_update
+     /tmp/ccgHrJqC.s:205    .text.display_update:00000024 $d
+     /tmp/ccgHrJqC.s:210    .text.display_clear:00000000 $a
+     /tmp/ccgHrJqC.s:215    .text.display_clear:00000000 display_clear
+     /tmp/ccgHrJqC.s:261    .text.display_clear:00000050 $d
+     /tmp/ccgHrJqC.s:268    .text.display_goto_xy:00000000 $a
+     /tmp/ccgHrJqC.s:273    .text.display_goto_xy:00000000 display_goto_xy
+     /tmp/ccgHrJqC.s:309    .text.display_goto_xy:0000003c $d
+     /tmp/ccgHrJqC.s:315    .text.display_char:00000000 $a
+     /tmp/ccgHrJqC.s:320    .text.display_char:00000000 display_char
+     /tmp/ccgHrJqC.s:445    .text.display_char:00000140 $d
+     /tmp/ccgHrJqC.s:453    .text.display_string:00000000 $a
+     /tmp/ccgHrJqC.s:458    .text.display_string:00000000 display_string
+     /tmp/ccgHrJqC.s:528    .text.display_string:00000090 $d
+     /tmp/ccgHrJqC.s:535    .text.display_hex:00000000 $a
+     /tmp/ccgHrJqC.s:540    .text.display_hex:00000000 display_hex
+     /tmp/ccgHrJqC.s:585    .text.display_hex:00000054 $d
+     /tmp/ccgHrJqC.s:591    .text.display_unsigned:00000000 $a
+     /tmp/ccgHrJqC.s:596    .text.display_unsigned:00000000 display_unsigned
+     /tmp/ccgHrJqC.s:643    .text.display_unsigned:00000054 $d
+     /tmp/ccgHrJqC.s:649    .text.display_int:00000000 $a
+     /tmp/ccgHrJqC.s:654    .text.display_int:00000000 display_int
+     /tmp/ccgHrJqC.s:707    .text.display_int:00000068 $d
+     /tmp/ccgHrJqC.s:713    .text.display_bitmap_copy:00000000 $a
+     /tmp/ccgHrJqC.s:718    .text.display_bitmap_copy:00000000 display_bitmap_copy
+     /tmp/ccgHrJqC.s:832    .text.display_bitmap_copy:0000011c $d
+     /tmp/ccgHrJqC.s:837    .text.display_get_buffer:00000000 $a
+     /tmp/ccgHrJqC.s:842    .text.display_get_buffer:00000000 display_get_buffer
+     /tmp/ccgHrJqC.s:869    .text.display_get_buffer:0000001c $d
+     /tmp/ccgHrJqC.s:874    .text.display_init:00000000 $a
+     /tmp/ccgHrJqC.s:879    .text.display_init:00000000 display_init
+     /tmp/ccgHrJqC.s:917    .text.display_init:00000038 $d
+     /tmp/ccgHrJqC.s:946    .text.display_test:00000000 $a
+     /tmp/ccgHrJqC.s:951    .text.display_test:00000000 display_test
+     /tmp/ccgHrJqC.s:1108   .text.display_test:00000188 $d
+
+UNDEFINED SYMBOLS
+nxt_lcd_update
+memset
+hex2string
+unsigned2string
+nxt_lcd_init
+systick_get_ms
+systick_wait_ms

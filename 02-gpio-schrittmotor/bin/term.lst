@@ -1,0 +1,1573 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"term.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "./lib/term.c"
+  18              		.section	.text.byte_fifo_put_possible,"ax",%progbits
+  19              		.align	2
+  20              		.syntax unified
+  21              		.arm
+  23              	byte_fifo_put_possible:
+  24              	.LFB2:
+  25              		.file 2 "./lib/../trace32/../lib/byte_fifo.h"
+   1:./lib/../trace32/../lib/byte_fifo.h **** /* Byte FIFO queue implementation.
+   2:./lib/../trace32/../lib/byte_fifo.h ****  *
+   3:./lib/../trace32/../lib/byte_fifo.h ****  * Implements a simple reader/write save byte FIFO on top of a data buffer, that lets
+   4:./lib/../trace32/../lib/byte_fifo.h ****  * you enqueue and dequeue single bytes.
+   5:./lib/../trace32/../lib/byte_fifo.h ****  */
+   6:./lib/../trace32/../lib/byte_fifo.h **** 
+   7:./lib/../trace32/../lib/byte_fifo.h **** #ifndef __BYTE_FIFO_H__
+   8:./lib/../trace32/../lib/byte_fifo.h **** #define __BYTE_FIFO_H__
+   9:./lib/../trace32/../lib/byte_fifo.h **** 
+  10:./lib/../trace32/../lib/byte_fifo.h **** 
+  11:./lib/../trace32/../lib/byte_fifo.h **** typedef struct
+  12:./lib/../trace32/../lib/byte_fifo.h **** {
+  13:./lib/../trace32/../lib/byte_fifo.h **** 	unsigned short rd;
+  14:./lib/../trace32/../lib/byte_fifo.h **** 	unsigned short wr;
+  15:./lib/../trace32/../lib/byte_fifo.h ****     unsigned short mask;
+  16:./lib/../trace32/../lib/byte_fifo.h **** 	unsigned char  buf[];
+  17:./lib/../trace32/../lib/byte_fifo.h **** } byte_fifo_t;
+  18:./lib/../trace32/../lib/byte_fifo.h **** 
+  19:./lib/../trace32/../lib/byte_fifo.h **** #define TEST_2erPOTENZ(x) (((x) & ((x) - 1))?0:(x))
+  20:./lib/../trace32/../lib/byte_fifo.h **** #define TEST_64k(x)       ((x)>0x10000?0:(x))
+  21:./lib/../trace32/../lib/byte_fifo.h **** #define TEST_SIZE(x)      (TEST_64k(TEST_2erPOTENZ(x)))
+  22:./lib/../trace32/../lib/byte_fifo.h **** 
+  23:./lib/../trace32/../lib/byte_fifo.h **** //size muss einer 2er Potenzzahl sein, andernfalls gibt der Compiler
+  24:./lib/../trace32/../lib/byte_fifo.h **** //die Fehlermeldung aus, dass die Array-Größe (hier -1) ungültit ist
+  25:./lib/../trace32/../lib/byte_fifo.h **** #define BYTE_FIFO_INIT(size)  (byte_fifo_t) {.rd=0,\
+  26:./lib/../trace32/../lib/byte_fifo.h ****                                              .wr=0,\
+  27:./lib/../trace32/../lib/byte_fifo.h **** 						        	         .mask=TEST_SIZE(size)-1,\
+  28:./lib/../trace32/../lib/byte_fifo.h **** 								    		 .buf={[TEST_SIZE(size)-1]=0}\
+  29:./lib/../trace32/../lib/byte_fifo.h **** 									    	}
+  30:./lib/../trace32/../lib/byte_fifo.h **** 
+  31:./lib/../trace32/../lib/byte_fifo.h **** #define BYTE_FIFO_TYPEOF_RDWR typeof (((byte_fifo_t *)0)->rd)
+  32:./lib/../trace32/../lib/byte_fifo.h **** 
+  33:./lib/../trace32/../lib/byte_fifo.h **** #pragma GCC diagnostic push
+  34:./lib/../trace32/../lib/byte_fifo.h **** #pragma GCC diagnostic ignored "-Wunused-function"
+  35:./lib/../trace32/../lib/byte_fifo.h **** 
+  36:./lib/../trace32/../lib/byte_fifo.h **** static int byte_fifo_put_possible(byte_fifo_t *fifo)
+  37:./lib/../trace32/../lib/byte_fifo.h **** {
+  26              		.loc 2 37 1
+  27              		.cfi_startproc
+  28              		@ Function supports interworking.
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32 0000 04B02DE5 		str	fp, [sp, #-4]!
+  33              		.cfi_def_cfa_offset 4
+  34              		.cfi_offset 11, -4
+  35 0004 00B08DE2 		add	fp, sp, #0
+  36              		.cfi_def_cfa_register 11
+  37 0008 0CD04DE2 		sub	sp, sp, #12
+  38 000c 08000BE5 		str	r0, [fp, #-8]
+  38:./lib/../trace32/../lib/byte_fifo.h **** 	if(((fifo->wr+1)&(fifo->mask)) == fifo->rd)
+  39              		.loc 2 38 11
+  40 0010 08301BE5 		ldr	r3, [fp, #-8]
+  41 0014 B230D3E1 		ldrh	r3, [r3, #2]
+  42              		.loc 2 38 15
+  43 0018 013083E2 		add	r3, r3, #1
+  44              		.loc 2 38 24
+  45 001c 08201BE5 		ldr	r2, [fp, #-8]
+  46 0020 B420D2E1 		ldrh	r2, [r2, #4]
+  47              		.loc 2 38 18
+  48 0024 023003E0 		and	r3, r3, r2
+  49              		.loc 2 38 40
+  50 0028 08201BE5 		ldr	r2, [fp, #-8]
+  51 002c B020D2E1 		ldrh	r2, [r2]
+  52              		.loc 2 38 4
+  53 0030 020053E1 		cmp	r3, r2
+  54 0034 0100001A 		bne	.L2
+  39:./lib/../trace32/../lib/byte_fifo.h **** 		return -1;
+  55              		.loc 2 39 10
+  56 0038 0030E0E3 		mvn	r3, #0
+  57 003c 000000EA 		b	.L3
+  58              	.L2:
+  40:./lib/../trace32/../lib/byte_fifo.h **** 	
+  41:./lib/../trace32/../lib/byte_fifo.h **** 	return 0;
+  59              		.loc 2 41 9
+  60 0040 0030A0E3 		mov	r3, #0
+  61              	.L3:
+  42:./lib/../trace32/../lib/byte_fifo.h **** }
+  62              		.loc 2 42 1
+  63 0044 0300A0E1 		mov	r0, r3
+  64 0048 00D08BE2 		add	sp, fp, #0
+  65              		.cfi_def_cfa_register 13
+  66              		@ sp needed
+  67 004c 04B09DE4 		ldr	fp, [sp], #4
+  68              		.cfi_restore 11
+  69              		.cfi_def_cfa_offset 0
+  70 0050 1EFF2FE1 		bx	lr
+  71              		.cfi_endproc
+  72              	.LFE2:
+  74              		.section	.text.byte_fifo_remain,"ax",%progbits
+  75              		.align	2
+  76              		.syntax unified
+  77              		.arm
+  79              	byte_fifo_remain:
+  80              	.LFB3:
+  43:./lib/../trace32/../lib/byte_fifo.h **** 
+  44:./lib/../trace32/../lib/byte_fifo.h **** static BYTE_FIFO_TYPEOF_RDWR byte_fifo_remain(byte_fifo_t *fifo)
+  45:./lib/../trace32/../lib/byte_fifo.h **** {
+  81              		.loc 2 45 1
+  82              		.cfi_startproc
+  83              		@ Function supports interworking.
+  84              		@ args = 0, pretend = 0, frame = 8
+  85              		@ frame_needed = 1, uses_anonymous_args = 0
+  86              		@ link register save eliminated.
+  87 0000 04B02DE5 		str	fp, [sp, #-4]!
+  88              		.cfi_def_cfa_offset 4
+  89              		.cfi_offset 11, -4
+  90 0004 00B08DE2 		add	fp, sp, #0
+  91              		.cfi_def_cfa_register 11
+  92 0008 0CD04DE2 		sub	sp, sp, #12
+  93 000c 08000BE5 		str	r0, [fp, #-8]
+  46:./lib/../trace32/../lib/byte_fifo.h **** 	return fifo->mask - ((fifo->wr-fifo->rd)&fifo->mask);
+  94              		.loc 2 46 37
+  95 0010 08301BE5 		ldr	r3, [fp, #-8]
+  96 0014 B020D3E1 		ldrh	r2, [r3]
+  97              		.loc 2 46 28
+  98 0018 08301BE5 		ldr	r3, [fp, #-8]
+  99 001c B230D3E1 		ldrh	r3, [r3, #2]
+ 100              		.loc 2 46 20
+ 101 0020 033042E0 		sub	r3, r2, r3
+ 102 0024 0338A0E1 		lsl	r3, r3, #16
+ 103 0028 2338A0E1 		lsr	r3, r3, #16
+ 104 002c 013043E2 		sub	r3, r3, #1
+ 105 0030 0338A0E1 		lsl	r3, r3, #16
+ 106 0034 2338A0E1 		lsr	r3, r3, #16
+ 107 0038 0338A0E1 		lsl	r3, r3, #16
+ 108 003c 4328A0E1 		asr	r2, r3, #16
+ 109              		.loc 2 46 47
+ 110 0040 08301BE5 		ldr	r3, [fp, #-8]
+ 111 0044 B430D3E1 		ldrh	r3, [r3, #4]
+ 112 0048 0338A0E1 		lsl	r3, r3, #16
+ 113 004c 4338A0E1 		asr	r3, r3, #16
+ 114              		.loc 2 46 20
+ 115 0050 023003E0 		and	r3, r3, r2
+ 116 0054 0338A0E1 		lsl	r3, r3, #16
+ 117 0058 4338A0E1 		asr	r3, r3, #16
+ 118 005c 0338A0E1 		lsl	r3, r3, #16
+ 119 0060 2338A0E1 		lsr	r3, r3, #16
+  47:./lib/../trace32/../lib/byte_fifo.h **** }
+ 120              		.loc 2 47 1
+ 121 0064 0300A0E1 		mov	r0, r3
+ 122 0068 00D08BE2 		add	sp, fp, #0
+ 123              		.cfi_def_cfa_register 13
+ 124              		@ sp needed
+ 125 006c 04B09DE4 		ldr	fp, [sp], #4
+ 126              		.cfi_restore 11
+ 127              		.cfi_def_cfa_offset 0
+ 128 0070 1EFF2FE1 		bx	lr
+ 129              		.cfi_endproc
+ 130              	.LFE3:
+ 132              		.section	.text.byte_fifo_used,"ax",%progbits
+ 133              		.align	2
+ 134              		.syntax unified
+ 135              		.arm
+ 137              	byte_fifo_used:
+ 138              	.LFB4:
+  48:./lib/../trace32/../lib/byte_fifo.h **** 	
+  49:./lib/../trace32/../lib/byte_fifo.h **** static BYTE_FIFO_TYPEOF_RDWR byte_fifo_used(byte_fifo_t *fifo)
+  50:./lib/../trace32/../lib/byte_fifo.h **** {
+ 139              		.loc 2 50 1
+ 140              		.cfi_startproc
+ 141              		@ Function supports interworking.
+ 142              		@ args = 0, pretend = 0, frame = 8
+ 143              		@ frame_needed = 1, uses_anonymous_args = 0
+ 144              		@ link register save eliminated.
+ 145 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 146              		.cfi_def_cfa_offset 4
+ 147              		.cfi_offset 11, -4
+ 148 0004 00B08DE2 		add	fp, sp, #0
+ 149              		.cfi_def_cfa_register 11
+ 150 0008 0CD04DE2 		sub	sp, sp, #12
+ 151 000c 08000BE5 		str	r0, [fp, #-8]
+  51:./lib/../trace32/../lib/byte_fifo.h **** 	return (fifo->wr-fifo->rd)&fifo->mask;
+ 152              		.loc 2 51 14
+ 153 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 154 0014 B220D3E1 		ldrh	r2, [r3, #2]
+ 155              		.loc 2 51 23
+ 156 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 157 001c B030D3E1 		ldrh	r3, [r3]
+ 158              		.loc 2 51 18
+ 159 0020 033042E0 		sub	r3, r2, r3
+ 160 0024 0338A0E1 		lsl	r3, r3, #16
+ 161 0028 2338A0E1 		lsr	r3, r3, #16
+ 162 002c 0338A0E1 		lsl	r3, r3, #16
+ 163 0030 4328A0E1 		asr	r2, r3, #16
+ 164              		.loc 2 51 33
+ 165 0034 08301BE5 		ldr	r3, [fp, #-8]
+ 166 0038 B430D3E1 		ldrh	r3, [r3, #4]
+ 167 003c 0338A0E1 		lsl	r3, r3, #16
+ 168 0040 4338A0E1 		asr	r3, r3, #16
+ 169              		.loc 2 51 28
+ 170 0044 023003E0 		and	r3, r3, r2
+ 171 0048 0338A0E1 		lsl	r3, r3, #16
+ 172 004c 4338A0E1 		asr	r3, r3, #16
+ 173 0050 0338A0E1 		lsl	r3, r3, #16
+ 174 0054 2338A0E1 		lsr	r3, r3, #16
+  52:./lib/../trace32/../lib/byte_fifo.h **** }
+ 175              		.loc 2 52 1
+ 176 0058 0300A0E1 		mov	r0, r3
+ 177 005c 00D08BE2 		add	sp, fp, #0
+ 178              		.cfi_def_cfa_register 13
+ 179              		@ sp needed
+ 180 0060 04B09DE4 		ldr	fp, [sp], #4
+ 181              		.cfi_restore 11
+ 182              		.cfi_def_cfa_offset 0
+ 183 0064 1EFF2FE1 		bx	lr
+ 184              		.cfi_endproc
+ 185              	.LFE4:
+ 187              		.section	.text.byte_fifo_put,"ax",%progbits
+ 188              		.align	2
+ 189              		.syntax unified
+ 190              		.arm
+ 192              	byte_fifo_put:
+ 193              	.LFB5:
+  53:./lib/../trace32/../lib/byte_fifo.h **** 	
+  54:./lib/../trace32/../lib/byte_fifo.h **** static int byte_fifo_put(byte_fifo_t *fifo,unsigned char val)
+  55:./lib/../trace32/../lib/byte_fifo.h **** {
+ 194              		.loc 2 55 1
+ 195              		.cfi_startproc
+ 196              		@ Function supports interworking.
+ 197              		@ args = 0, pretend = 0, frame = 8
+ 198              		@ frame_needed = 1, uses_anonymous_args = 0
+ 199              		@ link register save eliminated.
+ 200 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 201              		.cfi_def_cfa_offset 4
+ 202              		.cfi_offset 11, -4
+ 203 0004 00B08DE2 		add	fp, sp, #0
+ 204              		.cfi_def_cfa_register 11
+ 205 0008 0CD04DE2 		sub	sp, sp, #12
+ 206 000c 08000BE5 		str	r0, [fp, #-8]
+ 207 0010 0130A0E1 		mov	r3, r1
+ 208 0014 09304BE5 		strb	r3, [fp, #-9]
+  56:./lib/../trace32/../lib/byte_fifo.h **** 	if(((fifo->wr+1)&(fifo->mask)) == fifo->rd)
+ 209              		.loc 2 56 11
+ 210 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 211 001c B230D3E1 		ldrh	r3, [r3, #2]
+ 212              		.loc 2 56 15
+ 213 0020 013083E2 		add	r3, r3, #1
+ 214              		.loc 2 56 24
+ 215 0024 08201BE5 		ldr	r2, [fp, #-8]
+ 216 0028 B420D2E1 		ldrh	r2, [r2, #4]
+ 217              		.loc 2 56 18
+ 218 002c 023003E0 		and	r3, r3, r2
+ 219              		.loc 2 56 40
+ 220 0030 08201BE5 		ldr	r2, [fp, #-8]
+ 221 0034 B020D2E1 		ldrh	r2, [r2]
+ 222              		.loc 2 56 4
+ 223 0038 020053E1 		cmp	r3, r2
+ 224 003c 0100001A 		bne	.L9
+  57:./lib/../trace32/../lib/byte_fifo.h **** 		return -1;
+ 225              		.loc 2 57 10
+ 226 0040 0030E0E3 		mvn	r3, #0
+ 227 0044 190000EA 		b	.L10
+ 228              	.L9:
+  58:./lib/../trace32/../lib/byte_fifo.h **** 	
+  59:./lib/../trace32/../lib/byte_fifo.h **** 	fifo->buf[fifo->wr]=val;
+ 229              		.loc 2 59 16
+ 230 0048 08301BE5 		ldr	r3, [fp, #-8]
+ 231 004c B230D3E1 		ldrh	r3, [r3, #2]
+ 232 0050 0320A0E1 		mov	r2, r3
+ 233              		.loc 2 59 21
+ 234 0054 08301BE5 		ldr	r3, [fp, #-8]
+ 235 0058 023083E0 		add	r3, r3, r2
+ 236 005c 09205BE5 		ldrb	r2, [fp, #-9]
+ 237 0060 0620C3E5 		strb	r2, [r3, #6]
+  60:./lib/../trace32/../lib/byte_fifo.h **** 	fifo->wr=(fifo->wr+1)&(fifo->mask);
+ 238              		.loc 2 60 16
+ 239 0064 08301BE5 		ldr	r3, [fp, #-8]
+ 240 0068 B230D3E1 		ldrh	r3, [r3, #2]
+ 241              		.loc 2 60 20
+ 242 006c 013083E2 		add	r3, r3, #1
+ 243 0070 0338A0E1 		lsl	r3, r3, #16
+ 244 0074 2338A0E1 		lsr	r3, r3, #16
+ 245 0078 0338A0E1 		lsl	r3, r3, #16
+ 246 007c 4328A0E1 		asr	r2, r3, #16
+ 247              		.loc 2 60 29
+ 248 0080 08301BE5 		ldr	r3, [fp, #-8]
+ 249 0084 B430D3E1 		ldrh	r3, [r3, #4]
+ 250 0088 0338A0E1 		lsl	r3, r3, #16
+ 251 008c 4338A0E1 		asr	r3, r3, #16
+ 252              		.loc 2 60 23
+ 253 0090 023003E0 		and	r3, r3, r2
+ 254 0094 0338A0E1 		lsl	r3, r3, #16
+ 255 0098 4338A0E1 		asr	r3, r3, #16
+ 256 009c 0338A0E1 		lsl	r3, r3, #16
+ 257 00a0 2328A0E1 		lsr	r2, r3, #16
+ 258              		.loc 2 60 10
+ 259 00a4 08301BE5 		ldr	r3, [fp, #-8]
+ 260 00a8 B220C3E1 		strh	r2, [r3, #2]	@ movhi
+  61:./lib/../trace32/../lib/byte_fifo.h **** 	return 0;
+ 261              		.loc 2 61 9
+ 262 00ac 0030A0E3 		mov	r3, #0
+ 263              	.L10:
+  62:./lib/../trace32/../lib/byte_fifo.h **** }
+ 264              		.loc 2 62 1
+ 265 00b0 0300A0E1 		mov	r0, r3
+ 266 00b4 00D08BE2 		add	sp, fp, #0
+ 267              		.cfi_def_cfa_register 13
+ 268              		@ sp needed
+ 269 00b8 04B09DE4 		ldr	fp, [sp], #4
+ 270              		.cfi_restore 11
+ 271              		.cfi_def_cfa_offset 0
+ 272 00bc 1EFF2FE1 		bx	lr
+ 273              		.cfi_endproc
+ 274              	.LFE5:
+ 276              		.section	.text.byte_fifo_get_possible,"ax",%progbits
+ 277              		.align	2
+ 278              		.syntax unified
+ 279              		.arm
+ 281              	byte_fifo_get_possible:
+ 282              	.LFB6:
+  63:./lib/../trace32/../lib/byte_fifo.h **** 
+  64:./lib/../trace32/../lib/byte_fifo.h **** static int byte_fifo_get_possible(byte_fifo_t *fifo)
+  65:./lib/../trace32/../lib/byte_fifo.h **** {
+ 283              		.loc 2 65 1
+ 284              		.cfi_startproc
+ 285              		@ Function supports interworking.
+ 286              		@ args = 0, pretend = 0, frame = 8
+ 287              		@ frame_needed = 1, uses_anonymous_args = 0
+ 288              		@ link register save eliminated.
+ 289 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 290              		.cfi_def_cfa_offset 4
+ 291              		.cfi_offset 11, -4
+ 292 0004 00B08DE2 		add	fp, sp, #0
+ 293              		.cfi_def_cfa_register 11
+ 294 0008 0CD04DE2 		sub	sp, sp, #12
+ 295 000c 08000BE5 		str	r0, [fp, #-8]
+  66:./lib/../trace32/../lib/byte_fifo.h **** 	if(fifo->rd == fifo->wr)
+ 296              		.loc 2 66 9
+ 297 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 298 0014 B020D3E1 		ldrh	r2, [r3]
+ 299              		.loc 2 66 21
+ 300 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 301 001c B230D3E1 		ldrh	r3, [r3, #2]
+ 302              		.loc 2 66 4
+ 303 0020 030052E1 		cmp	r2, r3
+ 304 0024 0100001A 		bne	.L12
+  67:./lib/../trace32/../lib/byte_fifo.h **** 		return -1;
+ 305              		.loc 2 67 10
+ 306 0028 0030E0E3 		mvn	r3, #0
+ 307 002c 000000EA 		b	.L13
+ 308              	.L12:
+  68:./lib/../trace32/../lib/byte_fifo.h **** 		
+  69:./lib/../trace32/../lib/byte_fifo.h **** 	return 0;
+ 309              		.loc 2 69 9
+ 310 0030 0030A0E3 		mov	r3, #0
+ 311              	.L13:
+  70:./lib/../trace32/../lib/byte_fifo.h **** }
+ 312              		.loc 2 70 1
+ 313 0034 0300A0E1 		mov	r0, r3
+ 314 0038 00D08BE2 		add	sp, fp, #0
+ 315              		.cfi_def_cfa_register 13
+ 316              		@ sp needed
+ 317 003c 04B09DE4 		ldr	fp, [sp], #4
+ 318              		.cfi_restore 11
+ 319              		.cfi_def_cfa_offset 0
+ 320 0040 1EFF2FE1 		bx	lr
+ 321              		.cfi_endproc
+ 322              	.LFE6:
+ 324              		.section	.text.byte_fifo_get,"ax",%progbits
+ 325              		.align	2
+ 326              		.syntax unified
+ 327              		.arm
+ 329              	byte_fifo_get:
+ 330              	.LFB7:
+  71:./lib/../trace32/../lib/byte_fifo.h **** 
+  72:./lib/../trace32/../lib/byte_fifo.h **** static int byte_fifo_get(byte_fifo_t *fifo,unsigned char *val)
+  73:./lib/../trace32/../lib/byte_fifo.h **** {
+ 331              		.loc 2 73 1
+ 332              		.cfi_startproc
+ 333              		@ Function supports interworking.
+ 334              		@ args = 0, pretend = 0, frame = 8
+ 335              		@ frame_needed = 1, uses_anonymous_args = 0
+ 336              		@ link register save eliminated.
+ 337 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 338              		.cfi_def_cfa_offset 4
+ 339              		.cfi_offset 11, -4
+ 340 0004 00B08DE2 		add	fp, sp, #0
+ 341              		.cfi_def_cfa_register 11
+ 342 0008 0CD04DE2 		sub	sp, sp, #12
+ 343 000c 08000BE5 		str	r0, [fp, #-8]
+ 344 0010 0C100BE5 		str	r1, [fp, #-12]
+  74:./lib/../trace32/../lib/byte_fifo.h **** 	if(fifo->rd == fifo->wr)
+ 345              		.loc 2 74 9
+ 346 0014 08301BE5 		ldr	r3, [fp, #-8]
+ 347 0018 B020D3E1 		ldrh	r2, [r3]
+ 348              		.loc 2 74 21
+ 349 001c 08301BE5 		ldr	r3, [fp, #-8]
+ 350 0020 B230D3E1 		ldrh	r3, [r3, #2]
+ 351              		.loc 2 74 4
+ 352 0024 030052E1 		cmp	r2, r3
+ 353 0028 0100001A 		bne	.L15
+  75:./lib/../trace32/../lib/byte_fifo.h **** 		return -1;
+ 354              		.loc 2 75 10
+ 355 002c 0030E0E3 		mvn	r3, #0
+ 356 0030 1A0000EA 		b	.L16
+ 357              	.L15:
+  76:./lib/../trace32/../lib/byte_fifo.h **** 		
+  77:./lib/../trace32/../lib/byte_fifo.h **** 	*val=fifo->buf[fifo->rd];
+ 358              		.loc 2 77 21
+ 359 0034 08301BE5 		ldr	r3, [fp, #-8]
+ 360 0038 B030D3E1 		ldrh	r3, [r3]
+ 361 003c 0320A0E1 		mov	r2, r3
+ 362              		.loc 2 77 16
+ 363 0040 08301BE5 		ldr	r3, [fp, #-8]
+ 364 0044 023083E0 		add	r3, r3, r2
+ 365 0048 0620D3E5 		ldrb	r2, [r3, #6]	@ zero_extendqisi2
+ 366              		.loc 2 77 6
+ 367 004c 0C301BE5 		ldr	r3, [fp, #-12]
+ 368 0050 0020C3E5 		strb	r2, [r3]
+  78:./lib/../trace32/../lib/byte_fifo.h **** 	fifo->rd=(fifo->rd+1)&(fifo->mask);
+ 369              		.loc 2 78 16
+ 370 0054 08301BE5 		ldr	r3, [fp, #-8]
+ 371 0058 B030D3E1 		ldrh	r3, [r3]
+ 372              		.loc 2 78 20
+ 373 005c 013083E2 		add	r3, r3, #1
+ 374 0060 0338A0E1 		lsl	r3, r3, #16
+ 375 0064 2338A0E1 		lsr	r3, r3, #16
+ 376 0068 0338A0E1 		lsl	r3, r3, #16
+ 377 006c 4328A0E1 		asr	r2, r3, #16
+ 378              		.loc 2 78 29
+ 379 0070 08301BE5 		ldr	r3, [fp, #-8]
+ 380 0074 B430D3E1 		ldrh	r3, [r3, #4]
+ 381 0078 0338A0E1 		lsl	r3, r3, #16
+ 382 007c 4338A0E1 		asr	r3, r3, #16
+ 383              		.loc 2 78 23
+ 384 0080 023003E0 		and	r3, r3, r2
+ 385 0084 0338A0E1 		lsl	r3, r3, #16
+ 386 0088 4338A0E1 		asr	r3, r3, #16
+ 387 008c 0338A0E1 		lsl	r3, r3, #16
+ 388 0090 2328A0E1 		lsr	r2, r3, #16
+ 389              		.loc 2 78 10
+ 390 0094 08301BE5 		ldr	r3, [fp, #-8]
+ 391 0098 B020C3E1 		strh	r2, [r3]	@ movhi
+  79:./lib/../trace32/../lib/byte_fifo.h **** 	return 0;
+ 392              		.loc 2 79 9
+ 393 009c 0030A0E3 		mov	r3, #0
+ 394              	.L16:
+  80:./lib/../trace32/../lib/byte_fifo.h **** }
+ 395              		.loc 2 80 1
+ 396 00a0 0300A0E1 		mov	r0, r3
+ 397 00a4 00D08BE2 		add	sp, fp, #0
+ 398              		.cfi_def_cfa_register 13
+ 399              		@ sp needed
+ 400 00a8 04B09DE4 		ldr	fp, [sp], #4
+ 401              		.cfi_restore 11
+ 402              		.cfi_def_cfa_offset 0
+ 403 00ac 1EFF2FE1 		bx	lr
+ 404              		.cfi_endproc
+ 405              	.LFE7:
+ 407              		.section	.text.byte_fifo_cb_put_possible,"ax",%progbits
+ 408              		.align	2
+ 409              		.syntax unified
+ 410              		.arm
+ 412              	byte_fifo_cb_put_possible:
+ 413              	.LFB8:
+ 414              		.file 3 "./lib/../trace32/../lib/byte_fifo_cb.h"
+   1:./lib/../trace32/../lib/byte_fifo_cb.h **** /* Byte FIFO with CallBack
+   2:./lib/../trace32/../lib/byte_fifo_cb.h ****  *
+   3:./lib/../trace32/../lib/byte_fifo_cb.h ****  * Appends the Byte_Fifo with a callback function, which is called
+   4:./lib/../trace32/../lib/byte_fifo_cb.h ****  * when putting some stuff into the fifo (e.g. Enable transmitting interrupt)
+   5:./lib/../trace32/../lib/byte_fifo_cb.h ****  */
+   6:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+   7:./lib/../trace32/../lib/byte_fifo_cb.h **** #ifndef __BYTE_FIFO_CB_H__
+   8:./lib/../trace32/../lib/byte_fifo_cb.h **** #define __BYTE_FIFO_CB_H__
+   9:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  10:./lib/../trace32/../lib/byte_fifo_cb.h **** #include "byte_fifo.h"
+  11:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  12:./lib/../trace32/../lib/byte_fifo_cb.h **** typedef void (*byte_fifo_cb)(void);
+  13:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  14:./lib/../trace32/../lib/byte_fifo_cb.h **** typedef struct {
+  15:./lib/../trace32/../lib/byte_fifo_cb.h **** 	byte_fifo_cb cb;
+  16:./lib/../trace32/../lib/byte_fifo_cb.h **** 	byte_fifo_t  byte_fifo; //Aufgrund des Flexible Array Member hier hinter keine weiteren Strukturel
+  17:./lib/../trace32/../lib/byte_fifo_cb.h **** } byte_fifo_cb_t;
+  18:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  19:./lib/../trace32/../lib/byte_fifo_cb.h **** #define BYTE_FIFO_CB_INIT(size,func)  (byte_fifo_cb_t) {.cb=func, \
+  20:./lib/../trace32/../lib/byte_fifo_cb.h ****                                                         .byte_fifo=BYTE_FIFO_INIT(size) \
+  21:./lib/../trace32/../lib/byte_fifo_cb.h **** 									    			   }
+  22:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  23:./lib/../trace32/../lib/byte_fifo_cb.h **** size_t byte_fifo_cb_putsize(byte_fifo_cb_t *fifo,const unsigned char *start,size_t len);
+  24:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  25:./lib/../trace32/../lib/byte_fifo_cb.h **** #pragma GCC diagnostic push
+  26:./lib/../trace32/../lib/byte_fifo_cb.h **** #pragma GCC diagnostic ignored "-Wunused-function"
+  27:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  28:./lib/../trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_put_possible(byte_fifo_cb_t *fifo)
+  29:./lib/../trace32/../lib/byte_fifo_cb.h **** {
+ 415              		.loc 3 29 1
+ 416              		.cfi_startproc
+ 417              		@ Function supports interworking.
+ 418              		@ args = 0, pretend = 0, frame = 8
+ 419              		@ frame_needed = 1, uses_anonymous_args = 0
+ 420 0000 00482DE9 		push	{fp, lr}
+ 421              		.cfi_def_cfa_offset 8
+ 422              		.cfi_offset 11, -8
+ 423              		.cfi_offset 14, -4
+ 424 0004 04B08DE2 		add	fp, sp, #4
+ 425              		.cfi_def_cfa 11, 4
+ 426 0008 08D04DE2 		sub	sp, sp, #8
+ 427 000c 08000BE5 		str	r0, [fp, #-8]
+  30:./lib/../trace32/../lib/byte_fifo_cb.h **** 	return byte_fifo_put_possible(&fifo->byte_fifo);
+ 428              		.loc 3 30 9
+ 429 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 430 0014 043083E2 		add	r3, r3, #4
+ 431 0018 0300A0E1 		mov	r0, r3
+ 432 001c 18309FE5 		ldr	r3, .L19
+ 433 0020 0FE0A0E1 		mov	lr, pc
+ 434 0024 13FF2FE1 		bx	r3
+ 435              	.LVL0:
+ 436 0028 0030A0E1 		mov	r3, r0
+  31:./lib/../trace32/../lib/byte_fifo_cb.h **** }
+ 437              		.loc 3 31 1
+ 438 002c 0300A0E1 		mov	r0, r3
+ 439 0030 04D04BE2 		sub	sp, fp, #4
+ 440              		.cfi_def_cfa 13, 8
+ 441              		@ sp needed
+ 442 0034 0048BDE8 		pop	{fp, lr}
+ 443              		.cfi_restore 14
+ 444              		.cfi_restore 11
+ 445              		.cfi_def_cfa_offset 0
+ 446 0038 1EFF2FE1 		bx	lr
+ 447              	.L20:
+ 448              		.align	2
+ 449              	.L19:
+ 450 003c 00000000 		.word	byte_fifo_put_possible
+ 451              		.cfi_endproc
+ 452              	.LFE8:
+ 454              		.section	.text.byte_fifo_cb_put,"ax",%progbits
+ 455              		.align	2
+ 456              		.syntax unified
+ 457              		.arm
+ 459              	byte_fifo_cb_put:
+ 460              	.LFB9:
+  32:./lib/../trace32/../lib/byte_fifo_cb.h **** 	
+  33:./lib/../trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_put(byte_fifo_cb_t *fifo,unsigned char val)
+  34:./lib/../trace32/../lib/byte_fifo_cb.h **** {
+ 461              		.loc 3 34 1
+ 462              		.cfi_startproc
+ 463              		@ Function supports interworking.
+ 464              		@ args = 0, pretend = 0, frame = 16
+ 465              		@ frame_needed = 1, uses_anonymous_args = 0
+ 466 0000 00482DE9 		push	{fp, lr}
+ 467              		.cfi_def_cfa_offset 8
+ 468              		.cfi_offset 11, -8
+ 469              		.cfi_offset 14, -4
+ 470 0004 04B08DE2 		add	fp, sp, #4
+ 471              		.cfi_def_cfa 11, 4
+ 472 0008 10D04DE2 		sub	sp, sp, #16
+ 473 000c 10000BE5 		str	r0, [fp, #-16]
+ 474 0010 0130A0E1 		mov	r3, r1
+ 475 0014 11304BE5 		strb	r3, [fp, #-17]
+  35:./lib/../trace32/../lib/byte_fifo_cb.h **** 	int ret=byte_fifo_put(&fifo->byte_fifo,val);
+ 476              		.loc 3 35 10
+ 477 0018 10301BE5 		ldr	r3, [fp, #-16]
+ 478 001c 043083E2 		add	r3, r3, #4
+ 479 0020 11205BE5 		ldrb	r2, [fp, #-17]	@ zero_extendqisi2
+ 480 0024 0210A0E1 		mov	r1, r2
+ 481 0028 0300A0E1 		mov	r0, r3
+ 482 002c 48309FE5 		ldr	r3, .L24
+ 483 0030 0FE0A0E1 		mov	lr, pc
+ 484 0034 13FF2FE1 		bx	r3
+ 485              	.LVL1:
+ 486 0038 08000BE5 		str	r0, [fp, #-8]
+  36:./lib/../trace32/../lib/byte_fifo_cb.h **** 	if( !ret && fifo->cb)
+ 487              		.loc 3 36 4
+ 488 003c 08301BE5 		ldr	r3, [fp, #-8]
+ 489 0040 000053E3 		cmp	r3, #0
+ 490 0044 0700001A 		bne	.L22
+ 491              		.loc 3 36 18 discriminator 1
+ 492 0048 10301BE5 		ldr	r3, [fp, #-16]
+ 493 004c 003093E5 		ldr	r3, [r3]
+ 494              		.loc 3 36 11 discriminator 1
+ 495 0050 000053E3 		cmp	r3, #0
+ 496 0054 0300000A 		beq	.L22
+  37:./lib/../trace32/../lib/byte_fifo_cb.h **** 		fifo->cb();
+ 497              		.loc 3 37 7
+ 498 0058 10301BE5 		ldr	r3, [fp, #-16]
+ 499 005c 003093E5 		ldr	r3, [r3]
+ 500              		.loc 3 37 3
+ 501 0060 0FE0A0E1 		mov	lr, pc
+ 502 0064 13FF2FE1 		bx	r3
+ 503              	.LVL2:
+ 504              	.L22:
+  38:./lib/../trace32/../lib/byte_fifo_cb.h **** 	return ret;
+ 505              		.loc 3 38 9
+ 506 0068 08301BE5 		ldr	r3, [fp, #-8]
+  39:./lib/../trace32/../lib/byte_fifo_cb.h **** }
+ 507              		.loc 3 39 1
+ 508 006c 0300A0E1 		mov	r0, r3
+ 509 0070 04D04BE2 		sub	sp, fp, #4
+ 510              		.cfi_def_cfa 13, 8
+ 511              		@ sp needed
+ 512 0074 0048BDE8 		pop	{fp, lr}
+ 513              		.cfi_restore 14
+ 514              		.cfi_restore 11
+ 515              		.cfi_def_cfa_offset 0
+ 516 0078 1EFF2FE1 		bx	lr
+ 517              	.L25:
+ 518              		.align	2
+ 519              	.L24:
+ 520 007c 00000000 		.word	byte_fifo_put
+ 521              		.cfi_endproc
+ 522              	.LFE9:
+ 524              		.section	.text.byte_fifo_cb_get_possible,"ax",%progbits
+ 525              		.align	2
+ 526              		.syntax unified
+ 527              		.arm
+ 529              	byte_fifo_cb_get_possible:
+ 530              	.LFB10:
+  40:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  41:./lib/../trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_get_possible(byte_fifo_cb_t *fifo)
+  42:./lib/../trace32/../lib/byte_fifo_cb.h **** {
+ 531              		.loc 3 42 1
+ 532              		.cfi_startproc
+ 533              		@ Function supports interworking.
+ 534              		@ args = 0, pretend = 0, frame = 8
+ 535              		@ frame_needed = 1, uses_anonymous_args = 0
+ 536 0000 00482DE9 		push	{fp, lr}
+ 537              		.cfi_def_cfa_offset 8
+ 538              		.cfi_offset 11, -8
+ 539              		.cfi_offset 14, -4
+ 540 0004 04B08DE2 		add	fp, sp, #4
+ 541              		.cfi_def_cfa 11, 4
+ 542 0008 08D04DE2 		sub	sp, sp, #8
+ 543 000c 08000BE5 		str	r0, [fp, #-8]
+  43:./lib/../trace32/../lib/byte_fifo_cb.h **** 	return byte_fifo_get_possible(&fifo->byte_fifo);
+ 544              		.loc 3 43 9
+ 545 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 546 0014 043083E2 		add	r3, r3, #4
+ 547 0018 0300A0E1 		mov	r0, r3
+ 548 001c 18309FE5 		ldr	r3, .L28
+ 549 0020 0FE0A0E1 		mov	lr, pc
+ 550 0024 13FF2FE1 		bx	r3
+ 551              	.LVL3:
+ 552 0028 0030A0E1 		mov	r3, r0
+  44:./lib/../trace32/../lib/byte_fifo_cb.h **** }
+ 553              		.loc 3 44 1
+ 554 002c 0300A0E1 		mov	r0, r3
+ 555 0030 04D04BE2 		sub	sp, fp, #4
+ 556              		.cfi_def_cfa 13, 8
+ 557              		@ sp needed
+ 558 0034 0048BDE8 		pop	{fp, lr}
+ 559              		.cfi_restore 14
+ 560              		.cfi_restore 11
+ 561              		.cfi_def_cfa_offset 0
+ 562 0038 1EFF2FE1 		bx	lr
+ 563              	.L29:
+ 564              		.align	2
+ 565              	.L28:
+ 566 003c 00000000 		.word	byte_fifo_get_possible
+ 567              		.cfi_endproc
+ 568              	.LFE10:
+ 570              		.section	.text.byte_fifo_cb_get,"ax",%progbits
+ 571              		.align	2
+ 572              		.syntax unified
+ 573              		.arm
+ 575              	byte_fifo_cb_get:
+ 576              	.LFB11:
+  45:./lib/../trace32/../lib/byte_fifo_cb.h **** 
+  46:./lib/../trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_get(byte_fifo_cb_t *fifo,unsigned char *val)
+  47:./lib/../trace32/../lib/byte_fifo_cb.h **** {
+ 577              		.loc 3 47 1
+ 578              		.cfi_startproc
+ 579              		@ Function supports interworking.
+ 580              		@ args = 0, pretend = 0, frame = 8
+ 581              		@ frame_needed = 1, uses_anonymous_args = 0
+ 582 0000 00482DE9 		push	{fp, lr}
+ 583              		.cfi_def_cfa_offset 8
+ 584              		.cfi_offset 11, -8
+ 585              		.cfi_offset 14, -4
+ 586 0004 04B08DE2 		add	fp, sp, #4
+ 587              		.cfi_def_cfa 11, 4
+ 588 0008 08D04DE2 		sub	sp, sp, #8
+ 589 000c 08000BE5 		str	r0, [fp, #-8]
+ 590 0010 0C100BE5 		str	r1, [fp, #-12]
+  48:./lib/../trace32/../lib/byte_fifo_cb.h **** 	return byte_fifo_get(&fifo->byte_fifo,val);
+ 591              		.loc 3 48 9
+ 592 0014 08301BE5 		ldr	r3, [fp, #-8]
+ 593 0018 043083E2 		add	r3, r3, #4
+ 594 001c 0C101BE5 		ldr	r1, [fp, #-12]
+ 595 0020 0300A0E1 		mov	r0, r3
+ 596 0024 18309FE5 		ldr	r3, .L32
+ 597 0028 0FE0A0E1 		mov	lr, pc
+ 598 002c 13FF2FE1 		bx	r3
+ 599              	.LVL4:
+ 600 0030 0030A0E1 		mov	r3, r0
+  49:./lib/../trace32/../lib/byte_fifo_cb.h **** }
+ 601              		.loc 3 49 1
+ 602 0034 0300A0E1 		mov	r0, r3
+ 603 0038 04D04BE2 		sub	sp, fp, #4
+ 604              		.cfi_def_cfa 13, 8
+ 605              		@ sp needed
+ 606 003c 0048BDE8 		pop	{fp, lr}
+ 607              		.cfi_restore 14
+ 608              		.cfi_restore 11
+ 609              		.cfi_def_cfa_offset 0
+ 610 0040 1EFF2FE1 		bx	lr
+ 611              	.L33:
+ 612              		.align	2
+ 613              	.L32:
+ 614 0044 00000000 		.word	byte_fifo_get
+ 615              		.cfi_endproc
+ 616              	.LFE11:
+ 618              		.global	fifo_rx
+ 619              		.data
+ 620              		.align	2
+ 623              	fifo_rx:
+ 624 0000 00000000 		.word	0
+ 625 0004 0000     		.short	0
+ 626 0006 0000     		.short	0
+ 627 0008 3F00     		.short	63
+ 628 000a 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 628      00000000 
+ 628      00000000 
+ 628      00
+ 629 0017 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 629      00000000 
+ 629      00000000 
+ 629      00
+ 630 0024 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 630      00000000 
+ 630      00000000 
+ 630      00
+ 631 0031 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 631      00000000 
+ 631      00000000 
+ 631      00
+ 632 003e 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000"
+ 632      00000000 
+ 632      00000000 
+ 633              		.global	fifo_tx
+ 634 004a 0000     		.align	2
+ 637              	fifo_tx:
+ 638 004c 00000000 		.word	0
+ 639 0050 0000     		.short	0
+ 640 0052 0000     		.short	0
+ 641 0054 3F00     		.short	63
+ 642 0056 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 642      00000000 
+ 642      00000000 
+ 642      00
+ 643 0063 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 643      00000000 
+ 643      00000000 
+ 643      00
+ 644 0070 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 644      00000000 
+ 644      00000000 
+ 644      00
+ 645 007d 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000\000"
+ 645      00000000 
+ 645      00000000 
+ 645      00
+ 646 008a 00000000 		.ascii	"\000\000\000\000\000\000\000\000\000\000\000\000"
+ 646      00000000 
+ 646      00000000 
+ 647              		.section	.text.term_init,"ax",%progbits
+ 648              		.align	2
+ 649              		.global	term_init
+ 650              		.syntax unified
+ 651              		.arm
+ 653              	term_init:
+ 654              	.LFB12:
+   1:./lib/term.c  **** #include <string.h>  //fuer strlen() size_t
+   2:./lib/term.c  **** #include "term.h"
+   3:./lib/term.c  **** #include "helper.h"  //fuer unsigned2string()
+   4:./lib/term.c  **** 
+   5:./lib/term.c  **** 
+   6:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+   7:./lib/term.c  ****   #include "../trace32/udmon3.h"
+   8:./lib/term.c  **** #endif
+   9:./lib/term.c  **** 
+  10:./lib/term.c  **** #ifdef MODE_GDBOPENOCD_RAM
+  11:./lib/term.c  ****   #include "../openOCD/dcc_stdio.h"  
+  12:./lib/term.c  **** #endif
+  13:./lib/term.c  **** 
+  14:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+  15:./lib/term.c  ****   #include <stdlib.h>   //fuer NULL
+  16:./lib/term.c  ****   #include "byte_fifo_cb.h"
+  17:./lib/term.c  ****   byte_fifo_cb_t fifo_rx = BYTE_FIFO_CB_INIT(64,NULL);
+  18:./lib/term.c  ****   byte_fifo_cb_t fifo_tx = BYTE_FIFO_CB_INIT(64,NULL);
+  19:./lib/term.c  **** #endif
+  20:./lib/term.c  **** 
+  21:./lib/term.c  **** void term_init(void)
+  22:./lib/term.c  **** {
+ 655              		.loc 1 22 1
+ 656              		.cfi_startproc
+ 657              		@ Function supports interworking.
+ 658              		@ args = 0, pretend = 0, frame = 0
+ 659              		@ frame_needed = 1, uses_anonymous_args = 0
+ 660 0000 00482DE9 		push	{fp, lr}
+ 661              		.cfi_def_cfa_offset 8
+ 662              		.cfi_offset 11, -8
+ 663              		.cfi_offset 14, -4
+ 664 0004 04B08DE2 		add	fp, sp, #4
+ 665              		.cfi_def_cfa 11, 4
+  23:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+  24:./lib/term.c  ****   udmon3_term_init(&fifo_rx,&fifo_tx,&fifo_tx.cb);
+ 666              		.loc 1 24 3
+ 667 0008 20209FE5 		ldr	r2, .L35
+ 668 000c 1C109FE5 		ldr	r1, .L35
+ 669 0010 1C009FE5 		ldr	r0, .L35+4
+ 670 0014 1C309FE5 		ldr	r3, .L35+8
+ 671 0018 0FE0A0E1 		mov	lr, pc
+ 672 001c 13FF2FE1 		bx	r3
+ 673              	.LVL5:
+  25:./lib/term.c  **** #endif  
+  26:./lib/term.c  **** 
+  27:./lib/term.c  **** #if defined(MODE_ROM)
+  28:./lib/term.c  ****   //hier könnte die UART Schnittstelle genutzt werden
+  29:./lib/term.c  **** #endif
+  30:./lib/term.c  **** 
+  31:./lib/term.c  **** #if defined(MODE_SAMBA)
+  32:./lib/term.c  ****   //hier könnte die bereits initialisierte USB Schnittstelle genutzt werden
+  33:./lib/term.c  **** #endif
+  34:./lib/term.c  **** 
+  35:./lib/term.c  **** #if defined(MODE_GDBOPENOCD_RAM)
+  36:./lib/term.c  ****   //Keine Initialisierung notwendig!
+  37:./lib/term.c  ****   //Nur (blockierendes) Senden möglich. Kein Empfang
+  38:./lib/term.c  **** #endif
+  39:./lib/term.c  **** }
+ 674              		.loc 1 39 1
+ 675 0020 0000A0E1 		nop
+ 676 0024 04D04BE2 		sub	sp, fp, #4
+ 677              		.cfi_def_cfa 13, 8
+ 678              		@ sp needed
+ 679 0028 0048BDE8 		pop	{fp, lr}
+ 680              		.cfi_restore 14
+ 681              		.cfi_restore 11
+ 682              		.cfi_def_cfa_offset 0
+ 683 002c 1EFF2FE1 		bx	lr
+ 684              	.L36:
+ 685              		.align	2
+ 686              	.L35:
+ 687 0030 00000000 		.word	fifo_tx
+ 688 0034 00000000 		.word	fifo_rx
+ 689 0038 00000000 		.word	udmon3_term_init
+ 690              		.cfi_endproc
+ 691              	.LFE12:
+ 693              		.section	.text.term_read,"ax",%progbits
+ 694              		.align	2
+ 695              		.global	term_read
+ 696              		.syntax unified
+ 697              		.arm
+ 699              	term_read:
+ 700              	.LFB13:
+  40:./lib/term.c  **** 
+  41:./lib/term.c  **** 
+  42:./lib/term.c  **** //return  0 -> Zeichen vorhanden
+  43:./lib/term.c  **** //       -1 -> Kein Zeichen vorhanden
+  44:./lib/term.c  **** int term_read(unsigned char *c,asyncsync_t asyncsync)
+  45:./lib/term.c  **** {
+ 701              		.loc 1 45 1
+ 702              		.cfi_startproc
+ 703              		@ Function supports interworking.
+ 704              		@ args = 0, pretend = 0, frame = 8
+ 705              		@ frame_needed = 1, uses_anonymous_args = 0
+ 706 0000 00482DE9 		push	{fp, lr}
+ 707              		.cfi_def_cfa_offset 8
+ 708              		.cfi_offset 11, -8
+ 709              		.cfi_offset 14, -4
+ 710 0004 04B08DE2 		add	fp, sp, #4
+ 711              		.cfi_def_cfa 11, 4
+ 712 0008 08D04DE2 		sub	sp, sp, #8
+ 713 000c 08000BE5 		str	r0, [fp, #-8]
+ 714 0010 0130A0E1 		mov	r3, r1
+ 715 0014 09304BE5 		strb	r3, [fp, #-9]
+  46:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+  47:./lib/term.c  **** 	if(asyncsync == ASYNCSYNC_NONBLOCK)
+ 716              		.loc 1 47 4
+ 717 0018 09305BE5 		ldrb	r3, [fp, #-9]	@ zero_extendqisi2
+ 718 001c 000053E3 		cmp	r3, #0
+ 719 0020 0600001A 		bne	.L38
+  48:./lib/term.c  **** 		return byte_fifo_cb_get(&fifo_rx,c);
+ 720              		.loc 1 48 10
+ 721 0024 08101BE5 		ldr	r1, [fp, #-8]
+ 722 0028 6C009FE5 		ldr	r0, .L43
+ 723 002c 6C309FE5 		ldr	r3, .L43+4
+ 724 0030 0FE0A0E1 		mov	lr, pc
+ 725 0034 13FF2FE1 		bx	r3
+ 726              	.LVL6:
+ 727 0038 0030A0E1 		mov	r3, r0
+ 728 003c 120000EA 		b	.L39
+ 729              	.L38:
+  49:./lib/term.c  **** 	else if(asyncsync == ASYNCSYNC_BLOCK) {
+ 730              		.loc 1 49 9
+ 731 0040 09305BE5 		ldrb	r3, [fp, #-9]	@ zero_extendqisi2
+ 732 0044 010053E3 		cmp	r3, #1
+ 733 0048 0900001A 		bne	.L40
+  50:./lib/term.c  **** 		while(byte_fifo_cb_get(&fifo_rx,c) != 0);
+ 734              		.loc 1 50 8
+ 735 004c 0000A0E1 		nop
+ 736              	.L41:
+ 737              		.loc 1 50 9 discriminator 1
+ 738 0050 08101BE5 		ldr	r1, [fp, #-8]
+ 739 0054 40009FE5 		ldr	r0, .L43
+ 740 0058 40309FE5 		ldr	r3, .L43+4
+ 741 005c 0FE0A0E1 		mov	lr, pc
+ 742 0060 13FF2FE1 		bx	r3
+ 743              	.LVL7:
+ 744 0064 0030A0E1 		mov	r3, r0
+ 745              		.loc 1 50 38 discriminator 1
+ 746 0068 000053E3 		cmp	r3, #0
+ 747 006c F7FFFF1A 		bne	.L41
+ 748 0070 040000EA 		b	.L42
+ 749              	.L40:
+  51:./lib/term.c  **** 	}
+  52:./lib/term.c  **** 	else if(asyncsync == ASYNCSYNC_ASYNCGET)
+ 750              		.loc 1 52 9
+ 751 0074 09305BE5 		ldrb	r3, [fp, #-9]	@ zero_extendqisi2
+ 752 0078 020053E3 		cmp	r3, #2
+ 753 007c 0100001A 		bne	.L42
+  53:./lib/term.c  **** 		return -1;
+ 754              		.loc 1 53 10
+ 755 0080 0030E0E3 		mvn	r3, #0
+ 756 0084 000000EA 		b	.L39
+ 757              	.L42:
+  54:./lib/term.c  **** 	return 0;
+ 758              		.loc 1 54 9
+ 759 0088 0030A0E3 		mov	r3, #0
+ 760              	.L39:
+  55:./lib/term.c  **** #elif defined(MODE_GDBOPENOCD_RAM)
+  56:./lib/term.c  **** 	(void)c;
+  57:./lib/term.c  **** 	(void)asyncsync;
+  58:./lib/term.c  **** 	return -1; //keine Read Funktion in dcc_stdio vorhanden!
+  59:./lib/term.c  **** #else
+  60:./lib/term.c  **** 	(void)c;
+  61:./lib/term.c  **** 	(void)asyncsync;
+  62:./lib/term.c  **** 	return -1;
+  63:./lib/term.c  **** #endif
+  64:./lib/term.c  **** }
+ 761              		.loc 1 64 1
+ 762 008c 0300A0E1 		mov	r0, r3
+ 763 0090 04D04BE2 		sub	sp, fp, #4
+ 764              		.cfi_def_cfa 13, 8
+ 765              		@ sp needed
+ 766 0094 0048BDE8 		pop	{fp, lr}
+ 767              		.cfi_restore 14
+ 768              		.cfi_restore 11
+ 769              		.cfi_def_cfa_offset 0
+ 770 0098 1EFF2FE1 		bx	lr
+ 771              	.L44:
+ 772              		.align	2
+ 773              	.L43:
+ 774 009c 00000000 		.word	fifo_rx
+ 775 00a0 00000000 		.word	byte_fifo_cb_get
+ 776              		.cfi_endproc
+ 777              	.LFE13:
+ 779              		.section	.text.term_char_possible,"ax",%progbits
+ 780              		.align	2
+ 781              		.global	term_char_possible
+ 782              		.syntax unified
+ 783              		.arm
+ 785              	term_char_possible:
+ 786              	.LFB14:
+  65:./lib/term.c  **** 
+  66:./lib/term.c  **** 
+  67:./lib/term.c  **** //return  0 -> Senden möglich
+  68:./lib/term.c  **** //       -1 -> Senden (derzeit) nicht möglich
+  69:./lib/term.c  **** int term_char_possible(void)
+  70:./lib/term.c  **** {
+ 787              		.loc 1 70 1
+ 788              		.cfi_startproc
+ 789              		@ Function supports interworking.
+ 790              		@ args = 0, pretend = 0, frame = 0
+ 791              		@ frame_needed = 1, uses_anonymous_args = 0
+ 792 0000 00482DE9 		push	{fp, lr}
+ 793              		.cfi_def_cfa_offset 8
+ 794              		.cfi_offset 11, -8
+ 795              		.cfi_offset 14, -4
+ 796 0004 04B08DE2 		add	fp, sp, #4
+ 797              		.cfi_def_cfa 11, 4
+  71:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+  72:./lib/term.c  **** 	return byte_fifo_cb_put_possible(&fifo_tx);
+ 798              		.loc 1 72 9
+ 799 0008 1C009FE5 		ldr	r0, .L47
+ 800 000c 1C309FE5 		ldr	r3, .L47+4
+ 801 0010 0FE0A0E1 		mov	lr, pc
+ 802 0014 13FF2FE1 		bx	r3
+ 803              	.LVL8:
+ 804 0018 0030A0E1 		mov	r3, r0
+  73:./lib/term.c  **** #elif defined(MODE_GDBOPENOCD_RAM)
+  74:./lib/term.c  **** 	return 0;  //Es kann nur 'blockierend' gesendet werden
+  75:./lib/term.c  **** 	           //Daher Senden immer möglich
+  76:./lib/term.c  **** #else
+  77:./lib/term.c  **** 	return -1;
+  78:./lib/term.c  **** #endif
+  79:./lib/term.c  **** }
+ 805              		.loc 1 79 1
+ 806 001c 0300A0E1 		mov	r0, r3
+ 807 0020 04D04BE2 		sub	sp, fp, #4
+ 808              		.cfi_def_cfa 13, 8
+ 809              		@ sp needed
+ 810 0024 0048BDE8 		pop	{fp, lr}
+ 811              		.cfi_restore 14
+ 812              		.cfi_restore 11
+ 813              		.cfi_def_cfa_offset 0
+ 814 0028 1EFF2FE1 		bx	lr
+ 815              	.L48:
+ 816              		.align	2
+ 817              	.L47:
+ 818 002c 00000000 		.word	fifo_tx
+ 819 0030 00000000 		.word	byte_fifo_cb_put_possible
+ 820              		.cfi_endproc
+ 821              	.LFE14:
+ 823              		.section	.text.term_char,"ax",%progbits
+ 824              		.align	2
+ 825              		.global	term_char
+ 826              		.syntax unified
+ 827              		.arm
+ 829              	term_char:
+ 830              	.LFB15:
+  80:./lib/term.c  **** 
+  81:./lib/term.c  **** 
+  82:./lib/term.c  **** //return  0 -> Zeichen gesendet
+  83:./lib/term.c  **** //       -1 -> Zeichen nicht gesendet
+  84:./lib/term.c  **** int term_char(unsigned char c,asyncsync_t asyncsync)
+  85:./lib/term.c  **** {
+ 831              		.loc 1 85 1
+ 832              		.cfi_startproc
+ 833              		@ Function supports interworking.
+ 834              		@ args = 0, pretend = 0, frame = 8
+ 835              		@ frame_needed = 1, uses_anonymous_args = 0
+ 836 0000 00482DE9 		push	{fp, lr}
+ 837              		.cfi_def_cfa_offset 8
+ 838              		.cfi_offset 11, -8
+ 839              		.cfi_offset 14, -4
+ 840 0004 04B08DE2 		add	fp, sp, #4
+ 841              		.cfi_def_cfa 11, 4
+ 842 0008 08D04DE2 		sub	sp, sp, #8
+ 843 000c 0030A0E1 		mov	r3, r0
+ 844 0010 0120A0E1 		mov	r2, r1
+ 845 0014 05304BE5 		strb	r3, [fp, #-5]
+ 846 0018 0230A0E1 		mov	r3, r2
+ 847 001c 06304BE5 		strb	r3, [fp, #-6]
+  86:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+  87:./lib/term.c  **** 	if(asyncsync == ASYNCSYNC_NONBLOCK)
+ 848              		.loc 1 87 4
+ 849 0020 06305BE5 		ldrb	r3, [fp, #-6]	@ zero_extendqisi2
+ 850 0024 000053E3 		cmp	r3, #0
+ 851 0028 0700001A 		bne	.L50
+  88:./lib/term.c  **** 		return byte_fifo_cb_put(&fifo_tx,c);
+ 852              		.loc 1 88 10
+ 853 002c 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 854 0030 0310A0E1 		mov	r1, r3
+ 855 0034 70009FE5 		ldr	r0, .L55
+ 856 0038 70309FE5 		ldr	r3, .L55+4
+ 857 003c 0FE0A0E1 		mov	lr, pc
+ 858 0040 13FF2FE1 		bx	r3
+ 859              	.LVL9:
+ 860 0044 0030A0E1 		mov	r3, r0
+ 861 0048 130000EA 		b	.L51
+ 862              	.L50:
+  89:./lib/term.c  **** 	else if(asyncsync == ASYNCSYNC_BLOCK) {
+ 863              		.loc 1 89 9
+ 864 004c 06305BE5 		ldrb	r3, [fp, #-6]	@ zero_extendqisi2
+ 865 0050 010053E3 		cmp	r3, #1
+ 866 0054 0A00001A 		bne	.L52
+  90:./lib/term.c  **** 		while(byte_fifo_cb_put(&fifo_tx,c) != 0);
+ 867              		.loc 1 90 8
+ 868 0058 0000A0E1 		nop
+ 869              	.L53:
+ 870              		.loc 1 90 9 discriminator 1
+ 871 005c 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 872 0060 0310A0E1 		mov	r1, r3
+ 873 0064 40009FE5 		ldr	r0, .L55
+ 874 0068 40309FE5 		ldr	r3, .L55+4
+ 875 006c 0FE0A0E1 		mov	lr, pc
+ 876 0070 13FF2FE1 		bx	r3
+ 877              	.LVL10:
+ 878 0074 0030A0E1 		mov	r3, r0
+ 879              		.loc 1 90 38 discriminator 1
+ 880 0078 000053E3 		cmp	r3, #0
+ 881 007c F6FFFF1A 		bne	.L53
+ 882 0080 040000EA 		b	.L54
+ 883              	.L52:
+  91:./lib/term.c  **** 	}
+  92:./lib/term.c  **** 	else if(asyncsync == ASYNCSYNC_ASYNCGET)
+ 884              		.loc 1 92 9
+ 885 0084 06305BE5 		ldrb	r3, [fp, #-6]	@ zero_extendqisi2
+ 886 0088 020053E3 		cmp	r3, #2
+ 887 008c 0100001A 		bne	.L54
+  93:./lib/term.c  **** 		return -1;
+ 888              		.loc 1 93 10
+ 889 0090 0030E0E3 		mvn	r3, #0
+ 890 0094 000000EA 		b	.L51
+ 891              	.L54:
+  94:./lib/term.c  **** 	return 0;
+ 892              		.loc 1 94 9
+ 893 0098 0030A0E3 		mov	r3, #0
+ 894              	.L51:
+  95:./lib/term.c  **** #elif defined(MODE_GDBOPENOCD_RAM)
+  96:./lib/term.c  **** 	(void)asyncsync;   //wird hier nicht unterstützt
+  97:./lib/term.c  **** 	dbg_write_char((char) c);
+  98:./lib/term.c  **** 	return 0;
+  99:./lib/term.c  **** #else
+ 100:./lib/term.c  **** 	return -1;
+ 101:./lib/term.c  **** #endif
+ 102:./lib/term.c  **** }
+ 895              		.loc 1 102 1
+ 896 009c 0300A0E1 		mov	r0, r3
+ 897 00a0 04D04BE2 		sub	sp, fp, #4
+ 898              		.cfi_def_cfa 13, 8
+ 899              		@ sp needed
+ 900 00a4 0048BDE8 		pop	{fp, lr}
+ 901              		.cfi_restore 14
+ 902              		.cfi_restore 11
+ 903              		.cfi_def_cfa_offset 0
+ 904 00a8 1EFF2FE1 		bx	lr
+ 905              	.L56:
+ 906              		.align	2
+ 907              	.L55:
+ 908 00ac 00000000 		.word	fifo_tx
+ 909 00b0 00000000 		.word	byte_fifo_cb_put
+ 910              		.cfi_endproc
+ 911              	.LFE15:
+ 913              		.section	.text.term_string,"ax",%progbits
+ 914              		.align	2
+ 915              		.global	term_string
+ 916              		.syntax unified
+ 917              		.arm
+ 919              	term_string:
+ 920              	.LFB16:
+ 103:./lib/term.c  **** 
+ 104:./lib/term.c  **** 
+ 105:./lib/term.c  **** //return  0 -> String gesendet
+ 106:./lib/term.c  **** //       -1 -> String nicht (vollständig) gesendet
+ 107:./lib/term.c  **** int term_string(const char *str,asyncsync_t asyncsync)
+ 108:./lib/term.c  **** {
+ 921              		.loc 1 108 1
+ 922              		.cfi_startproc
+ 923              		@ Function supports interworking.
+ 924              		@ args = 0, pretend = 0, frame = 16
+ 925              		@ frame_needed = 1, uses_anonymous_args = 0
+ 926 0000 00482DE9 		push	{fp, lr}
+ 927              		.cfi_def_cfa_offset 8
+ 928              		.cfi_offset 11, -8
+ 929              		.cfi_offset 14, -4
+ 930 0004 04B08DE2 		add	fp, sp, #4
+ 931              		.cfi_def_cfa 11, 4
+ 932 0008 10D04DE2 		sub	sp, sp, #16
+ 933 000c 10000BE5 		str	r0, [fp, #-16]
+ 934 0010 0130A0E1 		mov	r3, r1
+ 935 0014 11304BE5 		strb	r3, [fp, #-17]
+ 109:./lib/term.c  **** 	if(asyncsync == ASYNCSYNC_ASYNCGET)
+ 936              		.loc 1 109 4
+ 937 0018 11305BE5 		ldrb	r3, [fp, #-17]	@ zero_extendqisi2
+ 938 001c 020053E3 		cmp	r3, #2
+ 939 0020 0100001A 		bne	.L58
+ 110:./lib/term.c  **** 		return -1;
+ 940              		.loc 1 110 10
+ 941 0024 0030E0E3 		mvn	r3, #0
+ 942 0028 320000EA 		b	.L59
+ 943              	.L58:
+ 111:./lib/term.c  **** #if defined(MODE_RAM) || defined(MODE_SIM)
+ 112:./lib/term.c  ****     size_t ret;
+ 113:./lib/term.c  **** 	ret = byte_fifo_cb_putsize(&fifo_tx,(const unsigned char *)str,strlen(str));
+ 944              		.loc 1 113 8
+ 945 002c 10001BE5 		ldr	r0, [fp, #-16]
+ 946 0030 D0309FE5 		ldr	r3, .L64
+ 947 0034 0FE0A0E1 		mov	lr, pc
+ 948 0038 13FF2FE1 		bx	r3
+ 949              	.LVL11:
+ 950 003c 0030A0E1 		mov	r3, r0
+ 951              		.loc 1 113 8 is_stmt 0 discriminator 1
+ 952 0040 0320A0E1 		mov	r2, r3
+ 953 0044 10101BE5 		ldr	r1, [fp, #-16]
+ 954 0048 BC009FE5 		ldr	r0, .L64+4
+ 955 004c BC309FE5 		ldr	r3, .L64+8
+ 956 0050 0FE0A0E1 		mov	lr, pc
+ 957 0054 13FF2FE1 		bx	r3
+ 958              	.LVL12:
+ 959 0058 08000BE5 		str	r0, [fp, #-8]
+ 114:./lib/term.c  **** 	if(ret == 0)
+ 960              		.loc 1 114 4 is_stmt 1
+ 961 005c 08301BE5 		ldr	r3, [fp, #-8]
+ 962 0060 000053E3 		cmp	r3, #0
+ 963 0064 0100001A 		bne	.L60
+ 115:./lib/term.c  **** 		return 0;
+ 964              		.loc 1 115 10
+ 965 0068 0030A0E3 		mov	r3, #0
+ 966 006c 210000EA 		b	.L59
+ 967              	.L60:
+ 116:./lib/term.c  **** 	if(asyncsync == ASYNCSYNC_NONBLOCK)
+ 968              		.loc 1 116 4
+ 969 0070 11305BE5 		ldrb	r3, [fp, #-17]	@ zero_extendqisi2
+ 970 0074 000053E3 		cmp	r3, #0
+ 971 0078 0100001A 		bne	.L61
+ 117:./lib/term.c  **** 		return -1;
+ 972              		.loc 1 117 10
+ 973 007c 0030E0E3 		mvn	r3, #0
+ 974 0080 1C0000EA 		b	.L59
+ 975              	.L61:
+ 118:./lib/term.c  **** 	str+=strlen(str)-ret;
+ 976              		.loc 1 118 7
+ 977 0084 10001BE5 		ldr	r0, [fp, #-16]
+ 978 0088 78309FE5 		ldr	r3, .L64
+ 979 008c 0FE0A0E1 		mov	lr, pc
+ 980 0090 13FF2FE1 		bx	r3
+ 981              	.LVL13:
+ 982 0094 0020A0E1 		mov	r2, r0
+ 983              		.loc 1 118 18 discriminator 1
+ 984 0098 08301BE5 		ldr	r3, [fp, #-8]
+ 985 009c 033042E0 		sub	r3, r2, r3
+ 986              		.loc 1 118 5 discriminator 1
+ 987 00a0 10201BE5 		ldr	r2, [fp, #-16]
+ 988 00a4 033082E0 		add	r3, r2, r3
+ 989 00a8 10300BE5 		str	r3, [fp, #-16]
+ 990              	.L63:
+ 119:./lib/term.c  **** 	do
+ 120:./lib/term.c  **** 	{
+ 121:./lib/term.c  **** 		while(byte_fifo_cb_put(&fifo_tx,(unsigned char)*str) != 0);
+ 991              		.loc 1 121 8
+ 992 00ac 0000A0E1 		nop
+ 993              	.L62:
+ 994              		.loc 1 121 9 discriminator 1
+ 995 00b0 10301BE5 		ldr	r3, [fp, #-16]
+ 996 00b4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 997 00b8 0310A0E1 		mov	r1, r3
+ 998 00bc 48009FE5 		ldr	r0, .L64+4
+ 999 00c0 4C309FE5 		ldr	r3, .L64+12
+ 1000 00c4 0FE0A0E1 		mov	lr, pc
+ 1001 00c8 13FF2FE1 		bx	r3
+ 1002              	.LVL14:
+ 1003 00cc 0030A0E1 		mov	r3, r0
+ 1004              		.loc 1 121 56 discriminator 1
+ 1005 00d0 000053E3 		cmp	r3, #0
+ 1006 00d4 F5FFFF1A 		bne	.L62
+ 122:./lib/term.c  **** 		str++;
+ 1007              		.loc 1 122 6
+ 1008 00d8 10301BE5 		ldr	r3, [fp, #-16]
+ 1009 00dc 013083E2 		add	r3, r3, #1
+ 1010 00e0 10300BE5 		str	r3, [fp, #-16]
+ 123:./lib/term.c  **** 	}
+ 124:./lib/term.c  **** 	while(*str != 0);
+ 1011              		.loc 1 124 8
+ 1012 00e4 10301BE5 		ldr	r3, [fp, #-16]
+ 1013 00e8 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1014              		.loc 1 124 13
+ 1015 00ec 000053E3 		cmp	r3, #0
+ 1016 00f0 EDFFFF1A 		bne	.L63
+ 125:./lib/term.c  **** 	return 0;
+ 1017              		.loc 1 125 9
+ 1018 00f4 0030A0E3 		mov	r3, #0
+ 1019              	.L59:
+ 126:./lib/term.c  **** #elif defined(MODE_GDBOPENOCD_RAM)
+ 127:./lib/term.c  **** 	(void)asyncsync;   //wird hier nicht unterstützt
+ 128:./lib/term.c  **** 	dbg_write_str(str);	
+ 129:./lib/term.c  **** 	return 0;
+ 130:./lib/term.c  **** #else
+ 131:./lib/term.c  **** 	return -1;
+ 132:./lib/term.c  **** #endif
+ 133:./lib/term.c  **** }
+ 1020              		.loc 1 133 1
+ 1021 00f8 0300A0E1 		mov	r0, r3
+ 1022 00fc 04D04BE2 		sub	sp, fp, #4
+ 1023              		.cfi_def_cfa 13, 8
+ 1024              		@ sp needed
+ 1025 0100 0048BDE8 		pop	{fp, lr}
+ 1026              		.cfi_restore 14
+ 1027              		.cfi_restore 11
+ 1028              		.cfi_def_cfa_offset 0
+ 1029 0104 1EFF2FE1 		bx	lr
+ 1030              	.L65:
+ 1031              		.align	2
+ 1032              	.L64:
+ 1033 0108 00000000 		.word	strlen
+ 1034 010c 00000000 		.word	fifo_tx
+ 1035 0110 00000000 		.word	byte_fifo_cb_putsize
+ 1036 0114 00000000 		.word	byte_fifo_cb_put
+ 1037              		.cfi_endproc
+ 1038              	.LFE16:
+ 1040              		.section	.text.term_hex,"ax",%progbits
+ 1041              		.align	2
+ 1042              		.global	term_hex
+ 1043              		.syntax unified
+ 1044              		.arm
+ 1046              	term_hex:
+ 1047              	.LFB17:
+ 134:./lib/term.c  **** 
+ 135:./lib/term.c  **** //return  0 -> Hexzahl gesendet
+ 136:./lib/term.c  **** //       -1 -> Hexzahl nicht (vollständig) gesendet
+ 137:./lib/term.c  **** int term_hex(unsigned int val, unsigned int places,asyncsync_t asyncsync)
+ 138:./lib/term.c  **** {
+ 1048              		.loc 1 138 1
+ 1049              		.cfi_startproc
+ 1050              		@ Function supports interworking.
+ 1051              		@ args = 0, pretend = 0, frame = 32
+ 1052              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1053 0000 00482DE9 		push	{fp, lr}
+ 1054              		.cfi_def_cfa_offset 8
+ 1055              		.cfi_offset 11, -8
+ 1056              		.cfi_offset 14, -4
+ 1057 0004 04B08DE2 		add	fp, sp, #4
+ 1058              		.cfi_def_cfa 11, 4
+ 1059 0008 20D04DE2 		sub	sp, sp, #32
+ 1060 000c 18000BE5 		str	r0, [fp, #-24]
+ 1061 0010 1C100BE5 		str	r1, [fp, #-28]
+ 1062 0014 0230A0E1 		mov	r3, r2
+ 1063 0018 1D304BE5 		strb	r3, [fp, #-29]
+ 139:./lib/term.c  **** 	char buf[9];
+ 140:./lib/term.c  **** 	return term_string(hex2string(buf,val,places),asyncsync);
+ 1064              		.loc 1 140 21
+ 1065 001c 10304BE2 		sub	r3, fp, #16
+ 1066 0020 1C201BE5 		ldr	r2, [fp, #-28]
+ 1067 0024 18101BE5 		ldr	r1, [fp, #-24]
+ 1068 0028 0300A0E1 		mov	r0, r3
+ 1069 002c 34309FE5 		ldr	r3, .L68
+ 1070 0030 0FE0A0E1 		mov	lr, pc
+ 1071 0034 13FF2FE1 		bx	r3
+ 1072              	.LVL15:
+ 1073 0038 0020A0E1 		mov	r2, r0
+ 1074              		.loc 1 140 9 discriminator 1
+ 1075 003c 1D305BE5 		ldrb	r3, [fp, #-29]	@ zero_extendqisi2
+ 1076 0040 0310A0E1 		mov	r1, r3
+ 1077 0044 0200A0E1 		mov	r0, r2
+ 1078 0048 1C309FE5 		ldr	r3, .L68+4
+ 1079 004c 0FE0A0E1 		mov	lr, pc
+ 1080 0050 13FF2FE1 		bx	r3
+ 1081              	.LVL16:
+ 1082 0054 0030A0E1 		mov	r3, r0
+ 141:./lib/term.c  **** }
+ 1083              		.loc 1 141 1
+ 1084 0058 0300A0E1 		mov	r0, r3
+ 1085 005c 04D04BE2 		sub	sp, fp, #4
+ 1086              		.cfi_def_cfa 13, 8
+ 1087              		@ sp needed
+ 1088 0060 0048BDE8 		pop	{fp, lr}
+ 1089              		.cfi_restore 14
+ 1090              		.cfi_restore 11
+ 1091              		.cfi_def_cfa_offset 0
+ 1092 0064 1EFF2FE1 		bx	lr
+ 1093              	.L69:
+ 1094              		.align	2
+ 1095              	.L68:
+ 1096 0068 00000000 		.word	hex2string
+ 1097 006c 00000000 		.word	term_string
+ 1098              		.cfi_endproc
+ 1099              	.LFE17:
+ 1101              		.section	.text.term_unsigned,"ax",%progbits
+ 1102              		.align	2
+ 1103              		.global	term_unsigned
+ 1104              		.syntax unified
+ 1105              		.arm
+ 1107              	term_unsigned:
+ 1108              	.LFB18:
+ 142:./lib/term.c  **** 
+ 143:./lib/term.c  **** //return  0 -> Zahl gesendet
+ 144:./lib/term.c  **** //       -1 -> Zahl nicht (vollständig) gesendet
+ 145:./lib/term.c  **** int term_unsigned(unsigned int val, unsigned int places, asyncsync_t asyncsync)
+ 146:./lib/term.c  **** {
+ 1109              		.loc 1 146 1
+ 1110              		.cfi_startproc
+ 1111              		@ Function supports interworking.
+ 1112              		@ args = 0, pretend = 0, frame = 32
+ 1113              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1114 0000 10482DE9 		push	{r4, fp, lr}
+ 1115              		.cfi_def_cfa_offset 12
+ 1116              		.cfi_offset 4, -12
+ 1117              		.cfi_offset 11, -8
+ 1118              		.cfi_offset 14, -4
+ 1119 0004 08B08DE2 		add	fp, sp, #8
+ 1120              		.cfi_def_cfa 11, 4
+ 1121 0008 24D04DE2 		sub	sp, sp, #36
+ 1122 000c 20000BE5 		str	r0, [fp, #-32]
+ 1123 0010 24100BE5 		str	r1, [fp, #-36]
+ 1124 0014 0230A0E1 		mov	r3, r2
+ 1125 0018 25304BE5 		strb	r3, [fp, #-37]
+ 147:./lib/term.c  **** 	char buf[12];
+ 148:./lib/term.c  **** 	return term_string(unsigned2string(buf,val,places,0),asyncsync);
+ 1126              		.loc 1 148 21
+ 1127 001c 18004BE2 		sub	r0, fp, #24
+ 1128 0020 0030A0E3 		mov	r3, #0
+ 1129 0024 24201BE5 		ldr	r2, [fp, #-36]
+ 1130 0028 20101BE5 		ldr	r1, [fp, #-32]
+ 1131 002c 34409FE5 		ldr	r4, .L72
+ 1132 0030 0FE0A0E1 		mov	lr, pc
+ 1133 0034 14FF2FE1 		bx	r4
+ 1134              	.LVL17:
+ 1135 0038 0020A0E1 		mov	r2, r0
+ 1136              		.loc 1 148 9 discriminator 1
+ 1137 003c 25305BE5 		ldrb	r3, [fp, #-37]	@ zero_extendqisi2
+ 1138 0040 0310A0E1 		mov	r1, r3
+ 1139 0044 0200A0E1 		mov	r0, r2
+ 1140 0048 1C309FE5 		ldr	r3, .L72+4
+ 1141 004c 0FE0A0E1 		mov	lr, pc
+ 1142 0050 13FF2FE1 		bx	r3
+ 1143              	.LVL18:
+ 1144 0054 0030A0E1 		mov	r3, r0
+ 149:./lib/term.c  **** }
+ 1145              		.loc 1 149 1
+ 1146 0058 0300A0E1 		mov	r0, r3
+ 1147 005c 08D04BE2 		sub	sp, fp, #8
+ 1148              		.cfi_def_cfa 13, 12
+ 1149              		@ sp needed
+ 1150 0060 1048BDE8 		pop	{r4, fp, lr}
+ 1151              		.cfi_restore 14
+ 1152              		.cfi_restore 11
+ 1153              		.cfi_restore 4
+ 1154              		.cfi_def_cfa_offset 0
+ 1155 0064 1EFF2FE1 		bx	lr
+ 1156              	.L73:
+ 1157              		.align	2
+ 1158              	.L72:
+ 1159 0068 00000000 		.word	unsigned2string
+ 1160 006c 00000000 		.word	term_string
+ 1161              		.cfi_endproc
+ 1162              	.LFE18:
+ 1164              		.section	.text.term_int,"ax",%progbits
+ 1165              		.align	2
+ 1166              		.global	term_int
+ 1167              		.syntax unified
+ 1168              		.arm
+ 1170              	term_int:
+ 1171              	.LFB19:
+ 150:./lib/term.c  **** 
+ 151:./lib/term.c  **** //return  0 -> Zahl gesendet
+ 152:./lib/term.c  **** //       -1 -> Zahl nicht (vollständig) gesendet
+ 153:./lib/term.c  **** int term_int(int val, unsigned int places, asyncsync_t asyncsync)
+ 154:./lib/term.c  **** {
+ 1172              		.loc 1 154 1
+ 1173              		.cfi_startproc
+ 1174              		@ Function supports interworking.
+ 1175              		@ args = 0, pretend = 0, frame = 32
+ 1176              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1177 0000 10482DE9 		push	{r4, fp, lr}
+ 1178              		.cfi_def_cfa_offset 12
+ 1179              		.cfi_offset 4, -12
+ 1180              		.cfi_offset 11, -8
+ 1181              		.cfi_offset 14, -4
+ 1182 0004 08B08DE2 		add	fp, sp, #8
+ 1183              		.cfi_def_cfa 11, 4
+ 1184 0008 24D04DE2 		sub	sp, sp, #36
+ 1185 000c 20000BE5 		str	r0, [fp, #-32]
+ 1186 0010 24100BE5 		str	r1, [fp, #-36]
+ 1187 0014 0230A0E1 		mov	r3, r2
+ 1188 0018 25304BE5 		strb	r3, [fp, #-37]
+ 155:./lib/term.c  **** 	char buf[12];
+ 156:./lib/term.c  **** 	return term_string(unsigned2string(buf,(val < 0) ? -val : val, places, (val < 0)),asyncsync);
+ 1189              		.loc 1 156 58
+ 1190 001c 20301BE5 		ldr	r3, [fp, #-32]
+ 1191 0020 000053E3 		cmp	r3, #0
+ 1192 0024 003063B2 		rsblt	r3, r3, #0
+ 1193              		.loc 1 156 21
+ 1194 0028 0310A0E1 		mov	r1, r3
+ 1195 002c 20301BE5 		ldr	r3, [fp, #-32]
+ 1196 0030 A33FA0E1 		lsr	r3, r3, #31
+ 1197 0034 FF3003E2 		and	r3, r3, #255
+ 1198 0038 18004BE2 		sub	r0, fp, #24
+ 1199 003c 24201BE5 		ldr	r2, [fp, #-36]
+ 1200 0040 34409FE5 		ldr	r4, .L76
+ 1201 0044 0FE0A0E1 		mov	lr, pc
+ 1202 0048 14FF2FE1 		bx	r4
+ 1203              	.LVL19:
+ 1204 004c 0020A0E1 		mov	r2, r0
+ 1205              		.loc 1 156 9 discriminator 1
+ 1206 0050 25305BE5 		ldrb	r3, [fp, #-37]	@ zero_extendqisi2
+ 1207 0054 0310A0E1 		mov	r1, r3
+ 1208 0058 0200A0E1 		mov	r0, r2
+ 1209 005c 1C309FE5 		ldr	r3, .L76+4
+ 1210 0060 0FE0A0E1 		mov	lr, pc
+ 1211 0064 13FF2FE1 		bx	r3
+ 1212              	.LVL20:
+ 1213 0068 0030A0E1 		mov	r3, r0
+ 157:./lib/term.c  **** }
+ 1214              		.loc 1 157 1
+ 1215 006c 0300A0E1 		mov	r0, r3
+ 1216 0070 08D04BE2 		sub	sp, fp, #8
+ 1217              		.cfi_def_cfa 13, 12
+ 1218              		@ sp needed
+ 1219 0074 1048BDE8 		pop	{r4, fp, lr}
+ 1220              		.cfi_restore 14
+ 1221              		.cfi_restore 11
+ 1222              		.cfi_restore 4
+ 1223              		.cfi_def_cfa_offset 0
+ 1224 0078 1EFF2FE1 		bx	lr
+ 1225              	.L77:
+ 1226              		.align	2
+ 1227              	.L76:
+ 1228 007c 00000000 		.word	unsigned2string
+ 1229 0080 00000000 		.word	term_string
+ 1230              		.cfi_endproc
+ 1231              	.LFE19:
+ 1233              		.text
+ 1234              	.Letext0:
+ 1235              		.file 4 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
+ 1236              		.file 5 "./lib/../main.h"
+ 1237              		.file 6 "./lib/helper.h"
+ 1238              		.file 7 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/strin
+ 1239              		.file 8 "./lib/../trace32/udmon3.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 term.c
+     /tmp/ccFKKTYt.s:19     .text.byte_fifo_put_possible:00000000 $a
+     /tmp/ccFKKTYt.s:23     .text.byte_fifo_put_possible:00000000 byte_fifo_put_possible
+     /tmp/ccFKKTYt.s:75     .text.byte_fifo_remain:00000000 $a
+     /tmp/ccFKKTYt.s:79     .text.byte_fifo_remain:00000000 byte_fifo_remain
+     /tmp/ccFKKTYt.s:133    .text.byte_fifo_used:00000000 $a
+     /tmp/ccFKKTYt.s:137    .text.byte_fifo_used:00000000 byte_fifo_used
+     /tmp/ccFKKTYt.s:188    .text.byte_fifo_put:00000000 $a
+     /tmp/ccFKKTYt.s:192    .text.byte_fifo_put:00000000 byte_fifo_put
+     /tmp/ccFKKTYt.s:277    .text.byte_fifo_get_possible:00000000 $a
+     /tmp/ccFKKTYt.s:281    .text.byte_fifo_get_possible:00000000 byte_fifo_get_possible
+     /tmp/ccFKKTYt.s:325    .text.byte_fifo_get:00000000 $a
+     /tmp/ccFKKTYt.s:329    .text.byte_fifo_get:00000000 byte_fifo_get
+     /tmp/ccFKKTYt.s:408    .text.byte_fifo_cb_put_possible:00000000 $a
+     /tmp/ccFKKTYt.s:412    .text.byte_fifo_cb_put_possible:00000000 byte_fifo_cb_put_possible
+     /tmp/ccFKKTYt.s:450    .text.byte_fifo_cb_put_possible:0000003c $d
+     /tmp/ccFKKTYt.s:455    .text.byte_fifo_cb_put:00000000 $a
+     /tmp/ccFKKTYt.s:459    .text.byte_fifo_cb_put:00000000 byte_fifo_cb_put
+     /tmp/ccFKKTYt.s:520    .text.byte_fifo_cb_put:0000007c $d
+     /tmp/ccFKKTYt.s:525    .text.byte_fifo_cb_get_possible:00000000 $a
+     /tmp/ccFKKTYt.s:529    .text.byte_fifo_cb_get_possible:00000000 byte_fifo_cb_get_possible
+     /tmp/ccFKKTYt.s:566    .text.byte_fifo_cb_get_possible:0000003c $d
+     /tmp/ccFKKTYt.s:571    .text.byte_fifo_cb_get:00000000 $a
+     /tmp/ccFKKTYt.s:575    .text.byte_fifo_cb_get:00000000 byte_fifo_cb_get
+     /tmp/ccFKKTYt.s:614    .text.byte_fifo_cb_get:00000044 $d
+     /tmp/ccFKKTYt.s:623    .data:00000000 fifo_rx
+     /tmp/ccFKKTYt.s:620    .data:00000000 $d
+     /tmp/ccFKKTYt.s:637    .data:0000004c fifo_tx
+     /tmp/ccFKKTYt.s:648    .text.term_init:00000000 $a
+     /tmp/ccFKKTYt.s:653    .text.term_init:00000000 term_init
+     /tmp/ccFKKTYt.s:687    .text.term_init:00000030 $d
+     /tmp/ccFKKTYt.s:694    .text.term_read:00000000 $a
+     /tmp/ccFKKTYt.s:699    .text.term_read:00000000 term_read
+     /tmp/ccFKKTYt.s:774    .text.term_read:0000009c $d
+     /tmp/ccFKKTYt.s:780    .text.term_char_possible:00000000 $a
+     /tmp/ccFKKTYt.s:785    .text.term_char_possible:00000000 term_char_possible
+     /tmp/ccFKKTYt.s:818    .text.term_char_possible:0000002c $d
+     /tmp/ccFKKTYt.s:824    .text.term_char:00000000 $a
+     /tmp/ccFKKTYt.s:829    .text.term_char:00000000 term_char
+     /tmp/ccFKKTYt.s:908    .text.term_char:000000ac $d
+     /tmp/ccFKKTYt.s:914    .text.term_string:00000000 $a
+     /tmp/ccFKKTYt.s:919    .text.term_string:00000000 term_string
+     /tmp/ccFKKTYt.s:1033   .text.term_string:00000108 $d
+     /tmp/ccFKKTYt.s:1041   .text.term_hex:00000000 $a
+     /tmp/ccFKKTYt.s:1046   .text.term_hex:00000000 term_hex
+     /tmp/ccFKKTYt.s:1096   .text.term_hex:00000068 $d
+     /tmp/ccFKKTYt.s:1102   .text.term_unsigned:00000000 $a
+     /tmp/ccFKKTYt.s:1107   .text.term_unsigned:00000000 term_unsigned
+     /tmp/ccFKKTYt.s:1159   .text.term_unsigned:00000068 $d
+     /tmp/ccFKKTYt.s:1165   .text.term_int:00000000 $a
+     /tmp/ccFKKTYt.s:1170   .text.term_int:00000000 term_int
+     /tmp/ccFKKTYt.s:1228   .text.term_int:0000007c $d
+
+UNDEFINED SYMBOLS
+udmon3_term_init
+strlen
+byte_fifo_cb_putsize
+hex2string
+unsigned2string

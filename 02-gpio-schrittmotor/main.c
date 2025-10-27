@@ -100,24 +100,33 @@ void trace_scope(int channel, int16_t value) {
 #define SPULE1_PWM_BASE AT91C_BASE_PWMC_CH2
 #define SPULE2_PWM_BASE AT91C_BASE_PWMC_CH0
 
-#define IN1 = (1 << 23)
-#define IN2 = (1 << 18)
-#define IN3 = (1 << 2)
-#define IN4 = (1 << 30)
+#define PA30 SPULE2_DIR
+#define PA2  SPULE2_PWM
+#define PA18 SPULE1_DIR
+#define PA23 SPULE1_PWM
+#define PA7 NXT_PORT4_ENABLE
 
-// Ausgangs-Multiplexer für PWM auf entsprechende Peripherie setzen
-//- Die Zuordnung, auf welchen Peripheriekanal die PWM Einheit an PA23 / PA2
-// liegt, kann aus Kapitel 10.4 entnommen werden
-//- Für die Microstepping Aufgabe muss PA23 / PA2 weg von Ausgabe auf Peripherie
-// A oder B umprogrammiert werden PA30 und PA18 bitte weiterhin als normale GPIO
-// Ausgabe Konfigurieren (incl. PA7) PA2 -> PWM2 Multiplexer auf A
+#define MASK_FULL1   3
+#define MASK_FULL2   3
+#define MASK_HALF    7
+#define MASK_MICRO   31
+
+#define PWM_FREQ_HZ   2000
+#define MCK_HZ        48000000
+#define CPRD_2KHZ     (MCK_HZ / PWM_FREQ_HZ) // = 24000 
+#define STEPS_MICRO   32
+
+
+
 AT91PS_PIO pio = (AT91PS_PIO)AT91C_BASE_PIOA;
 AT91PS_PMC pmc = (AT91PS_PMC)AT91C_BASE_PMC;
 AT91PS_PWMC pwm_ctl = (AT91PS_PWMC)AT91C_BASE_PWMC;
+
 // AT91PS_PWMC_CH pwm_sp1 = &pwm_ctl->PWMC_CH[0]; AT91PS_PWMC_CH pwm_sp2 =
 // &pwm_ctl->PWMC_CH[2];
-AT91PS_PWMC_CH pwm_sp1 = (AT91PS_PWMC_CH)SPULE1_PWM_BASE;
-AT91PS_PWMC_CH pwm_sp2 = (AT91PS_PWMC_CH)SPULE2_PWM_BASE;
+AT91PS_PWMC_CH pwm_pa23 = (AT91PS_PWMC_CH)AT91C_BASE_PWMC_CH0;
+AT91PS_PWMC_CH pwm_pa2 = (AT91PS_PWMC_CH)AT91C_BASE_PWMC_CH2;
+
 // PWM=0  DIR=x   Off=Kurzschluss
 // PWM=1  DIR=0   Positive
 // PWM=1  DIR=1   Negative
@@ -148,22 +157,74 @@ struct {
   button_t button_old;
   SCHRITT_MODE schritt_mode;
   POSITION_MODE position_mode;
-  uint32_t pos;
+  int8_t pos;
   uint8_t speed;
   uint32_t mode;
-  //...
+  uint8_t step;
+  uint16_t reload_table[5];
+  uint16_t current_reload;
+  uint16_t counter;
+  double micro_sign[STEPS_MICRO];
+  uint32_t micro_duty[STEPS_MICRO];
+  int32_t micro[32];
+  int8_t dir;            
+
 } schrittmotor_data = {
     .schritt_mode = SCHRITT_VOLL_1,
     .position_mode = POSITION_MANUELL,
     .pos = 0,
     .speed = 0,
-    .mode = 0
-    //...
-}; // Vorteil, alle benötigten Variablen können mit 'v.view %e
-   // schrittmotor_data' online verfolgt werden
+    .mode = 0,
+    .step = 0,
+    .current_reload = 0,
+    .dir = 1,
+    .counter = 0,
+    .reload_table = {
+      256, // speed 0 -> 256*4ms = 1024 ms 
+      128, // speed 1 -> 512 ms 
+      64, // speed 2 -> 256 ms 
+      32, // speed 3 -> 128 ms 
+      1  // speed 4 -> 4 ms 
+    },
+    .micro = {
+      0,
+      4682,
+      9184,
+      13334,
+      16971,
+      19955,
+      22173,
+      23539,
+      24000,
+      23539,
+      22173,
+      19955,
+      16971,
+      13334,
+      9184,
+      4682,
+      0,
+      -4682,
+      -9184,
+      -13334,
+      -16971,
+      -19955,
+      -22173,
+      -23539,
+      -24000,
+      -23539,
+      -22173,
+      -19955,
+      -16971,
+      -13334,
+      -9184,
+      -4682
 
-// #define PERIOD 10000
-// const uint32_t arr[32] = {(uint32_t)(PERIOD * sin(0 * M_PI * 2 / 32))};
+    }
+}; 
+
+
+
 void schrittmotor_init(SCHRITT_MODE mode) {
   schrittmotor_data.schritt_mode = mode;
   if (mode != SCHRITT_SINUS) {
@@ -176,61 +237,220 @@ void schrittmotor_init(SCHRITT_MODE mode) {
 
   } else {
     pmc->PMC_PCER = ((1 << 2) | (1 << 10));
-    pio->PIO_CODR = (1 << 7);
-    pio->PIO_MDDR = ALL;
-    pio->PIO_PER = ALL;
-    pio->PIO_OER = ALL;
-    pio->PIO_SODR = (SPULE1_DIR | SPULE2_DIR | SPULE2_PWM | SPULE1_PWM);
+    
+    pio->PIO_MDDR = (PA30 | PA18 | PA7);
+    pio->PIO_PER = (PA30 | PA18 | PA7);
+    pio->PIO_OER = (PA30 | PA18 | PA7);
+    pio->PIO_CODR = PA7;
+    pio->PIO_SODR = (PA30 | PA18);
 
-    // Ausgangs-Multiplexer für PWM auf entsprechende Peripherie setzen
-    //- Die Zuordnung, auf welchen Peripheriekanal die PWM Einheit an PA23 /
-    // PA2
-    // liegt, kann aus Kapitel 10.4 entnommen werden
-    //- Für die Microstepping Aufgabe muss PA23 / PA2 weg von Ausgabe auf
-    // Peripherie A oder B umprogrammiert werden PA30 und PA18 bitte
-    // weiterhin als normale GPIO Ausgabe Konfigurieren (incl. PA7) PA2 ->
-    // PWM2 Multiplexer auf A
-    pio->PIO_ASR = SPULE2_PWM;
-    pio->PIO_BSR = SPULE1_PWM;
+    pio->PIO_PDR = (PA23 | PA2);
+    pio->PIO_ASR = PA2;
+    pio->PIO_BSR = PA23;
 
-    // PWM-Konfigurieren (Kapitel 34)
-    //- Für die korrekte Konfiguration der beiden PWM-Channels lesen sie bitte
-    // das Kapitel 34 durch. Beachten sie bitte den abschließenden Satz aus
-    // Kap 34.5.2.2: The waveform polarity must be set before enabling the
-    // channel. This immediately affects the channel output level. Changes on
-    // channel polarity are not taken into account while the channel is enabled.
-    //- Die Konfigurationsreihenfolge ist ergänzend im Kapitel 34.5.3.1
-    // beschrieben
-    //- Für das setzen eines neunen Duty-Cycles beachten sie Kapitel 34.5.3.3
-    //
-    // pwm_ctl->PWMC_ENA;
+    // Channel 0 PA23 -> PWM0
+    pwm_ctl->PWMC_CH[0].PWMC_CMR = AT91C_PWMC_CPRE_MCK; // CPRE = MCK (kein prescaler) 
+    pwm_ctl->PWMC_CH[0].PWMC_CPRDR = CPRD_2KHZ;         // Period
+    pwm_ctl->PWMC_CH[0].PWMC_CDTYR = (CPRD_2KHZ / 2);   // duty = 50%
 
-    // configure clock generator
+    // Channel 2 (PA2 -> PWM2
+    pwm_ctl->PWMC_CH[2].PWMC_CMR = AT91C_PWMC_CPRE_MCK; 
+    pwm_ctl->PWMC_CH[2].PWMC_CPRDR = CPRD_2KHZ;
+    pwm_ctl->PWMC_CH[2].PWMC_CDTYR = (CPRD_2KHZ / 2);
+    
+    pwm_ctl->PWMC_ENA = (AT91C_PWMC_CHID0 | AT91C_PWMC_CHID2);
 
-    // configure CPRE for sp1->ch sp2-ch
+    //Polarisierung?
+    //MCK vs MCK2
+    //POTI?
   }
 }
-const uint32_t pos[4] = {SPULE1_PWM, SPULE2_PWM, SPULE1_DIR, SPULE2_DIR};
+void schrittmotor_update(void)
+{
+    uint16_t max_steps;
+    switch (schrittmotor_data.schritt_mode) {
+        case SCHRITT_VOLL_1: max_steps = 3; break;
+        case SCHRITT_VOLL_2: max_steps = 3; break;
+        case SCHRITT_HALB:   max_steps = 7;  break;
+        case SCHRITT_SINUS:  max_steps = 31; break;
+        default:             max_steps = 3; break;
+    }
+
+	if (schrittmotor_data.pos !=0) {
+				if(schrittmotor_data.pos >0){
+					schrittmotor_data.step = (schrittmotor_data.step+1) & max_steps;
+					schrittmotor_data.pos--;
+				}
+
+				if(schrittmotor_data.pos <0){
+					schrittmotor_data.step = (schrittmotor_data.step-1) & max_steps;
+					schrittmotor_data.pos++;
+
+				}
+
+	}
+}
+
+
 void schrittmotor_process(void) {
-  pio->PIO_SODR = pos[schrittmotor_data.pos & 3];
-  schrittmotor_data.mode = pos[schrittmotor_data.pos & 3];
+    switch (schrittmotor_data.schritt_mode) {
+
+        case SCHRITT_VOLL_1: {
+            if ((schrittmotor_data.pos != 0)) {
+              schrittmotor_update();
+                switch (schrittmotor_data.step) {
+                    case 0:
+                        pio->PIO_SODR = SPULE1_PWM;
+                        pio->PIO_CODR = (SPULE1_DIR | SPULE2_DIR | SPULE2_PWM);
+                        break;
+                    case 1:
+                        pio->PIO_SODR = SPULE2_PWM;
+                        pio->PIO_CODR = (SPULE1_DIR | SPULE2_DIR | SPULE1_PWM);
+                        break;
+                    case 2:
+                        pio->PIO_SODR = (SPULE1_DIR | SPULE1_PWM);
+                        pio->PIO_CODR = (SPULE2_DIR | SPULE2_PWM);
+                        break;
+                    case 3:
+                        pio->PIO_SODR = (SPULE2_DIR | SPULE2_PWM);
+                        pio->PIO_CODR = (SPULE1_DIR | SPULE1_PWM);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            break;
+        }
+
+        case SCHRITT_VOLL_2: {
+            if ((schrittmotor_data.pos != 0)) {
+              schrittmotor_update();
+                switch (schrittmotor_data.step) {
+                    case 0:
+                        pio->PIO_SODR = (PA2 | PA23);
+                        pio->PIO_CODR = (PA30 | PA18);
+                        break;
+                    case 1:
+                        pio->PIO_SODR = (PA2 | PA23 | PA18);
+                        pio->PIO_CODR = (PA30);
+                        break;
+                    case 2:
+                        pio->PIO_SODR = (PA2 | PA23 | PA18 | PA30);
+                        break;
+                    case 3:
+                        pio->PIO_SODR = (PA2 | PA23 | PA30);
+                        pio->PIO_CODR = (PA18);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            break;
+        }
+
+        case SCHRITT_HALB: {
+            if ((schrittmotor_data.pos != 0)) {
+              schrittmotor_update();
+                switch (schrittmotor_data.step) {
+                    case 0:
+                        pio->PIO_SODR = SPULE1_PWM;
+                        pio->PIO_CODR = (SPULE1_DIR | SPULE2_DIR | SPULE2_PWM);
+                        break;
+                    case 1:
+                        pio->PIO_SODR = (PA2 | PA23);
+                        pio->PIO_CODR = (PA30 | PA18);
+                        break;
+                    case 2:
+                        pio->PIO_SODR = SPULE2_PWM;
+                        pio->PIO_CODR = (SPULE1_DIR | SPULE2_DIR | SPULE1_PWM);
+                        break;
+                    case 3:
+                        pio->PIO_SODR = (PA2 | PA23 | PA18);
+                        pio->PIO_CODR = (PA30);
+                        break;
+                    case 4:
+                        pio->PIO_SODR = (SPULE1_DIR | SPULE1_PWM);
+                        pio->PIO_CODR = (SPULE2_DIR | SPULE2_PWM);
+                        break;
+                    case 5:
+                        pio->PIO_SODR = (PA2 | PA23 | PA18 | PA30);
+                        break;
+                    case 6:
+                        pio->PIO_SODR = (SPULE2_DIR | SPULE2_PWM);
+                        pio->PIO_CODR = (SPULE1_DIR | SPULE1_PWM);
+                        break;
+                    case 7:
+                        pio->PIO_SODR = (PA2 | PA23 | PA30);
+                        pio->PIO_CODR = (PA18);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            break;
+        }
+
+        case SCHRITT_SINUS: {
+
+            schrittmotor_update();
+
+            // A = sin, B = cos = sin + 90deg
+            uint8_t idxA = schrittmotor_data.step & MASK_MICRO;
+            uint8_t idxB = (idxA + (STEPS_MICRO / 4)) & MASK_MICRO; 
+
+            //Array auslesen
+            int32_t sampleA = (int32_t) schrittmotor_data.micro[idxA];
+            int32_t sampleB = (int32_t) schrittmotor_data.micro[idxB];
+
+           
+            if (sampleB >= 0) {
+                pio->PIO_CODR = SPULE1_DIR;
+            } else {
+                pio->PIO_SODR = SPULE1_DIR;
+            }
+
+            if (sampleA >= 0) {
+                pio->PIO_CODR = SPULE2_DIR;
+            } else {
+                pio->PIO_SODR = SPULE2_DIR;
+            }
+
+            uint32_t dutyA = (uint32_t)(sampleA >= 0 ? sampleA : -sampleA);
+            uint32_t dutyB = (uint32_t)(sampleB >= 0 ? sampleB : -sampleB);
+
+ 
+            pwm_ctl->PWMC_CH[0].PWMC_CUPDR = dutyA; // PA23 -> channel 0 
+            pwm_ctl->PWMC_CH[2].PWMC_CUPDR = dutyB; // PA2  -> channel 2 
+
+            break;
+        }
+
+        default: {
+            
+            break;
+        }
+    } 
+} 
+
+
   // wird von der task_4ms() zyklisch alle 4ms aufgerufen
   // Max. Bearbeitungsdauer: ZYKLUS_MS
 
+  //nxt_avr_get_sensor_adc_raw()
+
   // Poti-Spannung über nxt_avr_get_sensor_adc_raw(Port). Der Wertebereich liegt
   // im Bereich von 0x000..0x3FF
-}
+
+
 
 void ui_init(void) {}
 
 void ui_process(void) {
-  // wird von der task_64ms() zyklisch alle 64ms aufgerufen
-  // Max. Bearbeitungsdauer: ZYKLUS_MS
+ 
 
   button_t button_new = nxt_avr_get_buttons();
 
   if ((button_new.orange == 1) && (schrittmotor_data.button_old.orange == 0)) {
-    (void)term_string("Orange pressed\n\r", ASYNCSYNC_NONBLOCK);
 
     if (schrittmotor_data.schritt_mode + 1 < SCHRITT_END) {
       schrittmotor_data.schritt_mode++;
@@ -239,53 +459,55 @@ void ui_process(void) {
       schrittmotor_data.schritt_mode = SCHRITT_VOLL_1;
       schrittmotor_init(schrittmotor_data.schritt_mode);
     }
-    printf("Neuer Modus: %s\n",
-           schritt_mode2str[schrittmotor_data.schritt_mode]);
+
   }
 
   if ((button_new.grey == 1) && (schrittmotor_data.button_old.grey == 0)) {
-    (void)term_string("Grey pressed\n\r", ASYNCSYNC_NONBLOCK);
 
     if (schrittmotor_data.position_mode + 1 < POSITION_END) {
       schrittmotor_data.position_mode++;
     } else {
       schrittmotor_data.position_mode = POSITION_MANUELL;
     }
-    printf("Position: %i\n", schrittmotor_data.position_mode);
   }
 
-  if (schrittmotor_data.position_mode == POSITION_KONTINUIERLICH) {
-
-    if ((button_new.left == 1) && (schrittmotor_data.button_old.left == 0)) {
-
-      if (schrittmotor_data.speed > 0) {
-        schrittmotor_data.speed--;
-        printf("Speed: %i\n", schrittmotor_data.speed);
-      }
+if (schrittmotor_data.position_mode == POSITION_KONTINUIERLICH) {
+    if (((button_new.left == 1) && (schrittmotor_data.dir == 1)) && (schrittmotor_data.button_old.left == 0)) {
+        if (schrittmotor_data.speed > 0) {
+            schrittmotor_data.speed--;
+        } else {
+            schrittmotor_data.dir = (schrittmotor_data.dir == 1) ? -1 : 1;
+        }
     }
-    if ((button_new.right == 1) && (schrittmotor_data.button_old.right == 0)) {
-
-      if (schrittmotor_data.speed < 4) {
-        schrittmotor_data.speed++;
-        printf("Speed: %i\n", schrittmotor_data.speed);
-      }
+    if (((button_new.left == 1) && (schrittmotor_data.dir == -1)) && (schrittmotor_data.button_old.left == 0)) {
+        if (schrittmotor_data.speed <4 ) {
+            schrittmotor_data.speed++;
+        }
     }
-  }
+
+    if (((button_new.right == 1) && (schrittmotor_data.dir == 1)) && (schrittmotor_data.button_old.right == 0)) {
+        if (schrittmotor_data.speed < 4) {
+            schrittmotor_data.speed++;
+        }
+    }
+     if (((button_new.right == 1) && (schrittmotor_data.dir == -1)) && (schrittmotor_data.button_old.right == 0)) {
+        if (schrittmotor_data.speed > 0) {
+            schrittmotor_data.speed--;
+        } else {
+            schrittmotor_data.dir = (schrittmotor_data.dir == -1) ? 1 : -1;
+        }
+    }
+}
 
   if (schrittmotor_data.position_mode == POSITION_MANUELL) {
 
     if ((button_new.left == 1) && (schrittmotor_data.button_old.left == 0)) {
-
       schrittmotor_data.pos--;
-      printf("Pos: %lu\n", schrittmotor_data.pos);
     }
     if ((button_new.right == 1) && (schrittmotor_data.button_old.right == 0)) {
-
       schrittmotor_data.pos++;
-      printf("Pos: %lu\n", schrittmotor_data.pos);
     }
   }
-  // Weitere Tasten: orange left right grey
 
   // Bei Änderung des Modes: schrittmotor_init() aufrufen (Hilfreiche für später
   // folgende Ergänzung)
@@ -306,9 +528,19 @@ void ui_process(void) {
 /*****************************************************************************/
 
 void task_4ms(void) {
-  // Keine blockierende Aufrufe
-  // Max. Bearbeitungsdauer: ZYKLUS_MS
-  schrittmotor_process();
+    schrittmotor_data.current_reload = schrittmotor_data.reload_table[schrittmotor_data.speed];
+
+    if (schrittmotor_data.position_mode == POSITION_KONTINUIERLICH) {
+        schrittmotor_data.counter++;
+        if (schrittmotor_data.counter >= schrittmotor_data.current_reload) {
+            schrittmotor_data.counter = 0;
+            schrittmotor_data.pos += (int32_t)schrittmotor_data.dir;
+            schrittmotor_process();
+        }
+    } else {
+        schrittmotor_process();
+        schrittmotor_data.counter = 0;
+    }
 }
 
 void task_8ms(void) {

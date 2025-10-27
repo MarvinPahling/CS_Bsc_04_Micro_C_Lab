@@ -1,0 +1,13 @@
+./lib/nxt_avr.c:80:13:avr_1kHz_update	24	static
+./lib/nxt_avr.c:218:13:buttonsVal2buttons	16	static
+./lib/nxt_avr.c:252:10:nxt_avr_get_buttons	4	static
+./lib/nxt_avr.c:309:10:nxt_avr_get_battery_mv	4	static
+./lib/nxt_avr.c:320:11:nxt_avr_get_battery_type	4	static
+./lib/nxt_avr.c:326:9:nxt_avr_get_avr_version	4	static
+./lib/nxt_avr.c:333:10:nxt_avr_get_battery_raw	4	static
+./lib/nxt_avr.c:339:10:nxt_avr_get_sensor_adc_raw	16	static
+./lib/nxt_avr.c:347:6:nxt_avr_set_sensor_power	16	static
+./lib/nxt_avr.c:362:6:nxt_avr_power_down	4	static
+./lib/nxt_avr.c:368:6:nxt_avr_firmware_update_enter	4	static
+./lib/nxt_avr.c:374:6:nxt_avr_set_motor	16	static
+./lib/nxt_avr.c:394:6:nxt_avr_init	16	static
