@@ -122,17 +122,6 @@ AT91PS_PIO pio = (AT91PS_PIO)AT91C_BASE_PIOA;
 AT91PS_PMC pmc = (AT91PS_PMC)AT91C_BASE_PMC;
 AT91PS_PWMC pwm_ctl = (AT91PS_PWMC)AT91C_BASE_PWMC;
 
-// AT91PS_PWMC_CH pwm_sp1 = &pwm_ctl->PWMC_CH[0]; AT91PS_PWMC_CH pwm_sp2 =
-// &pwm_ctl->PWMC_CH[2];
-AT91PS_PWMC_CH pwm_pa23 = (AT91PS_PWMC_CH)AT91C_BASE_PWMC_CH0;
-AT91PS_PWMC_CH pwm_pa2 = (AT91PS_PWMC_CH)AT91C_BASE_PWMC_CH2;
-
-// PWM=0  DIR=x   Off=Kurzschluss
-// PWM=1  DIR=0   Positive
-// PWM=1  DIR=1   Negative
-
-//  AT91S_PMC, *AT91PS_PMC;
-// PA7=0  zum Deaktivieren des RS485 Treibers
 
 typedef enum {
   SCHRITT_VOLL_1,
@@ -187,7 +176,7 @@ struct {
       1  // speed 4 -> 4 ms 
     },
     .micro = {
-      0,
+      1,
       4682,
       9184,
       13334,
@@ -195,7 +184,7 @@ struct {
       19955,
       22173,
       23539,
-      24000,
+      23999,
       23539,
       22173,
       19955,
@@ -203,7 +192,7 @@ struct {
       13334,
       9184,
       4682,
-      0,
+      1,
       -4682,
       -9184,
       -13334,
@@ -211,7 +200,7 @@ struct {
       -19955,
       -22173,
       -23539,
-      -24000,
+      -23999,
       -23539,
       -22173,
       -19955,
@@ -260,20 +249,17 @@ void schrittmotor_init(SCHRITT_MODE mode) {
     
     pwm_ctl->PWMC_ENA = (AT91C_PWMC_CHID0 | AT91C_PWMC_CHID2);
 
-    //Polarisierung?
-    //MCK vs MCK2
-    //POTI?
   }
 }
 void schrittmotor_update(void)
 {
     uint16_t max_steps;
     switch (schrittmotor_data.schritt_mode) {
-        case SCHRITT_VOLL_1: max_steps = 3; break;
-        case SCHRITT_VOLL_2: max_steps = 3; break;
-        case SCHRITT_HALB:   max_steps = 7;  break;
-        case SCHRITT_SINUS:  max_steps = 31; break;
-        default:             max_steps = 3; break;
+        case SCHRITT_VOLL_1: max_steps = MASK_FULL1; break;
+        case SCHRITT_VOLL_2: max_steps = MASK_FULL2; break;
+        case SCHRITT_HALB:   max_steps = MASK_HALF;  break;
+        case SCHRITT_SINUS:  max_steps = MASK_MICRO; break;
+        default:             max_steps = MASK_FULL1; break;
     }
 
 	if (schrittmotor_data.pos !=0) {
@@ -433,16 +419,6 @@ void schrittmotor_process(void) {
 } 
 
 
-  // wird von der task_4ms() zyklisch alle 4ms aufgerufen
-  // Max. Bearbeitungsdauer: ZYKLUS_MS
-
-  //nxt_avr_get_sensor_adc_raw()
-
-  // Poti-Spannung über nxt_avr_get_sensor_adc_raw(Port). Der Wertebereich liegt
-  // im Bereich von 0x000..0x3FF
-
-
-
 void ui_init(void) {}
 
 void ui_process(void) {
@@ -509,8 +485,7 @@ if (schrittmotor_data.position_mode == POSITION_KONTINUIERLICH) {
     }
   }
 
-  // Bei Änderung des Modes: schrittmotor_init() aufrufen (Hilfreiche für später
-  // folgende Ergänzung)
+  
 
   // Beispielanwendung für Display
   static uint32_t count = 0;

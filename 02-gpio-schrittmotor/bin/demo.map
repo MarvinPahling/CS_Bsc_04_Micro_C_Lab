@@ -910,112 +910,110 @@ ARM_exidx_extab_seg
  *(.ARM.extab .ARM.extab.*)
                 0x00207018                        __extab_end = .
 
-data_seg        0x00207018      0x348
+data_seg        0x00207018      0x340
                 0x00207018                        __data_load = LOADADDR (data_seg)
                 0x00207018                        __data_start = .
  *(.data)
- .data          0x00207018      0x250 bin/main.o
+ .data          0x00207018      0x248 bin/main.o
                 0x00207018                pio
                 0x0020701c                pmc
                 0x00207020                pwm_ctl
-                0x00207024                pwm_pa23
-                0x00207028                pwm_pa2
-                0x0020702c                schritt_mode2str
-                0x00207040                schrittmotor_data
- .data          0x00207268        0x1 bin/newlib_syscalls.o
- *fill*         0x00207269        0x3 
- .data          0x0020726c       0x96 bin/term.o
-                0x0020726c                fifo_rx
-                0x002072b8                fifo_tx
- .data          0x00207302        0x1 bin/nxt_spi.o
-                0x00207302                mode
+                0x00207024                schritt_mode2str
+                0x00207038                schrittmotor_data
+ .data          0x00207260        0x1 bin/newlib_syscalls.o
+ *fill*         0x00207261        0x3 
+ .data          0x00207264       0x96 bin/term.o
+                0x00207264                fifo_rx
+                0x002072b0                fifo_tx
+ .data          0x002072fa        0x1 bin/nxt_spi.o
+                0x002072fa                mode
  *(.data*)
- *fill*         0x00207303        0x1 
- .data.__sglue  0x00207304        0xc /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-findfp.o)
-                0x00207304                __sglue
+ *fill*         0x002072fb        0x1 
+ .data.__sglue  0x002072fc        0xc /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-findfp.o)
+                0x002072fc                __sglue
  .data._impure_ptr
-                0x00207310        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-impure.o)
-                0x00207310                _impure_ptr
+                0x00207308        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-impure.o)
+                0x00207308                _impure_ptr
  .data._impure_data
-                0x00207314       0x4c /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-impure.o)
-                0x00207314                _impure_data
-                0x00207360                        . = ALIGN (0x4)
-                0x00207360                        _edata = .
+                0x0020730c       0x4c /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-impure.o)
+                0x0020730c                _impure_data
+                0x00207358                        . = ALIGN (0x4)
+                0x00207358                        _edata = .
 
-bss_seg         0x00207360      0x910
-                0x00207360                        __bss_start__ = .
+bss_seg         0x00207358      0x910
+                0x00207358                        __bss_start__ = .
  *(.bss)
- .bss           0x00207360      0x337 bin/main.o
-                0x00207360                main_data
-                0x00207364                trace_buf0
-                0x002074f4                trace_buf1
- *fill*         0x00207697        0x1 
- .bss           0x00207698        0x4 bin/newlib_syscalls.o
- .bss           0x0020769c       0x10 bin/aic.o
-                0x0020769c                aic_intNest
-                0x0020769d                aic_intMax
-                0x002076a0                aic
- .bss           0x002076ac        0xc bin/systick.o
-                0x002076ac                systick
- .bss           0x002076b8      0x38c bin/display.o
-                0x00207a3c                display_x
-                0x00207a40                display_y
- .bss           0x00207a44        0x4 bin/nxt_lcd.o
- .bss           0x00207a48        0xc bin/nxt_spi.o
-                0x00207a48                display
-                0x00207a4c                dirty
-                0x00207a4d                page
-                0x00207a50                data
- .bss           0x00207a54       0x34 bin/nxt_avr.o
-                0x00207a54                avr
- .bss           0x00207a88       0x20 bin/twi.o
- .bss           0x00207aa8       0x64 bin/udmon3.o
-                0x00207aa8                udmon3
+ .bss           0x00207358      0x337 bin/main.o
+                0x00207358                main_data
+                0x0020735c                trace_buf0
+                0x002074ec                trace_buf1
+ *fill*         0x0020768f        0x1 
+ .bss           0x00207690        0x4 bin/newlib_syscalls.o
+ .bss           0x00207694       0x10 bin/aic.o
+                0x00207694                aic_intNest
+                0x00207695                aic_intMax
+                0x00207698                aic
+ .bss           0x002076a4        0xc bin/systick.o
+                0x002076a4                systick
+ .bss           0x002076b0      0x38c bin/display.o
+                0x00207a34                display_x
+                0x00207a38                display_y
+ .bss           0x00207a3c        0x4 bin/nxt_lcd.o
+ .bss           0x00207a40        0xc bin/nxt_spi.o
+                0x00207a40                display
+                0x00207a44                dirty
+                0x00207a45                page
+                0x00207a48                data
+ .bss           0x00207a4c       0x34 bin/nxt_avr.o
+                0x00207a4c                avr
+ .bss           0x00207a80       0x20 bin/twi.o
+ .bss           0x00207aa0       0x64 bin/udmon3.o
+                0x00207aa0                udmon3
  *(.bss*)
  .bss.completed.1
-                0x00207b0c        0x1 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/crtbegin.o
- *fill*         0x00207b0d        0x3 
- .bss.object.0  0x00207b10       0x18 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/crtbegin.o
- .bss.__sf      0x00207b28      0x138 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-findfp.o)
-                0x00207b28                __sf
+                0x00207b04        0x1 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/crtbegin.o
+ *fill*         0x00207b05        0x3 
+ .bss.object.0  0x00207b08       0x18 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/crtbegin.o
+ .bss.__sf      0x00207b20      0x138 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-findfp.o)
+                0x00207b20                __sf
  .bss.__stdio_exit_handler
-                0x00207c60        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-findfp.o)
-                0x00207c60                __stdio_exit_handler
+                0x00207c58        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-findfp.o)
+                0x00207c58                __stdio_exit_handler
  .bss.__lock___sfp_recursive_mutex
-                0x00207c64        0x1 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-lock.o)
-                0x00207c64                __lock___sfp_recursive_mutex
- *fill*         0x00207c65        0x3 
+                0x00207c5c        0x1 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-lock.o)
+                0x00207c5c                __lock___sfp_recursive_mutex
+ *fill*         0x00207c5d        0x3 
  .bss.__malloc_sbrk_start
-                0x00207c68        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-mallocr.o)
-                0x00207c68                __malloc_sbrk_start
+                0x00207c60        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-mallocr.o)
+                0x00207c60                __malloc_sbrk_start
  .bss.__malloc_free_list
-                0x00207c6c        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-mallocr.o)
-                0x00207c6c                __malloc_free_list
+                0x00207c64        0x4 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-mallocr.o)
+                0x00207c64                __malloc_free_list
  *(COMMON)
-                0x00207c70                        . = ALIGN (0x4)
-                0x00207c70                        _ebss = .
-                0x00207c70                        __bss_end__ = .
+                0x00207c68                        . = ALIGN (0x4)
+                0x00207c68                        _ebss = .
+                0x00207c68                        __bss_end__ = .
                 [!provide]                        PROVIDE (end = _ebss)
                 [!provide]                        PROVIDE (_end = _ebss)
                 [!provide]                        PROVIDE (__end__ = _ebss)
 
-.rel.dyn        0x00207c70        0x0
- .rel.iplt      0x00207c70        0x0 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/crtbegin.o
+.rel.dyn        0x00207c68        0x0
+ .rel.iplt      0x00207c68        0x0 /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/crtbegin.o
 
-heap_seg        0x00207c70     0x1000
-                0x00207c70                        __heap_start__ = .
-                0x00208c70                        . = (. + HEAP_SIZE)
- *fill*         0x00207c70     0x1000 
-                0x00208c70                        . = ALIGN (0x4)
-                0x00208c70                        __heap_end__ = .
+heap_seg        0x00207c68     0x1000
+                0x00207c68                        __heap_start__ = .
+                0x00208c68                        . = (. + HEAP_SIZE)
+ *fill*         0x00207c68     0x1000 
+                0x00208c68                        . = ALIGN (0x4)
+                0x00208c68                        __heap_end__ = .
 
-stack_seg       0x00208c70      0xbb8
-                0x00208c70                        __stack_start__ = .
-                0x00209828                        . = (. + STACK_SIZE)
- *fill*         0x00208c70      0xbb8 
-                0x00209828                        . = ALIGN (0x4)
-                0x00209828                        __c_stack_top__ = .
-                0x00209828                        __stack_end__ = .
+stack_seg       0x00208c68      0xbb8
+                0x00208c68                        __stack_start__ = .
+                0x00209820                        . = (. + STACK_SIZE)
+ *fill*         0x00208c68      0xbb8 
+                0x00209820                        . = ALIGN (0x4)
+                0x00209820                        __c_stack_top__ = .
+                0x00209820                        __stack_end__ = .
 
 /DISCARD/
  libc.a(*)
@@ -1137,21 +1135,21 @@ LOAD /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gc
 .stabstr        0x00000000       0xd9
  .stabstr       0x00000000       0xd9 bin/startup.o
 
-.debug_info     0x00000000     0x657b
- .debug_info    0x00000000     0x1991 bin/main.o
- .debug_info    0x00001991      0x30b bin/low_level_init.o
- .debug_info    0x00001c9c     0x104d bin/newlib_syscalls.o
- .debug_info    0x00002ce9      0x41a bin/byte_fifo_cb.o
- .debug_info    0x00003103      0x101 bin/helper.o
- .debug_info    0x00003204      0x764 bin/aic.o
- .debug_info    0x00003968      0x293 bin/systick.o
- .debug_info    0x00003bfb      0x6ca bin/term.o
- .debug_info    0x000042c5      0x5ad bin/display.o
- .debug_info    0x00004872      0x58b bin/nxt_lcd.o
- .debug_info    0x00004dfd      0x2c8 bin/nxt_spi.o
- .debug_info    0x000050c5      0x740 bin/nxt_avr.o
- .debug_info    0x00005805      0x381 bin/twi.o
- .debug_info    0x00005b86      0x9f5 bin/udmon3.o
+.debug_info     0x00000000     0x6545
+ .debug_info    0x00000000     0x195b bin/main.o
+ .debug_info    0x0000195b      0x30b bin/low_level_init.o
+ .debug_info    0x00001c66     0x104d bin/newlib_syscalls.o
+ .debug_info    0x00002cb3      0x41a bin/byte_fifo_cb.o
+ .debug_info    0x000030cd      0x101 bin/helper.o
+ .debug_info    0x000031ce      0x764 bin/aic.o
+ .debug_info    0x00003932      0x293 bin/systick.o
+ .debug_info    0x00003bc5      0x6ca bin/term.o
+ .debug_info    0x0000428f      0x5ad bin/display.o
+ .debug_info    0x0000483c      0x58b bin/nxt_lcd.o
+ .debug_info    0x00004dc7      0x2c8 bin/nxt_spi.o
+ .debug_info    0x0000508f      0x740 bin/nxt_avr.o
+ .debug_info    0x000057cf      0x381 bin/twi.o
+ .debug_info    0x00005b50      0x9f5 bin/udmon3.o
 
 .debug_abbrev   0x00000000     0x19bf
  .debug_abbrev  0x00000000      0x426 bin/main.o
@@ -1230,38 +1228,38 @@ LOAD /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gc
  .debug_rnglists
                 0x000004c0       0xa9 bin/udmon3.o
 
-.debug_line     0x00000000     0x4278
- .debug_line    0x00000000      0xc0b bin/main.o
- .debug_line    0x00000c0b      0x1e8 bin/low_level_init.o
- .debug_line    0x00000df3      0x726 bin/newlib_syscalls.o
- .debug_line    0x00001519      0x34b bin/byte_fifo_cb.o
- .debug_line    0x00001864       0xd8 bin/helper.o
- .debug_line    0x0000193c      0x3ea bin/aic.o
- .debug_line    0x00001d26      0x227 bin/systick.o
- .debug_line    0x00001f4d      0x471 bin/term.o
- .debug_line    0x000023be      0x419 bin/display.o
- .debug_line    0x000027d7      0x3e4 bin/nxt_lcd.o
- .debug_line    0x00002bbb      0x37e bin/nxt_spi.o
- .debug_line    0x00002f39      0x54d bin/nxt_avr.o
- .debug_line    0x00003486      0x47b bin/twi.o
- .debug_line    0x00003901      0x977 bin/udmon3.o
+.debug_line     0x00000000     0x4271
+ .debug_line    0x00000000      0xc04 bin/main.o
+ .debug_line    0x00000c04      0x1e8 bin/low_level_init.o
+ .debug_line    0x00000dec      0x726 bin/newlib_syscalls.o
+ .debug_line    0x00001512      0x34b bin/byte_fifo_cb.o
+ .debug_line    0x0000185d       0xd8 bin/helper.o
+ .debug_line    0x00001935      0x3ea bin/aic.o
+ .debug_line    0x00001d1f      0x227 bin/systick.o
+ .debug_line    0x00001f46      0x471 bin/term.o
+ .debug_line    0x000023b7      0x419 bin/display.o
+ .debug_line    0x000027d0      0x3e4 bin/nxt_lcd.o
+ .debug_line    0x00002bb4      0x37e bin/nxt_spi.o
+ .debug_line    0x00002f32      0x54d bin/nxt_avr.o
+ .debug_line    0x0000347f      0x47b bin/twi.o
+ .debug_line    0x000038fa      0x977 bin/udmon3.o
 
-.debug_str      0x00000000     0x1c4f
- .debug_str     0x00000000     0x1c4f bin/main.o
-                                0xdcf (size before relaxing)
- .debug_str     0x00001c4f      0x309 bin/low_level_init.o
- .debug_str     0x00001c4f      0x7d7 bin/newlib_syscalls.o
- .debug_str     0x00001c4f      0x2d6 bin/byte_fifo_cb.o
- .debug_str     0x00001c4f      0x148 bin/helper.o
- .debug_str     0x00001c4f      0x4d2 bin/aic.o
- .debug_str     0x00001c4f      0x2aa bin/systick.o
- .debug_str     0x00001c4f      0x3a2 bin/term.o
- .debug_str     0x00001c4f      0x33c bin/display.o
- .debug_str     0x00001c4f      0x431 bin/nxt_lcd.o
- .debug_str     0x00001c4f      0x2b8 bin/nxt_spi.o
- .debug_str     0x00001c4f      0x5e0 bin/nxt_avr.o
- .debug_str     0x00001c4f      0x358 bin/twi.o
- .debug_str     0x00001c4f      0x471 bin/udmon3.o
+.debug_str      0x00000000     0x1c2f
+ .debug_str     0x00000000     0x1c2f bin/main.o
+                                0xdaf (size before relaxing)
+ .debug_str     0x00001c2f      0x309 bin/low_level_init.o
+ .debug_str     0x00001c2f      0x7d7 bin/newlib_syscalls.o
+ .debug_str     0x00001c2f      0x2d6 bin/byte_fifo_cb.o
+ .debug_str     0x00001c2f      0x148 bin/helper.o
+ .debug_str     0x00001c2f      0x4d2 bin/aic.o
+ .debug_str     0x00001c2f      0x2aa bin/systick.o
+ .debug_str     0x00001c2f      0x3a2 bin/term.o
+ .debug_str     0x00001c2f      0x33c bin/display.o
+ .debug_str     0x00001c2f      0x431 bin/nxt_lcd.o
+ .debug_str     0x00001c2f      0x2b8 bin/nxt_spi.o
+ .debug_str     0x00001c2f      0x5e0 bin/nxt_avr.o
+ .debug_str     0x00001c2f      0x358 bin/twi.o
+ .debug_str     0x00001c2f      0x471 bin/udmon3.o
 
 .debug_frame    0x00000000     0x1f94
  .debug_frame   0x00000000      0x3dc bin/main.o
@@ -1650,8 +1648,6 @@ pio                                               bin/main.o
 pmc                                               bin/main.o
 premain_init                                      bin/main.o
 pwm_ctl                                           bin/main.o
-pwm_pa2                                           bin/main.o
-pwm_pa23                                          bin/main.o
 raise                                             /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-signal.o)
                                                   /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/14.3.1/../../../../arm-none-eabi/lib/libg_nano.a(libc_a-abort.o)
 schritt_mode2str                                  bin/main.o
