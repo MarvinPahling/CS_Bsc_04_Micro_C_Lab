@@ -1,0 +1,2 @@
+./lib/helper.ct:8:7:unsigned2string	32	static
+./lib/helper.ct:49:7:hex2string	32	static

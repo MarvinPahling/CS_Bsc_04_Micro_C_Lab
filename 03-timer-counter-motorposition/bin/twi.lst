@@ -1,0 +1,1204 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"twi.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "./lib/twi.c"
+  18              		.bss
+  19              	twi_state:
+  20 0000 00       		.space	1
+  22 0001 000000   		.align	2
+  23              	twi_pending:
+  24 0004 00000000 		.space	4
+  26              		.align	2
+  27              	twi_ptr:
+  28 0008 00000000 		.space	4
+  30              		.align	2
+  31              	twi_mask:
+  32 000c 00000000 		.space	4
+  34              		.align	2
+  35              	twi_stats:
+  36 0010 00000000 		.space	16
+  36      00000000 
+  36      00000000 
+  36      00000000 
+  38              		.section	.text.twi_status,"ax",%progbits
+  39              		.align	2
+  40              		.global	twi_status
+  41              		.syntax unified
+  42              		.arm
+  44              	twi_status:
+  45              	.LFB2:
+   1:./lib/twi.c   **** /*
+   2:./lib/twi.c   ****  * I2C/TWI comminications driver
+   3:./lib/twi.c   ****  * Provide read/write to an I2C/TWI device (in this case the ATMega
+   4:./lib/twi.c   ****  * co-processor). Uses the hardware TWI device in interrupt mode.
+   5:./lib/twi.c   ****  * NOTES
+   6:./lib/twi.c   ****  * This code does not support single byte read/write operation.
+   7:./lib/twi.c   ****  * This code does not support internal register addressing.
+   8:./lib/twi.c   ****  * Runs at high priority interrupt to minimise chance of early
+   9:./lib/twi.c   ****  * write termination (have never seen this but...).
+  10:./lib/twi.c   ****  * For read operations we do not wait for the complete event before 
+  11:./lib/twi.c   ****  * marking the read as over. We do this because the time window for
+  12:./lib/twi.c   ****  * a read when talking to the ATMega is very tight, so finishing
+  13:./lib/twi.c   ****  * slightly early avoids a data over-run. It is a little iffy though!
+  14:./lib/twi.c   ****  */
+  15:./lib/twi.c   **** 
+  16:./lib/twi.c   **** 
+  17:./lib/twi.c   **** #include "twi.h"
+  18:./lib/twi.c   **** #include "../AT91SAM7S64.h"
+  19:./lib/twi.c   **** 
+  20:./lib/twi.c   **** #include "systick.h"
+  21:./lib/twi.c   **** 
+  22:./lib/twi.c   **** #include "aic.h"
+  23:./lib/twi.c   **** #include "../main.h"
+  24:./lib/twi.c   **** 
+  25:./lib/twi.c   **** 
+  26:./lib/twi.c   **** // Calculate required clock divisor
+  27:./lib/twi.c   **** #define   I2CClk          400000L
+  28:./lib/twi.c   **** #define   CLDIV           (((MCK/I2CClk)/2)-3)
+  29:./lib/twi.c   **** // Pins
+  30:./lib/twi.c   **** #define TWCK (1 << 4)   //PA4-PerA
+  31:./lib/twi.c   **** #define TWD  (1 << 3)   //PA3-Pera
+  32:./lib/twi.c   **** 
+  33:./lib/twi.c   **** 
+  34:./lib/twi.c   **** static enum {
+  35:./lib/twi.c   ****   TWI_UNINITIALISED = 0,
+  36:./lib/twi.c   ****   TWI_FAILED,
+  37:./lib/twi.c   ****   TWI_IDLE,
+  38:./lib/twi.c   ****   TWI_DONE,
+  39:./lib/twi.c   ****   TWI_RX_BUSY,
+  40:./lib/twi.c   ****   TWI_TX_BUSY,
+  41:./lib/twi.c   **** } twi_state;
+  42:./lib/twi.c   **** 
+  43:./lib/twi.c   **** static uint32_t twi_pending;
+  44:./lib/twi.c   **** static uint8_t *twi_ptr;
+  45:./lib/twi.c   **** static uint32_t twi_mask;
+  46:./lib/twi.c   **** 
+  47:./lib/twi.c   **** #define USE_STATS 
+  48:./lib/twi.c   **** 
+  49:./lib/twi.c   **** // Accumlate stats
+  50:./lib/twi.c   **** #ifdef USE_STATS
+  51:./lib/twi.c   **** static struct {
+  52:./lib/twi.c   ****   uint16_t rx_done;
+  53:./lib/twi.c   ****   uint16_t tx_done;
+  54:./lib/twi.c   ****   uint16_t bytes_tx;
+  55:./lib/twi.c   ****   uint16_t bytes_rx;
+  56:./lib/twi.c   ****   uint16_t unre;
+  57:./lib/twi.c   ****   uint16_t ovre;
+  58:./lib/twi.c   ****   uint16_t nack;
+  59:./lib/twi.c   ****   uint16_t leer;
+  60:./lib/twi.c   **** } twi_stats;
+  61:./lib/twi.c   **** #define STATS(code) code
+  62:./lib/twi.c   **** #else
+  63:./lib/twi.c   **** #define STATS(code)
+  64:./lib/twi.c   **** #endif
+  65:./lib/twi.c   **** 
+  66:./lib/twi.c   **** 
+  67:./lib/twi.c   **** 
+  68:./lib/twi.c   **** /**
+  69:./lib/twi.c   ****  * Return the status of the twi device.
+  70:./lib/twi.c   ****  *  0 == Ready for use
+  71:./lib/twi.c   ****  *  1 == Busy
+  72:./lib/twi.c   ****  * -1 == Error or closed
+  73:./lib/twi.c   ****  */
+  74:./lib/twi.c   **** int twi_status(void)
+  75:./lib/twi.c   **** {
+  46              		.loc 1 75 1
+  47              		.cfi_startproc
+  48              		@ Function supports interworking.
+  49              		@ args = 0, pretend = 0, frame = 0
+  50              		@ frame_needed = 1, uses_anonymous_args = 0
+  51              		@ link register save eliminated.
+  52 0000 04B02DE5 		str	fp, [sp, #-4]!
+  53              		.cfi_def_cfa_offset 4
+  54              		.cfi_offset 11, -4
+  55 0004 00B08DE2 		add	fp, sp, #0
+  56              		.cfi_def_cfa_register 11
+  76:./lib/twi.c   ****   return (twi_state > TWI_DONE ? 1 : (twi_state < TWI_IDLE ? -1 : 0));
+  57              		.loc 1 76 21
+  58 0008 3C309FE5 		ldr	r3, .L7
+  59 000c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+  60              		.loc 1 76 36
+  61 0010 030053E3 		cmp	r3, #3
+  62 0014 0700008A 		bhi	.L2
+  63              		.loc 1 76 49 discriminator 1
+  64 0018 2C309FE5 		ldr	r3, .L7
+  65 001c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+  66              		.loc 1 76 65 discriminator 1
+  67 0020 010053E3 		cmp	r3, #1
+  68 0024 0100008A 		bhi	.L3
+  69              		.loc 1 76 65 is_stmt 0 discriminator 3
+  70 0028 0030E0E3 		mvn	r3, #0
+  71              		.loc 1 76 36 is_stmt 1
+  72 002c 020000EA 		b	.L6
+  73              	.L3:
+  74              		.loc 1 76 65 discriminator 4
+  75 0030 0030A0E3 		mov	r3, #0
+  76              		.loc 1 76 36
+  77 0034 000000EA 		b	.L6
+  78              	.L2:
+  79              		.loc 1 76 36 is_stmt 0 discriminator 2
+  80 0038 0130A0E3 		mov	r3, #1
+  81              	.L6:
+  77:./lib/twi.c   **** }
+  82              		.loc 1 77 1 is_stmt 1
+  83 003c 0300A0E1 		mov	r0, r3
+  84 0040 00D08BE2 		add	sp, fp, #0
+  85              		.cfi_def_cfa_register 13
+  86              		@ sp needed
+  87 0044 04B09DE4 		ldr	fp, [sp], #4
+  88              		.cfi_restore 11
+  89              		.cfi_def_cfa_offset 0
+  90 0048 1EFF2FE1 		bx	lr
+  91              	.L8:
+  92              		.align	2
+  93              	.L7:
+  94 004c 00000000 		.word	twi_state
+  95              		.cfi_endproc
+  96              	.LFE2:
+  98              		.section	.text.fastcode,"ax",%progbits
+  99              		.align	2
+ 100              		.global	twi_isr_C
+ 101              		.syntax unified
+ 102              		.arm
+ 104              	twi_isr_C:
+ 105              	.LFB3:
+  78:./lib/twi.c   **** 
+  79:./lib/twi.c   **** /**
+  80:./lib/twi.c   ****  * Process TWI interrupts.
+  81:./lib/twi.c   ****  * Assumes that only valid interrupts will be enabled and that twi_mask
+  82:./lib/twi.c   ****  * will have been set to only contain the valid bits for the current
+  83:./lib/twi.c   ****  * I/O state. This means that we do not have to test this state at
+  84:./lib/twi.c   ****  * interrupt time.
+  85:./lib/twi.c   ****  */
+  86:./lib/twi.c   ****  
+  87:./lib/twi.c   **** #pragma GCC push_options
+  88:./lib/twi.c   **** #pragma GCC optimize ("O2")
+  89:./lib/twi.c   ****  
+  90:./lib/twi.c   **** __attribute__ ((section (".text.fastcode")))
+  91:./lib/twi.c   **** void twi_isr_C(void)
+  92:./lib/twi.c   **** {
+ 106              		.loc 1 92 1
+ 107              		.cfi_startproc
+ 108              		@ Function supports interworking.
+ 109              		@ args = 0, pretend = 0, frame = 0
+ 110              		@ frame_needed = 0, uses_anonymous_args = 0
+  93:./lib/twi.c   **** 	uint32_t status = *AT91C_TWI_SR & twi_mask;
+ 111              		.loc 1 93 2
+ 112              		.loc 1 93 20 is_stmt 0
+ 113 0000 472AE0E3 		mvn	r2, #290816
+ 114              		.loc 1 93 34
+ 115 0004 B4119FE5 		ldr	r1, .L31
+ 116              		.loc 1 93 20
+ 117 0008 DF3F12E5 		ldr	r3, [r2, #-4063]
+ 118              		.loc 1 93 11
+ 119 000c 000091E5 		ldr	r0, [r1]
+ 120 0010 003003E0 		and	r3, r3, r0
+ 121              	.LVL0:
+  94:./lib/twi.c   **** 	if (status & AT91C_TWI_RXRDY) {    //A byte has been received in the TWI_RHR 
+ 122              		.loc 1 94 2 is_stmt 1
+ 123              		.loc 1 94 5 is_stmt 0
+ 124 0014 020013E3 		tst	r3, #2
+  92:./lib/twi.c   **** 	uint32_t status = *AT91C_TWI_SR & twi_mask;
+ 125              		.loc 1 92 1
+ 126 0018 10402DE9 		push	{r4, lr}
+ 127              		.cfi_def_cfa_offset 8
+ 128              		.cfi_offset 4, -8
+ 129              		.cfi_offset 14, -4
+  95:./lib/twi.c   **** 	                                   //since the last read
+  96:./lib/twi.c   **** 		STATS(twi_stats.bytes_rx++);
+  97:./lib/twi.c   **** 		*twi_ptr++ = *AT91C_TWI_RHR;
+  98:./lib/twi.c   **** 		twi_pending--;
+  99:./lib/twi.c   **** 		if (twi_pending == 1) { // Second last byte -- issue a stop on the next byte 
+ 100:./lib/twi.c   **** 			*AT91C_TWI_CR = AT91C_TWI_STOP;  //Slave über NACK mitteilen, dass
+ 101:./lib/twi.c   **** 		}                                    //kein weiteres Byte gesendet werden soll
+ 102:./lib/twi.c   **** 		if (!twi_pending) {     // All bytes have been sent. Mark operation as complete.
+ 103:./lib/twi.c   **** 			STATS(twi_stats.rx_done++);
+ 104:./lib/twi.c   **** 			twi_state = TWI_DONE; 
+ 105:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_RXRDY;
+ 106:./lib/twi.c   **** 		}
+ 107:./lib/twi.c   **** 	}
+ 108:./lib/twi.c   **** 	else if (status & AT91C_TWI_TXRDY) {   //As soon as data byte is tranfered from TWI_THR
+ 109:./lib/twi.c   **** 	                                       //to internal shift register of if a NACK error
+ 110:./lib/twi.c   **** 										   //is detected, TXRDY is set at the same time as
+ 111:./lib/twi.c   **** 										   //TXCOMP and NACK. TXRDY ist also set, when 
+ 112:./lib/twi.c   **** 										   //MSEN is set
+ 113:./lib/twi.c   **** 		if (twi_pending) {      // Still Stuff to send
+ 114:./lib/twi.c   **** 			*AT91C_TWI_THR = *twi_ptr++;
+ 115:./lib/twi.c   **** 			twi_pending--;
+ 116:./lib/twi.c   **** 			STATS(twi_stats.bytes_tx++);
+ 117:./lib/twi.c   **** 		} else {                // everything has been sent, now wait for complete 
+ 118:./lib/twi.c   **** 			STATS(twi_stats.tx_done++);
+ 119:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_TXRDY;
+ 120:./lib/twi.c   **** 			*AT91C_TWI_IER = AT91C_TWI_TXCOMP;
+ 121:./lib/twi.c   **** 			twi_mask = AT91C_TWI_TXCOMP | 
+ 122:./lib/twi.c   **** 			           AT91C_TWI_NACK;
+ 123:./lib/twi.c   **** 		}
+ 124:./lib/twi.c   **** 	}
+ 125:./lib/twi.c   **** 	else if (status & AT91C_TWI_TXCOMP) {  //when both holding and shift registers are empty 
+ 126:./lib/twi.c   **** 	                                       //and STOP condition has been sent, or whenn
+ 127:./lib/twi.c   **** 										   //MSEN ist set (enable TWI)
+ 128:./lib/twi.c   **** 		twi_state = TWI_DONE;
+ 129:./lib/twi.c   **** 		*AT91C_TWI_IDR = AT91C_TWI_TXCOMP;
+ 130:./lib/twi.c   **** 	}
+ 131:./lib/twi.c   **** 
+ 132:./lib/twi.c   **** 	if(status & AT91C_TWI_NACK) {         //A data bytes has not been acknowledged by the
+ 130              		.loc 1 132 12
+ 131 001c 010C03E2 		and	r0, r3, #256
+  94:./lib/twi.c   **** 	                                   //since the last read
+ 132              		.loc 1 94 5
+ 133 0020 2500000A 		beq	.L10
+  96:./lib/twi.c   **** 		*twi_ptr++ = *AT91C_TWI_RHR;
+ 134              		.loc 1 96 3 is_stmt 1
+  97:./lib/twi.c   **** 		twi_pending--;
+ 135              		.loc 1 97 11 is_stmt 0
+ 136 0024 98E19FE5 		ldr	lr, .L31+4
+  97:./lib/twi.c   **** 		twi_pending--;
+ 137              		.loc 1 97 16
+ 138 0028 CF4F12E5 		ldr	r4, [r2, #-4047]
+  97:./lib/twi.c   **** 		twi_pending--;
+ 139              		.loc 1 97 11
+ 140 002c 00109EE5 		ldr	r1, [lr]
+  97:./lib/twi.c   **** 		twi_pending--;
+ 141              		.loc 1 97 14
+ 142 0030 0040C1E5 		strb	r4, [r1]
+  97:./lib/twi.c   **** 		twi_pending--;
+ 143              		.loc 1 97 11
+ 144 0034 011081E2 		add	r1, r1, #1
+ 145 0038 00108EE5 		str	r1, [lr]
+  98:./lib/twi.c   **** 		if (twi_pending == 1) { // Second last byte -- issue a stop on the next byte 
+ 146              		.loc 1 98 14
+ 147 003c 84E19FE5 		ldr	lr, .L31+8
+  96:./lib/twi.c   **** 		*twi_ptr++ = *AT91C_TWI_RHR;
+ 148              		.loc 1 96 3
+ 149 0040 84319FE5 		ldr	r3, .L31+12
+ 150              	.LVL1:
+  98:./lib/twi.c   **** 		if (twi_pending == 1) { // Second last byte -- issue a stop on the next byte 
+ 151              		.loc 1 98 14
+ 152 0044 00109EE5 		ldr	r1, [lr]
+  96:./lib/twi.c   **** 		*twi_ptr++ = *AT91C_TWI_RHR;
+ 153              		.loc 1 96 3
+ 154 0048 B6C0D3E1 		ldrh	ip, [r3, #6]
+  98:./lib/twi.c   **** 		if (twi_pending == 1) { // Second last byte -- issue a stop on the next byte 
+ 155              		.loc 1 98 14
+ 156 004c 011041E2 		sub	r1, r1, #1
+  96:./lib/twi.c   **** 		*twi_ptr++ = *AT91C_TWI_RHR;
+ 157              		.loc 1 96 3
+ 158 0050 01C08CE2 		add	ip, ip, #1
+  99:./lib/twi.c   **** 			*AT91C_TWI_CR = AT91C_TWI_STOP;  //Slave über NACK mitteilen, dass
+ 159              		.loc 1 99 6
+ 160 0054 010051E3 		cmp	r1, #1
+  96:./lib/twi.c   **** 		*twi_ptr++ = *AT91C_TWI_RHR;
+ 161              		.loc 1 96 3
+ 162 0058 B6C0C3E1 		strh	ip, [r3, #6]	@ movhi
+  97:./lib/twi.c   **** 		twi_pending--;
+ 163              		.loc 1 97 3 is_stmt 1
+  98:./lib/twi.c   **** 		if (twi_pending == 1) { // Second last byte -- issue a stop on the next byte 
+ 164              		.loc 1 98 3
+  98:./lib/twi.c   **** 		if (twi_pending == 1) { // Second last byte -- issue a stop on the next byte 
+ 165              		.loc 1 98 14 is_stmt 0
+ 166 005c 00108EE5 		str	r1, [lr]
+  99:./lib/twi.c   **** 			*AT91C_TWI_CR = AT91C_TWI_STOP;  //Slave über NACK mitteilen, dass
+ 167              		.loc 1 99 3 is_stmt 1
+  99:./lib/twi.c   **** 			*AT91C_TWI_CR = AT91C_TWI_STOP;  //Slave über NACK mitteilen, dass
+ 168              		.loc 1 99 6 is_stmt 0
+ 169 0060 3500000A 		beq	.L29
+ 102:./lib/twi.c   **** 			STATS(twi_stats.rx_done++);
+ 170              		.loc 1 102 3 is_stmt 1
+ 102:./lib/twi.c   **** 			STATS(twi_stats.rx_done++);
+ 171              		.loc 1 102 6 is_stmt 0
+ 172 0064 000051E3 		cmp	r1, #0
+ 173 0068 5100001A 		bne	.L30
+ 103:./lib/twi.c   **** 			twi_state = TWI_DONE; 
+ 174              		.loc 1 103 4 is_stmt 1
+ 104:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_RXRDY;
+ 175              		.loc 1 104 14 is_stmt 0
+ 176 006c 03E0A0E3 		mov	lr, #3
+ 105:./lib/twi.c   **** 		}
+ 177              		.loc 1 105 19
+ 178 0070 02C0A0E3 		mov	ip, #2
+ 103:./lib/twi.c   **** 			twi_state = TWI_DONE; 
+ 179              		.loc 1 103 4
+ 180 0074 B010D3E1 		ldrh	r1, [r3]
+ 181 0078 011081E2 		add	r1, r1, #1
+ 182 007c B010C3E1 		strh	r1, [r3]	@ movhi
+ 104:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_RXRDY;
+ 183              		.loc 1 104 4 is_stmt 1
+ 104:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_RXRDY;
+ 184              		.loc 1 104 14 is_stmt 0
+ 185 0080 48119FE5 		ldr	r1, .L31+16
+ 186              		.loc 1 132 4
+ 187 0084 000050E3 		cmp	r0, #0
+ 104:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_RXRDY;
+ 188              		.loc 1 104 14
+ 189 0088 00E0C1E5 		strb	lr, [r1]
+ 105:./lib/twi.c   **** 		}
+ 190              		.loc 1 105 4 is_stmt 1
+ 105:./lib/twi.c   **** 		}
+ 191              		.loc 1 105 19 is_stmt 0
+ 192 008c D7CF02E5 		str	ip, [r2, #-4055]
+ 193              		.loc 1 132 2 is_stmt 1
+ 194              		.loc 1 132 4 is_stmt 0
+ 195 0090 0700000A 		beq	.L9
+ 196              	.L12:
+ 133:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 134:./lib/twi.c   **** 										   //TXCOMP. Reset after read
+ 135:./lib/twi.c   **** //twi_nack: __attribute__((unused));
+ 136:./lib/twi.c   **** 		STATS(twi_stats.nack++);
+ 197              		.loc 1 136 3 is_stmt 1
+ 137:./lib/twi.c   **** 		*AT91C_TWI_IDR = ~0;
+ 198              		.loc 1 137 18 is_stmt 0
+ 199 0094 47CAE0E3 		mvn	ip, #290816
+ 200 0098 00E0E0E3 		mvn	lr, #0
+ 138:./lib/twi.c   **** 		twi_state = TWI_UNINITIALISED;
+ 201              		.loc 1 138 13
+ 202 009c 0000A0E3 		mov	r0, #0
+ 136:./lib/twi.c   **** 		*AT91C_TWI_IDR = ~0;
+ 203              		.loc 1 136 3
+ 204 00a0 BC20D3E1 		ldrh	r2, [r3, #12]
+ 205 00a4 012082E2 		add	r2, r2, #1
+ 206 00a8 BC20C3E1 		strh	r2, [r3, #12]	@ movhi
+ 137:./lib/twi.c   **** 		*AT91C_TWI_IDR = ~0;
+ 207              		.loc 1 137 3 is_stmt 1
+ 137:./lib/twi.c   **** 		*AT91C_TWI_IDR = ~0;
+ 208              		.loc 1 137 18 is_stmt 0
+ 209 00ac D7EF0CE5 		str	lr, [ip, #-4055]
+ 210              		.loc 1 138 3 is_stmt 1
+ 211              		.loc 1 138 13 is_stmt 0
+ 212 00b0 0000C1E5 		strb	r0, [r1]
+ 139:./lib/twi.c   **** 	}
+ 140:./lib/twi.c   **** 	if(!status) {
+ 213              		.loc 1 140 2 is_stmt 1
+ 214              	.L9:
+ 141:./lib/twi.c   **** 		STATS(twi_stats.leer++);
+ 142:./lib/twi.c   **** //twi_leer: __attribute__((unused));
+ 143:./lib/twi.c   **** 	}
+ 144:./lib/twi.c   **** }
+ 215              		.loc 1 144 1 is_stmt 0
+ 216 00b4 1040BDE8 		pop	{r4, lr}
+ 217              		.cfi_remember_state
+ 218              		.cfi_restore 14
+ 219              		.cfi_restore 4
+ 220              		.cfi_def_cfa_offset 0
+ 221 00b8 1EFF2FE1 		bx	lr
+ 222              	.LVL2:
+ 223              	.L10:
+ 224              		.cfi_restore_state
+ 108:./lib/twi.c   **** 	                                       //to internal shift register of if a NACK error
+ 225              		.loc 1 108 7 is_stmt 1
+ 108:./lib/twi.c   **** 	                                       //to internal shift register of if a NACK error
+ 226              		.loc 1 108 10 is_stmt 0
+ 227 00bc 040013E3 		tst	r3, #4
+ 228 00c0 1200000A 		beq	.L16
+ 113:./lib/twi.c   **** 			*AT91C_TWI_THR = *twi_ptr++;
+ 229              		.loc 1 113 3 is_stmt 1
+ 113:./lib/twi.c   **** 			*AT91C_TWI_THR = *twi_ptr++;
+ 230              		.loc 1 113 7 is_stmt 0
+ 231 00c4 FCC09FE5 		ldr	ip, .L31+8
+ 232 00c8 00309CE5 		ldr	r3, [ip]
+ 233              	.LVL3:
+ 113:./lib/twi.c   **** 			*AT91C_TWI_THR = *twi_ptr++;
+ 234              		.loc 1 113 6
+ 235 00cc 000053E3 		cmp	r3, #0
+ 236 00d0 1F00000A 		beq	.L17
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 237              		.loc 1 114 4 is_stmt 1
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 238              		.loc 1 132 4 is_stmt 0
+ 239 00d4 000050E3 		cmp	r0, #0
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 240              		.loc 1 114 29
+ 241 00d8 E4009FE5 		ldr	r0, .L31+4
+ 115:./lib/twi.c   **** 			STATS(twi_stats.bytes_tx++);
+ 242              		.loc 1 115 15
+ 243 00dc 011043E2 		sub	r1, r3, #1
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 244              		.loc 1 114 29
+ 245 00e0 003090E5 		ldr	r3, [r0]
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 246              		.loc 1 114 21
+ 247 00e4 00E0D3E5 		ldrb	lr, [r3]	@ zero_extendqisi2
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 248              		.loc 1 114 29
+ 249 00e8 014083E2 		add	r4, r3, #1
+ 116:./lib/twi.c   **** 		} else {                // everything has been sent, now wait for complete 
+ 250              		.loc 1 116 4
+ 251 00ec D8309FE5 		ldr	r3, .L31+12
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 252              		.loc 1 114 29
+ 253 00f0 004080E5 		str	r4, [r0]
+ 114:./lib/twi.c   **** 			twi_pending--;
+ 254              		.loc 1 114 19
+ 255 00f4 CBEF02E5 		str	lr, [r2, #-4043]
+ 115:./lib/twi.c   **** 			STATS(twi_stats.bytes_tx++);
+ 256              		.loc 1 115 4 is_stmt 1
+ 116:./lib/twi.c   **** 		} else {                // everything has been sent, now wait for complete 
+ 257              		.loc 1 116 4 is_stmt 0
+ 258 00f8 B420D3E1 		ldrh	r2, [r3, #4]
+ 259 00fc 012082E2 		add	r2, r2, #1
+ 115:./lib/twi.c   **** 			STATS(twi_stats.bytes_tx++);
+ 260              		.loc 1 115 15
+ 261 0100 00108CE5 		str	r1, [ip]
+ 116:./lib/twi.c   **** 		} else {                // everything has been sent, now wait for complete 
+ 262              		.loc 1 116 4 is_stmt 1
+ 263 0104 B420C3E1 		strh	r2, [r3, #4]	@ movhi
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 264              		.loc 1 132 2
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 265              		.loc 1 132 4 is_stmt 0
+ 266 0108 E9FFFF0A 		beq	.L9
+ 267 010c 0E0000EA 		b	.L27
+ 268              	.LVL4:
+ 269              	.L16:
+ 125:./lib/twi.c   **** 	                                       //and STOP condition has been sent, or whenn
+ 270              		.loc 1 125 7 is_stmt 1
+ 125:./lib/twi.c   **** 	                                       //and STOP condition has been sent, or whenn
+ 271              		.loc 1 125 10 is_stmt 0
+ 272 0110 010013E3 		tst	r3, #1
+ 273 0114 1B00000A 		beq	.L18
+ 128:./lib/twi.c   **** 		*AT91C_TWI_IDR = AT91C_TWI_TXCOMP;
+ 274              		.loc 1 128 3 is_stmt 1
+ 128:./lib/twi.c   **** 		*AT91C_TWI_IDR = AT91C_TWI_TXCOMP;
+ 275              		.loc 1 128 13 is_stmt 0
+ 276 0118 03C0A0E3 		mov	ip, #3
+ 129:./lib/twi.c   **** 	}
+ 277              		.loc 1 129 18
+ 278 011c 0130A0E3 		mov	r3, #1
+ 279              	.LVL5:
+ 128:./lib/twi.c   **** 		*AT91C_TWI_IDR = AT91C_TWI_TXCOMP;
+ 280              		.loc 1 128 13
+ 281 0120 A8109FE5 		ldr	r1, .L31+16
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 282              		.loc 1 132 4
+ 283 0124 000050E3 		cmp	r0, #0
+ 128:./lib/twi.c   **** 		*AT91C_TWI_IDR = AT91C_TWI_TXCOMP;
+ 284              		.loc 1 128 13
+ 285 0128 00C0C1E5 		strb	ip, [r1]
+ 129:./lib/twi.c   **** 	}
+ 286              		.loc 1 129 3 is_stmt 1
+ 129:./lib/twi.c   **** 	}
+ 287              		.loc 1 129 18 is_stmt 0
+ 288 012c D73F02E5 		str	r3, [r2, #-4055]
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 289              		.loc 1 132 2 is_stmt 1
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 290              		.loc 1 132 4 is_stmt 0
+ 291 0130 DFFFFF0A 		beq	.L9
+ 292 0134 90309FE5 		ldr	r3, .L31+12
+ 293 0138 D5FFFFEA 		b	.L12
+ 294              	.L29:
+ 100:./lib/twi.c   **** 		}                                    //kein weiteres Byte gesendet werden soll
+ 295              		.loc 1 100 4 is_stmt 1
+ 100:./lib/twi.c   **** 		}                                    //kein weiteres Byte gesendet werden soll
+ 296              		.loc 1 100 18 is_stmt 0
+ 297 013c 0210A0E3 		mov	r1, #2
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 298              		.loc 1 132 4
+ 299 0140 000050E3 		cmp	r0, #0
+ 100:./lib/twi.c   **** 		}                                    //kein weiteres Byte gesendet werden soll
+ 300              		.loc 1 100 18
+ 301 0144 FF1F02E5 		str	r1, [r2, #-4095]
+ 102:./lib/twi.c   **** 			STATS(twi_stats.rx_done++);
+ 302              		.loc 1 102 3 is_stmt 1
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 303              		.loc 1 132 2
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 304              		.loc 1 132 4 is_stmt 0
+ 305 0148 D9FFFF0A 		beq	.L9
+ 306              	.L27:
+ 307 014c 7C109FE5 		ldr	r1, .L31+16
+ 308 0150 CFFFFFEA 		b	.L12
+ 309              	.L17:
+ 118:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_TXRDY;
+ 310              		.loc 1 118 4 is_stmt 1
+ 120:./lib/twi.c   **** 			twi_mask = AT91C_TWI_TXCOMP | 
+ 311              		.loc 1 120 19 is_stmt 0
+ 312 0154 01C0A0E3 		mov	ip, #1
+ 119:./lib/twi.c   **** 			*AT91C_TWI_IER = AT91C_TWI_TXCOMP;
+ 313              		.loc 1 119 19
+ 314 0158 04E0A0E3 		mov	lr, #4
+ 118:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_TXRDY;
+ 315              		.loc 1 118 4
+ 316 015c 68309FE5 		ldr	r3, .L31+12
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 317              		.loc 1 132 4
+ 318 0160 000050E3 		cmp	r0, #0
+ 118:./lib/twi.c   **** 			*AT91C_TWI_IDR = AT91C_TWI_TXRDY;
+ 319              		.loc 1 118 4
+ 320 0164 B200D3E1 		ldrh	r0, [r3, #2]
+ 321 0168 0C0080E0 		add	r0, r0, ip
+ 322 016c B200C3E1 		strh	r0, [r3, #2]	@ movhi
+ 119:./lib/twi.c   **** 			*AT91C_TWI_IER = AT91C_TWI_TXCOMP;
+ 323              		.loc 1 119 4 is_stmt 1
+ 121:./lib/twi.c   **** 			           AT91C_TWI_NACK;
+ 324              		.loc 1 121 13 is_stmt 0
+ 325 0170 5C009FE5 		ldr	r0, .L31+20
+ 119:./lib/twi.c   **** 			*AT91C_TWI_IER = AT91C_TWI_TXCOMP;
+ 326              		.loc 1 119 19
+ 327 0174 D7EF02E5 		str	lr, [r2, #-4055]
+ 120:./lib/twi.c   **** 			twi_mask = AT91C_TWI_TXCOMP | 
+ 328              		.loc 1 120 4 is_stmt 1
+ 120:./lib/twi.c   **** 			twi_mask = AT91C_TWI_TXCOMP | 
+ 329              		.loc 1 120 19 is_stmt 0
+ 330 0178 DBCF02E5 		str	ip, [r2, #-4059]
+ 121:./lib/twi.c   **** 			           AT91C_TWI_NACK;
+ 331              		.loc 1 121 4 is_stmt 1
+ 121:./lib/twi.c   **** 			           AT91C_TWI_NACK;
+ 332              		.loc 1 121 13 is_stmt 0
+ 333 017c 000081E5 		str	r0, [r1]
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 334              		.loc 1 132 2 is_stmt 1
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 335              		.loc 1 132 4 is_stmt 0
+ 336 0180 CBFFFF0A 		beq	.L9
+ 337 0184 F0FFFFEA 		b	.L27
+ 338              	.LVL6:
+ 339              	.L18:
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 340              		.loc 1 132 2 is_stmt 1
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 341              		.loc 1 132 4 is_stmt 0
+ 342 0188 000050E3 		cmp	r0, #0
+ 343 018c 38309F15 		ldrne	r3, .L31+12
+ 344              	.LVL7:
+ 345 0190 38109F15 		ldrne	r1, .L31+16
+ 346 0194 BEFFFF1A 		bne	.L12
+ 140:./lib/twi.c   **** 		STATS(twi_stats.leer++);
+ 347              		.loc 1 140 2 is_stmt 1
+ 140:./lib/twi.c   **** 		STATS(twi_stats.leer++);
+ 348              		.loc 1 140 4 is_stmt 0
+ 349 0198 000053E3 		cmp	r3, #0
+ 141:./lib/twi.c   **** //twi_leer: __attribute__((unused));
+ 350              		.loc 1 141 3 is_stmt 1
+ 351 019c 28209F05 		ldreq	r2, .L31+12
+ 352 01a0 BE30D201 		ldrheq	r3, [r2, #14]
+ 353 01a4 01308302 		addeq	r3, r3, #1
+ 354 01a8 BE30C201 		strheq	r3, [r2, #14]	@ movhi
+ 355              		.loc 1 144 1 is_stmt 0
+ 356 01ac 1040BDE8 		pop	{r4, lr}
+ 357              		.cfi_remember_state
+ 358              		.cfi_restore 14
+ 359              		.cfi_restore 4
+ 360              		.cfi_def_cfa_offset 0
+ 361 01b0 1EFF2FE1 		bx	lr
+ 362              	.L30:
+ 363              		.cfi_restore_state
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 364              		.loc 1 132 2 is_stmt 1
+ 132:./lib/twi.c   **** 	                                       //slave component. Set at the same time as
+ 365              		.loc 1 132 4 is_stmt 0
+ 366 01b4 000050E3 		cmp	r0, #0
+ 367 01b8 BDFFFF0A 		beq	.L9
+ 368 01bc E2FFFFEA 		b	.L27
+ 369              	.L32:
+ 370              		.align	2
+ 371              	.L31:
+ 372 01c0 0C000000 		.word	twi_mask
+ 373 01c4 08000000 		.word	twi_ptr
+ 374 01c8 04000000 		.word	twi_pending
+ 375 01cc 10000000 		.word	twi_stats
+ 376 01d0 00000000 		.word	twi_state
+ 377 01d4 01010000 		.word	257
+ 378              		.cfi_endproc
+ 379              	.LFE3:
+ 381              		.section	.text.twi_init,"ax",%progbits
+ 382              		.align	2
+ 383              		.global	twi_init
+ 384              		.syntax unified
+ 385              		.arm
+ 387              	twi_init:
+ 388              	.LFB4:
+ 145:./lib/twi.c   **** #pragma GCC pop_options
+ 146:./lib/twi.c   **** 
+ 147:./lib/twi.c   **** 
+ 148:./lib/twi.c   **** /**
+ 149:./lib/twi.c   ****  * Initialize the device.
+ 150:./lib/twi.c   ****  */
+ 151:./lib/twi.c   **** int twi_init(void)
+ 152:./lib/twi.c   **** {
+ 389              		.loc 1 152 1 is_stmt 1
+ 390              		.cfi_startproc
+ 391              		@ Function supports interworking.
+ 392              		@ args = 0, pretend = 0, frame = 8
+ 393              		@ frame_needed = 1, uses_anonymous_args = 0
+ 394 0000 00482DE9 		push	{fp, lr}
+ 395              		.cfi_def_cfa_offset 8
+ 396              		.cfi_offset 11, -8
+ 397              		.cfi_offset 14, -4
+ 398 0004 04B08DE2 		add	fp, sp, #4
+ 399              		.cfi_def_cfa 11, 4
+ 400 0008 08D04DE2 		sub	sp, sp, #8
+ 153:./lib/twi.c   **** 	int i_state;
+ 154:./lib/twi.c   **** 
+ 155:./lib/twi.c   **** 	i_state = interrupts_get_and_disable();
+ 401              		.loc 1 155 12
+ 402 000c 94319FE5 		ldr	r3, .L39
+ 403 0010 0FE0A0E1 		mov	lr, pc
+ 404 0014 13FF2FE1 		bx	r3
+ 405              	.LVL8:
+ 406 0018 0C000BE5 		str	r0, [fp, #-12]
+ 156:./lib/twi.c   **** 
+ 157:./lib/twi.c   **** //  *AT91C_TWI_IDR = ~0;		/* Disable all interrupt sources */
+ 158:./lib/twi.c   **** 	aic_mask_off  (AT91C_ID_TWI);
+ 407              		.loc 1 158 2
+ 408 001c 0900A0E3 		mov	r0, #9
+ 409 0020 84319FE5 		ldr	r3, .L39+4
+ 410 0024 0FE0A0E1 		mov	lr, pc
+ 411 0028 13FF2FE1 		bx	r3
+ 412              	.LVL9:
+ 159:./lib/twi.c   **** //	aic_set_vector(AT91C_ID_TWI, AT91C_AIC_SRCTYPE_INT_HIGH_LEVEL | AIC_INT_LEVEL_NORMAL,twi_isr_C);
+ 160:./lib/twi.c   **** 	aic_set_vector(AT91C_ID_TWI, AT91C_AIC_SRCTYPE_POSITIVE_EDGE | AIC_INT_LEVEL_ABOVE_NORMAL,twi_isr_
+ 413              		.loc 1 160 2
+ 414 002c 7C219FE5 		ldr	r2, .L39+8
+ 415 0030 6510A0E3 		mov	r1, #101
+ 416 0034 0900A0E3 		mov	r0, #9
+ 417 0038 74319FE5 		ldr	r3, .L39+12
+ 418 003c 0FE0A0E1 		mov	lr, pc
+ 419 0040 13FF2FE1 		bx	r3
+ 420              	.LVL10:
+ 161:./lib/twi.c   **** 	aic_clear     (AT91C_ID_TWI);
+ 421              		.loc 1 161 2
+ 422 0044 0900A0E3 		mov	r0, #9
+ 423 0048 68319FE5 		ldr	r3, .L39+16
+ 424 004c 0FE0A0E1 		mov	lr, pc
+ 425 0050 13FF2FE1 		bx	r3
+ 426              	.LVL11:
+ 162:./lib/twi.c   **** 	aic_mask_on   (AT91C_ID_TWI);
+ 427              		.loc 1 162 2
+ 428 0054 0900A0E3 		mov	r0, #9
+ 429 0058 5C319FE5 		ldr	r3, .L39+20
+ 430 005c 0FE0A0E1 		mov	lr, pc
+ 431 0060 13FF2FE1 		bx	r3
+ 432              	.LVL12:
+ 163:./lib/twi.c   **** 
+ 164:./lib/twi.c   **** 	uint32_t clocks = 9;
+ 433              		.loc 1 164 11
+ 434 0064 0930A0E3 		mov	r3, #9
+ 435 0068 08300BE5 		str	r3, [fp, #-8]
+ 165:./lib/twi.c   **** 
+ 166:./lib/twi.c   **** 	*AT91C_TWI_IDR = ~0;
+ 436              		.loc 1 166 2
+ 437 006c 4C319FE5 		ldr	r3, .L39+24
+ 438              		.loc 1 166 17
+ 439 0070 0020E0E3 		mvn	r2, #0
+ 440 0074 002083E5 		str	r2, [r3]
+ 167:./lib/twi.c   **** 
+ 168:./lib/twi.c   **** 	*AT91C_PMC_PCER = (1 << AT91C_ID_PIOA) |	/* Need PIO too */
+ 441              		.loc 1 168 2
+ 442 0078 44319FE5 		ldr	r3, .L39+28
+ 443              		.loc 1 168 18
+ 444 007c 812FA0E3 		mov	r2, #516
+ 445 0080 002083E5 		str	r2, [r3]
+ 169:./lib/twi.c   **** 		              (1 << AT91C_ID_TWI);   	/* TWI clock domain */
+ 170:./lib/twi.c   **** 
+ 171:./lib/twi.c   **** 	/* Set up pin as an IO pin for clocking till clean */
+ 172:./lib/twi.c   **** 	*AT91C_PIOA_MDER = TWD | TWCK;  //OpenCollector
+ 446              		.loc 1 172 2
+ 447 0084 3C319FE5 		ldr	r3, .L39+32
+ 448              		.loc 1 172 19
+ 449 0088 1820A0E3 		mov	r2, #24
+ 450 008c 002083E5 		str	r2, [r3]
+ 173:./lib/twi.c   **** 	*AT91C_PIOA_PER  = TWD | TWCK;
+ 451              		.loc 1 173 2
+ 452 0090 34319FE5 		ldr	r3, .L39+36
+ 453              		.loc 1 173 19
+ 454 0094 1820A0E3 		mov	r2, #24
+ 455 0098 002083E5 		str	r2, [r3]
+ 174:./lib/twi.c   **** 	*AT91C_PIOA_ODR  = TWD;         //TWD  als Input konfigurieren
+ 456              		.loc 1 174 2
+ 457 009c 2C319FE5 		ldr	r3, .L39+40
+ 458              		.loc 1 174 19
+ 459 00a0 0820A0E3 		mov	r2, #8
+ 460 00a4 002083E5 		str	r2, [r3]
+ 175:./lib/twi.c   **** 	*AT91C_PIOA_OER  = TWCK;        //TWCK als Output konfigurieren
+ 461              		.loc 1 175 2
+ 462 00a8 24319FE5 		ldr	r3, .L39+44
+ 463              		.loc 1 175 19
+ 464 00ac 1020A0E3 		mov	r2, #16
+ 465 00b0 002083E5 		str	r2, [r3]
+ 176:./lib/twi.c   **** 
+ 177:./lib/twi.c   **** 	//9 Clockimpulse senden, so dass ggf. noch anstehender Schreib-/Leseprozess beendet wird
+ 178:./lib/twi.c   **** 	while (clocks > 0 && !(*AT91C_PIOA_PDSR & TWD)) {
+ 466              		.loc 1 178 8
+ 467 00b4 100000EA 		b	.L34
+ 468              	.L36:
+ 179:./lib/twi.c   **** 		*AT91C_PIOA_CODR = TWCK;   //TWCK=0
+ 469              		.loc 1 179 3
+ 470 00b8 18319FE5 		ldr	r3, .L39+48
+ 471              		.loc 1 179 20
+ 472 00bc 1020A0E3 		mov	r2, #16
+ 473 00c0 002083E5 		str	r2, [r3]
+ 180:./lib/twi.c   **** 		systick_wait_ns(1500);     
+ 474              		.loc 1 180 3
+ 475 00c4 10019FE5 		ldr	r0, .L39+52
+ 476 00c8 10319FE5 		ldr	r3, .L39+56
+ 477 00cc 0FE0A0E1 		mov	lr, pc
+ 478 00d0 13FF2FE1 		bx	r3
+ 479              	.LVL13:
+ 181:./lib/twi.c   **** 		*AT91C_PIOA_SODR = TWCK;   //TWCK=1
+ 480              		.loc 1 181 3
+ 481 00d4 08319FE5 		ldr	r3, .L39+60
+ 482              		.loc 1 181 20
+ 483 00d8 1020A0E3 		mov	r2, #16
+ 484 00dc 002083E5 		str	r2, [r3]
+ 182:./lib/twi.c   **** 		systick_wait_ns(1500);
+ 485              		.loc 1 182 3
+ 486 00e0 F4009FE5 		ldr	r0, .L39+52
+ 487 00e4 F4309FE5 		ldr	r3, .L39+56
+ 488 00e8 0FE0A0E1 		mov	lr, pc
+ 489 00ec 13FF2FE1 		bx	r3
+ 490              	.LVL14:
+ 183:./lib/twi.c   **** 		clocks--;
+ 491              		.loc 1 183 9
+ 492 00f0 08301BE5 		ldr	r3, [fp, #-8]
+ 493 00f4 013043E2 		sub	r3, r3, #1
+ 494 00f8 08300BE5 		str	r3, [fp, #-8]
+ 495              	.L34:
+ 178:./lib/twi.c   **** 		*AT91C_PIOA_CODR = TWCK;   //TWCK=0
+ 496              		.loc 1 178 20
+ 497 00fc 08301BE5 		ldr	r3, [fp, #-8]
+ 498 0100 000053E3 		cmp	r3, #0
+ 499 0104 0400000A 		beq	.L35
+ 178:./lib/twi.c   **** 		*AT91C_PIOA_CODR = TWCK;   //TWCK=0
+ 500              		.loc 1 178 25 discriminator 1
+ 501 0108 D8309FE5 		ldr	r3, .L39+64
+ 502 010c 003093E5 		ldr	r3, [r3]
+ 178:./lib/twi.c   **** 		*AT91C_PIOA_CODR = TWCK;   //TWCK=0
+ 503              		.loc 1 178 42 discriminator 1
+ 504 0110 083003E2 		and	r3, r3, #8
+ 178:./lib/twi.c   **** 		*AT91C_PIOA_CODR = TWCK;   //TWCK=0
+ 505              		.loc 1 178 20 discriminator 1
+ 506 0114 000053E3 		cmp	r3, #0
+ 507 0118 E6FFFF0A 		beq	.L36
+ 508              	.L35:
+ 184:./lib/twi.c   **** 	}
+ 185:./lib/twi.c   **** 
+ 186:./lib/twi.c   **** 	/* IO-Pins auf Peripherie umsetzen */
+ 187:./lib/twi.c   **** 	*AT91C_PIOA_ASR = TWD | TWCK;   //Peripherie A setzen
+ 509              		.loc 1 187 2
+ 510 011c C8309FE5 		ldr	r3, .L39+68
+ 511              		.loc 1 187 18
+ 512 0120 1820A0E3 		mov	r2, #24
+ 513 0124 002083E5 		str	r2, [r3]
+ 188:./lib/twi.c   **** 	*AT91C_PIOA_PDR = TWD | TWCK;   //Peripherie setzen
+ 514              		.loc 1 188 2
+ 515 0128 C0309FE5 		ldr	r3, .L39+72
+ 516              		.loc 1 188 18
+ 517 012c 1820A0E3 		mov	r2, #24
+ 518 0130 002083E5 		str	r2, [r3]
+ 189:./lib/twi.c   **** 
+ 190:./lib/twi.c   **** 	/* TWI Initialisieren */
+ 191:./lib/twi.c   **** 	*AT91C_TWI_CR = AT91C_TWI_SWRST |  /* TWI Reset */
+ 519              		.loc 1 191 2
+ 520 0134 B8309FE5 		ldr	r3, .L39+76
+ 521              		.loc 1 191 16
+ 522 0138 8820A0E3 		mov	r2, #136
+ 523 013c 002083E5 		str	r2, [r3]
+ 192:./lib/twi.c   **** 	                AT91C_TWI_MSDIS;   /* Master Transfer disable */
+ 193:./lib/twi.c   **** 
+ 194:./lib/twi.c   **** 	*AT91C_TWI_CWGR =  (0     << 16) |  //CKDIV (Clock Divider)
+ 524              		.loc 1 194 2
+ 525 0140 B0309FE5 		ldr	r3, .L39+80
+ 526              		.loc 1 194 18
+ 527 0144 B0209FE5 		ldr	r2, .L39+84
+ 528 0148 002083E5 		str	r2, [r3]
+ 195:./lib/twi.c   **** 	                   (CLDIV <<  8) |  //CHDIV (SCL Low Period)
+ 196:./lib/twi.c   **** 	                   (CLDIV <<  0);   //CLDIV (SCL High Period)
+ 197:./lib/twi.c   **** 						
+ 198:./lib/twi.c   **** 	*AT91C_TWI_CR  = AT91C_TWI_MSEN;	/* Master Transfer enable */
+ 529              		.loc 1 198 2
+ 530 014c A0309FE5 		ldr	r3, .L39+76
+ 531              		.loc 1 198 17
+ 532 0150 0420A0E3 		mov	r2, #4
+ 533 0154 002083E5 		str	r2, [r3]
+ 199:./lib/twi.c   **** 	*AT91C_TWI_IER = AT91C_TWI_NACK;    /* Enable NACK ISR */
+ 534              		.loc 1 199 2
+ 535 0158 A0309FE5 		ldr	r3, .L39+88
+ 536              		.loc 1 199 17
+ 537 015c 012CA0E3 		mov	r2, #256
+ 538 0160 002083E5 		str	r2, [r3]
+ 200:./lib/twi.c   **** 	twi_mask = 0;
+ 539              		.loc 1 200 11
+ 540 0164 98309FE5 		ldr	r3, .L39+92
+ 541 0168 0020A0E3 		mov	r2, #0
+ 542 016c 002083E5 		str	r2, [r3]
+ 201:./lib/twi.c   **** 
+ 202:./lib/twi.c   **** 	twi_state = TWI_IDLE;
+ 543              		.loc 1 202 12
+ 544 0170 90309FE5 		ldr	r3, .L39+96
+ 545 0174 0220A0E3 		mov	r2, #2
+ 546 0178 0020C3E5 		strb	r2, [r3]
+ 203:./lib/twi.c   **** 
+ 204:./lib/twi.c   **** 	if(i_state)
+ 547              		.loc 1 204 4
+ 548 017c 0C301BE5 		ldr	r3, [fp, #-12]
+ 549 0180 000053E3 		cmp	r3, #0
+ 550 0184 0200000A 		beq	.L37
+ 205:./lib/twi.c   **** 		interrupts_enable();
+ 551              		.loc 1 205 3
+ 552 0188 7C309FE5 		ldr	r3, .L39+100
+ 553 018c 0FE0A0E1 		mov	lr, pc
+ 554 0190 13FF2FE1 		bx	r3
+ 555              	.LVL15:
+ 556              	.L37:
+ 206:./lib/twi.c   **** 
+ 207:./lib/twi.c   ****   return 1;
+ 557              		.loc 1 207 10
+ 558 0194 0130A0E3 		mov	r3, #1
+ 208:./lib/twi.c   **** }
+ 559              		.loc 1 208 1
+ 560 0198 0300A0E1 		mov	r0, r3
+ 561 019c 04D04BE2 		sub	sp, fp, #4
+ 562              		.cfi_def_cfa 13, 8
+ 563              		@ sp needed
+ 564 01a0 0048BDE8 		pop	{fp, lr}
+ 565              		.cfi_restore 14
+ 566              		.cfi_restore 11
+ 567              		.cfi_def_cfa_offset 0
+ 568 01a4 1EFF2FE1 		bx	lr
+ 569              	.L40:
+ 570              		.align	2
+ 571              	.L39:
+ 572 01a8 00000000 		.word	interrupts_get_and_disable
+ 573 01ac 00000000 		.word	aic_mask_off
+ 574 01b0 00000000 		.word	twi_isr_C
+ 575 01b4 00000000 		.word	aic_set_vector
+ 576 01b8 00000000 		.word	aic_clear
+ 577 01bc 00000000 		.word	aic_mask_on
+ 578 01c0 2880FBFF 		.word	-294872
+ 579 01c4 10FCFFFF 		.word	-1008
+ 580 01c8 50F4FFFF 		.word	-2992
+ 581 01cc 00F4FFFF 		.word	-3072
+ 582 01d0 14F4FFFF 		.word	-3052
+ 583 01d4 10F4FFFF 		.word	-3056
+ 584 01d8 34F4FFFF 		.word	-3020
+ 585 01dc DC050000 		.word	1500
+ 586 01e0 00000000 		.word	systick_wait_ns
+ 587 01e4 30F4FFFF 		.word	-3024
+ 588 01e8 3CF4FFFF 		.word	-3012
+ 589 01ec 70F4FFFF 		.word	-2960
+ 590 01f0 04F4FFFF 		.word	-3068
+ 591 01f4 0080FBFF 		.word	-294912
+ 592 01f8 1080FBFF 		.word	-294896
+ 593 01fc 38380000 		.word	14392
+ 594 0200 2480FBFF 		.word	-294876
+ 595 0204 0C000000 		.word	twi_mask
+ 596 0208 00000000 		.word	twi_state
+ 597 020c 00000000 		.word	interrupts_enable
+ 598              		.cfi_endproc
+ 599              	.LFE4:
+ 601              		.section	.text.twi_start_read,"ax",%progbits
+ 602              		.align	2
+ 603              		.global	twi_start_read
+ 604              		.syntax unified
+ 605              		.arm
+ 607              	twi_start_read:
+ 608              	.LFB5:
+ 209:./lib/twi.c   **** 
+ 210:./lib/twi.c   **** 
+ 211:./lib/twi.c   **** /**
+ 212:./lib/twi.c   ****  * Start a read operation to the device. The operation will complete
+ 213:./lib/twi.c   ****  * asynchronously and can be monitored using twi_status. Note that we
+ 214:./lib/twi.c   ****  * do not support single byte reads, or internal register addresses.
+ 215:./lib/twi.c   ****  */
+ 216:./lib/twi.c   **** void twi_start_read(uint32_t dev_addr, uint8_t *data, uint32_t nBytes)
+ 217:./lib/twi.c   **** {
+ 609              		.loc 1 217 1
+ 610              		.cfi_startproc
+ 611              		@ Function supports interworking.
+ 612              		@ args = 0, pretend = 0, frame = 16
+ 613              		@ frame_needed = 1, uses_anonymous_args = 0
+ 614              		@ link register save eliminated.
+ 615 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 616              		.cfi_def_cfa_offset 4
+ 617              		.cfi_offset 11, -4
+ 618 0004 00B08DE2 		add	fp, sp, #0
+ 619              		.cfi_def_cfa_register 11
+ 620 0008 14D04DE2 		sub	sp, sp, #20
+ 621 000c 08000BE5 		str	r0, [fp, #-8]
+ 622 0010 0C100BE5 		str	r1, [fp, #-12]
+ 623 0014 10200BE5 		str	r2, [fp, #-16]
+ 218:./lib/twi.c   **** 	if (twi_state < TWI_RX_BUSY) {
+ 624              		.loc 1 218 16
+ 625 0018 98309FE5 		ldr	r3, .L46
+ 626 001c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 627              		.loc 1 218 5
+ 628 0020 030053E3 		cmp	r3, #3
+ 629 0024 1F00008A 		bhi	.L45
+ 219:./lib/twi.c   **** 		twi_state = TWI_RX_BUSY;
+ 630              		.loc 1 219 13
+ 631 0028 88309FE5 		ldr	r3, .L46
+ 632 002c 0420A0E3 		mov	r2, #4
+ 633 0030 0020C3E5 		strb	r2, [r3]
+ 220:./lib/twi.c   **** 		twi_ptr = data;
+ 634              		.loc 1 220 11
+ 635 0034 80209FE5 		ldr	r2, .L46+4
+ 636 0038 0C301BE5 		ldr	r3, [fp, #-12]
+ 637 003c 003082E5 		str	r3, [r2]
+ 221:./lib/twi.c   **** 		twi_pending = nBytes;
+ 638              		.loc 1 221 15
+ 639 0040 78209FE5 		ldr	r2, .L46+8
+ 640 0044 10301BE5 		ldr	r3, [fp, #-16]
+ 641 0048 003082E5 		str	r3, [r2]
+ 222:./lib/twi.c   **** 		
+ 223:./lib/twi.c   **** 		*AT91C_TWI_MMR = AT91C_TWI_IADRSZ_NO |  //No internal device address
+ 224:./lib/twi.c   **** 		                 AT91C_TWI_MREAD     |  //Master Read Direction
+ 225:./lib/twi.c   **** 						 ((dev_addr & 0x7f) << 16);
+ 642              		.loc 1 225 27
+ 643 004c 08301BE5 		ldr	r3, [fp, #-8]
+ 644 0050 0338A0E1 		lsl	r3, r3, #16
+ 645 0054 7F3803E2 		and	r3, r3, #8323072
+ 223:./lib/twi.c   **** 		                 AT91C_TWI_MREAD     |  //Master Read Direction
+ 646              		.loc 1 223 3
+ 647 0058 64209FE5 		ldr	r2, .L46+12
+ 224:./lib/twi.c   **** 						 ((dev_addr & 0x7f) << 16);
+ 648              		.loc 1 224 40
+ 649 005c 013A83E3 		orr	r3, r3, #4096
+ 223:./lib/twi.c   **** 		                 AT91C_TWI_MREAD     |  //Master Read Direction
+ 650              		.loc 1 223 18
+ 651 0060 003082E5 		str	r3, [r2]
+ 226:./lib/twi.c   **** 		twi_mask = AT91C_TWI_RXRDY |            //Receive holding register ReaDY
+ 652              		.loc 1 226 12
+ 653 0064 5C309FE5 		ldr	r3, .L46+16
+ 654 0068 5C209FE5 		ldr	r2, .L46+20
+ 655 006c 002083E5 		str	r2, [r3]
+ 227:./lib/twi.c   **** 		           AT91C_TWI_NACK;              //Not Acknowledged
+ 228:./lib/twi.c   **** 		//In a single data byter master read, the START und STOP must both be set
+ 229:./lib/twi.c   **** 		if(twi_pending==1)
+ 656              		.loc 1 229 17
+ 657 0070 48309FE5 		ldr	r3, .L46+8
+ 658 0074 003093E5 		ldr	r3, [r3]
+ 659              		.loc 1 229 5
+ 660 0078 010053E3 		cmp	r3, #1
+ 661 007c 0300001A 		bne	.L43
+ 230:./lib/twi.c   **** 			*AT91C_TWI_CR = AT91C_TWI_START | AT91C_TWI_STOP;
+ 662              		.loc 1 230 4
+ 663 0080 48309FE5 		ldr	r3, .L46+24
+ 664              		.loc 1 230 18
+ 665 0084 0320A0E3 		mov	r2, #3
+ 666 0088 002083E5 		str	r2, [r3]
+ 667 008c 020000EA 		b	.L44
+ 668              	.L43:
+ 231:./lib/twi.c   **** 		else
+ 232:./lib/twi.c   **** 			*AT91C_TWI_CR = AT91C_TWI_START;       //Start Read Sequence
+ 669              		.loc 1 232 4
+ 670 0090 38309FE5 		ldr	r3, .L46+24
+ 671              		.loc 1 232 18
+ 672 0094 0120A0E3 		mov	r2, #1
+ 673 0098 002083E5 		str	r2, [r3]
+ 674              	.L44:
+ 233:./lib/twi.c   **** 		*AT91C_TWI_IER = AT91C_TWI_RXRDY;
+ 675              		.loc 1 233 3
+ 676 009c 30309FE5 		ldr	r3, .L46+28
+ 677              		.loc 1 233 18
+ 678 00a0 0220A0E3 		mov	r2, #2
+ 679 00a4 002083E5 		str	r2, [r3]
+ 680              	.L45:
+ 234:./lib/twi.c   **** 	}
+ 235:./lib/twi.c   **** }
+ 681              		.loc 1 235 1
+ 682 00a8 0000A0E1 		nop
+ 683 00ac 00D08BE2 		add	sp, fp, #0
+ 684              		.cfi_def_cfa_register 13
+ 685              		@ sp needed
+ 686 00b0 04B09DE4 		ldr	fp, [sp], #4
+ 687              		.cfi_restore 11
+ 688              		.cfi_def_cfa_offset 0
+ 689 00b4 1EFF2FE1 		bx	lr
+ 690              	.L47:
+ 691              		.align	2
+ 692              	.L46:
+ 693 00b8 00000000 		.word	twi_state
+ 694 00bc 08000000 		.word	twi_ptr
+ 695 00c0 04000000 		.word	twi_pending
+ 696 00c4 0480FBFF 		.word	-294908
+ 697 00c8 0C000000 		.word	twi_mask
+ 698 00cc 02010000 		.word	258
+ 699 00d0 0080FBFF 		.word	-294912
+ 700 00d4 2480FBFF 		.word	-294876
+ 701              		.cfi_endproc
+ 702              	.LFE5:
+ 704              		.section	.text.twi_start_write,"ax",%progbits
+ 705              		.align	2
+ 706              		.global	twi_start_write
+ 707              		.syntax unified
+ 708              		.arm
+ 710              	twi_start_write:
+ 711              	.LFB6:
+ 236:./lib/twi.c   **** 
+ 237:./lib/twi.c   **** /**
+ 238:./lib/twi.c   ****  * Start a write operation to the device. The operation will complete
+ 239:./lib/twi.c   ****  * asynchronously and can be monitored using twi_status. Note that we
+ 240:./lib/twi.c   ****  * do not support single byte reads, or internal register addresses.
+ 241:./lib/twi.c   ****  */
+ 242:./lib/twi.c   **** void twi_start_write(uint32_t dev_addr, const uint8_t *data, uint32_t nBytes)
+ 243:./lib/twi.c   **** {
+ 712              		.loc 1 243 1
+ 713              		.cfi_startproc
+ 714              		@ Function supports interworking.
+ 715              		@ args = 0, pretend = 0, frame = 16
+ 716              		@ frame_needed = 1, uses_anonymous_args = 0
+ 717              		@ link register save eliminated.
+ 718 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 719              		.cfi_def_cfa_offset 4
+ 720              		.cfi_offset 11, -4
+ 721 0004 00B08DE2 		add	fp, sp, #0
+ 722              		.cfi_def_cfa_register 11
+ 723 0008 14D04DE2 		sub	sp, sp, #20
+ 724 000c 08000BE5 		str	r0, [fp, #-8]
+ 725 0010 0C100BE5 		str	r1, [fp, #-12]
+ 726 0014 10200BE5 		str	r2, [fp, #-16]
+ 244:./lib/twi.c   **** 	if (twi_state < TWI_RX_BUSY) {
+ 727              		.loc 1 244 16
+ 728 0018 B8309FE5 		ldr	r3, .L51
+ 729 001c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 730              		.loc 1 244 5
+ 731 0020 030053E3 		cmp	r3, #3
+ 732 0024 2700008A 		bhi	.L50
+ 245:./lib/twi.c   **** 		twi_state = TWI_TX_BUSY;
+ 733              		.loc 1 245 13
+ 734 0028 A8309FE5 		ldr	r3, .L51
+ 735 002c 0520A0E3 		mov	r2, #5
+ 736 0030 0020C3E5 		strb	r2, [r3]
+ 246:./lib/twi.c   **** 		twi_ptr = (uint8_t *)data;
+ 737              		.loc 1 246 11
+ 738 0034 A0209FE5 		ldr	r2, .L51+4
+ 739 0038 0C301BE5 		ldr	r3, [fp, #-12]
+ 740 003c 003082E5 		str	r3, [r2]
+ 247:./lib/twi.c   **** 		twi_pending = nBytes;
+ 741              		.loc 1 247 15
+ 742 0040 98209FE5 		ldr	r2, .L51+8
+ 743 0044 10301BE5 		ldr	r3, [fp, #-16]
+ 744 0048 003082E5 		str	r3, [r2]
+ 248:./lib/twi.c   **** 
+ 249:./lib/twi.c   **** 		*AT91C_TWI_MMR = AT91C_TWI_IADRSZ_NO |   //No internal device address
+ 745              		.loc 1 249 40
+ 746 004c 08301BE5 		ldr	r3, [fp, #-8]
+ 747 0050 0338A0E1 		lsl	r3, r3, #16
+ 748              		.loc 1 249 3
+ 749 0054 88209FE5 		ldr	r2, .L51+12
+ 750              		.loc 1 249 40
+ 751 0058 7F3803E2 		and	r3, r3, #8323072
+ 752              		.loc 1 249 18
+ 753 005c 003082E5 		str	r3, [r2]
+ 250:./lib/twi.c   **** 		                 ((dev_addr & 0x7f) << 16);
+ 251:./lib/twi.c   **** 		*AT91C_TWI_THR = *twi_ptr++;             //Start Write Sequence
+ 754              		.loc 1 251 28
+ 755 0060 74309FE5 		ldr	r3, .L51+4
+ 756 0064 003093E5 		ldr	r3, [r3]
+ 757 0068 012083E2 		add	r2, r3, #1
+ 758 006c 68109FE5 		ldr	r1, .L51+4
+ 759 0070 002081E5 		str	r2, [r1]
+ 760              		.loc 1 251 20
+ 761 0074 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 762              		.loc 1 251 3
+ 763 0078 68309FE5 		ldr	r3, .L51+16
+ 764              		.loc 1 251 18
+ 765 007c 002083E5 		str	r2, [r3]
+ 252:./lib/twi.c   **** 		twi_pending--;
+ 766              		.loc 1 252 14
+ 767 0080 58309FE5 		ldr	r3, .L51+8
+ 768 0084 003093E5 		ldr	r3, [r3]
+ 769 0088 013043E2 		sub	r3, r3, #1
+ 770 008c 4C209FE5 		ldr	r2, .L51+8
+ 771 0090 003082E5 		str	r3, [r2]
+ 253:./lib/twi.c   **** 		STATS(twi_stats.bytes_tx++);
+ 772              		.loc 1 253 3
+ 773 0094 50309FE5 		ldr	r3, .L51+20
+ 774 0098 B430D3E1 		ldrh	r3, [r3, #4]
+ 775 009c 013083E2 		add	r3, r3, #1
+ 776 00a0 0338A0E1 		lsl	r3, r3, #16
+ 777 00a4 2338A0E1 		lsr	r3, r3, #16
+ 778 00a8 3C209FE5 		ldr	r2, .L51+20
+ 779 00ac B430C2E1 		strh	r3, [r2, #4]	@ movhi
+ 254:./lib/twi.c   **** 		
+ 255:./lib/twi.c   **** 			
+ 256:./lib/twi.c   **** 		twi_mask = AT91C_TWI_TXRDY |             //Transmit holding register ReaDY
+ 780              		.loc 1 256 12
+ 781 00b0 38309FE5 		ldr	r3, .L51+24
+ 782 00b4 412FA0E3 		mov	r2, #260
+ 783 00b8 002083E5 		str	r2, [r3]
+ 257:./lib/twi.c   **** 		           AT91C_TWI_NACK;               //Not Acknowledged
+ 258:./lib/twi.c   **** 		*AT91C_TWI_IER = AT91C_TWI_TXRDY;
+ 784              		.loc 1 258 3
+ 785 00bc 30309FE5 		ldr	r3, .L51+28
+ 786              		.loc 1 258 18
+ 787 00c0 0420A0E3 		mov	r2, #4
+ 788 00c4 002083E5 		str	r2, [r3]
+ 789              	.L50:
+ 259:./lib/twi.c   **** 	}
+ 260:./lib/twi.c   **** }
+ 790              		.loc 1 260 1
+ 791 00c8 0000A0E1 		nop
+ 792 00cc 00D08BE2 		add	sp, fp, #0
+ 793              		.cfi_def_cfa_register 13
+ 794              		@ sp needed
+ 795 00d0 04B09DE4 		ldr	fp, [sp], #4
+ 796              		.cfi_restore 11
+ 797              		.cfi_def_cfa_offset 0
+ 798 00d4 1EFF2FE1 		bx	lr
+ 799              	.L52:
+ 800              		.align	2
+ 801              	.L51:
+ 802 00d8 00000000 		.word	twi_state
+ 803 00dc 08000000 		.word	twi_ptr
+ 804 00e0 04000000 		.word	twi_pending
+ 805 00e4 0480FBFF 		.word	-294908
+ 806 00e8 3480FBFF 		.word	-294860
+ 807 00ec 10000000 		.word	twi_stats
+ 808 00f0 0C000000 		.word	twi_mask
+ 809 00f4 2480FBFF 		.word	-294876
+ 810              		.cfi_endproc
+ 811              	.LFE6:
+ 813              		.text
+ 814              	.Letext0:
+ 815              		.file 2 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 816              		.file 3 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 817              		.file 4 "./lib/../AT91SAM7S64.h"
+ 818              		.file 5 "./lib/aic.h"
+ 819              		.file 6 "./lib/systick.h"
+ 820              		.file 7 "./lib/isr.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 twi.c
+     /tmp/ccici6Iv.s:19     .bss:00000000 twi_state
+     /tmp/ccici6Iv.s:20     .bss:00000000 $d
+     /tmp/ccici6Iv.s:23     .bss:00000004 twi_pending
+     /tmp/ccici6Iv.s:27     .bss:00000008 twi_ptr
+     /tmp/ccici6Iv.s:31     .bss:0000000c twi_mask
+     /tmp/ccici6Iv.s:35     .bss:00000010 twi_stats
+     /tmp/ccici6Iv.s:39     .text.twi_status:00000000 $a
+     /tmp/ccici6Iv.s:44     .text.twi_status:00000000 twi_status
+     /tmp/ccici6Iv.s:94     .text.twi_status:0000004c $d
+     /tmp/ccici6Iv.s:99     .text.fastcode:00000000 $a
+     /tmp/ccici6Iv.s:104    .text.fastcode:00000000 twi_isr_C
+     /tmp/ccici6Iv.s:372    .text.fastcode:000001c0 $d
+     /tmp/ccici6Iv.s:382    .text.twi_init:00000000 $a
+     /tmp/ccici6Iv.s:387    .text.twi_init:00000000 twi_init
+     /tmp/ccici6Iv.s:572    .text.twi_init:000001a8 $d
+     /tmp/ccici6Iv.s:602    .text.twi_start_read:00000000 $a
+     /tmp/ccici6Iv.s:607    .text.twi_start_read:00000000 twi_start_read
+     /tmp/ccici6Iv.s:693    .text.twi_start_read:000000b8 $d
+     /tmp/ccici6Iv.s:705    .text.twi_start_write:00000000 $a
+     /tmp/ccici6Iv.s:710    .text.twi_start_write:00000000 twi_start_write
+     /tmp/ccici6Iv.s:802    .text.twi_start_write:000000d8 $d
+
+UNDEFINED SYMBOLS
+interrupts_get_and_disable
+aic_mask_off
+aic_set_vector
+aic_clear
+aic_mask_on
+systick_wait_ns
+interrupts_enable

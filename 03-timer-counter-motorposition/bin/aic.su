@@ -1,0 +1,14 @@
+./lib/aic.c:26:32:Q_onAssert	24	static
+./lib/aic.c:44:38:default_isr	8	static
+./lib/aic.c:54:38:default_fiq	8	static
+./lib/aic.c:65:43:spurious_isr	4	static
+./lib/aic.c:77:6:aic_init	16	static
+./lib/aic.c:134:6:aic_set_fiq	16	static
+./lib/aic.c:140:6:aic_set_vector	32	static
+./lib/aic.c:154:6:aic_mask_on	24	static
+./lib/aic.c:167:6:aic_mask_off	24	static
+./lib/aic.c:180:6:aic_clear	24	static
+./lib/aic.c:193:6:aic_sys_register_commxx	16	static
+./lib/aic.c:198:6:aic_sys_register_pit	24	static
+./lib/aic.c:216:6:aic_sys_isr_entry	16	static
+./lib/aic.c:249:6:aic_sys_init	24	static

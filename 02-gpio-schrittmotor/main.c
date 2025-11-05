@@ -153,8 +153,6 @@ struct {
   uint16_t reload_table[5];
   uint16_t current_reload;
   uint16_t counter;
-  double micro_sign[STEPS_MICRO];
-  uint32_t micro_duty[STEPS_MICRO];
   int32_t micro[32];
   int8_t dir;            
 

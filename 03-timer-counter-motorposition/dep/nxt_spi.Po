@@ -1,0 +1,20 @@
+bin/nxt_spi.o: lib/nxt_spi.c lib/nxt_spi.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.1/include/stdint.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/stdint.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machine/_default_types.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/features.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/_newlib_version.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_intsup.h \
+ /usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_stdint.h \
+ lib/../AT91SAM7S64.h lib/aic.h lib/isr.h
+lib/nxt_spi.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.1/include/stdint.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/stdint.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machine/_default_types.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/features.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/_newlib_version.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_intsup.h:
+/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_stdint.h:
+lib/../AT91SAM7S64.h:
+lib/aic.h:
+lib/isr.h:

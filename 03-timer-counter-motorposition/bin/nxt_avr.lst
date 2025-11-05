@@ -1,0 +1,1748 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"nxt_avr.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "./lib/nxt_avr.c"
+  18              		.global	avr_brainwash_string
+  19              		.section	.rodata
+  20              		.align	2
+  23              	avr_brainwash_string:
+  24 0000 CC4C6574 		.ascii	"\314Let's samba nxt arm in arm, (c)LEGO System A/S\000"
+  24      27732073 
+  24      616D6261 
+  24      206E7874 
+  24      2061726D 
+  25              		.global	avr
+  26              		.bss
+  27              		.align	2
+  30              	avr:
+  31 0000 00000000 		.space	44
+  31      00000000 
+  31      00000000 
+  31      00000000 
+  31      00000000 
+  32              		.section	.text.avr_1kHz_update,"ax",%progbits
+  33              		.align	2
+  34              		.syntax unified
+  35              		.arm
+  37              	avr_1kHz_update:
+  38              	.LFB5:
+   1:./lib/nxt_avr.c **** #include <stdio.h>
+   2:./lib/nxt_avr.c **** #include <string.h>
+   3:./lib/nxt_avr.c **** 
+   4:./lib/nxt_avr.c **** #include "nxt_avr.h"
+   5:./lib/nxt_avr.c **** #include "twi.h"
+   6:./lib/nxt_avr.c **** #include "aic.h"			//fuer aic_sys_register_pit() aic_sys_vl_t
+   7:./lib/nxt_avr.c **** #include "../AT91SAM7S64.h"
+   8:./lib/nxt_avr.c **** 
+   9:./lib/nxt_avr.c **** #define NXT_AVR_ADDRESS 1
+  10:./lib/nxt_avr.c **** 
+  11:./lib/nxt_avr.c **** #define ENABLE_DEBUG 0
+  12:./lib/nxt_avr.c **** 
+  13:./lib/nxt_avr.c **** #if ENABLE_DEBUG==1
+  14:./lib/nxt_avr.c **** #define STATS(code) code
+  15:./lib/nxt_avr.c **** #else
+  16:./lib/nxt_avr.c **** #define STATS(code)
+  17:./lib/nxt_avr.c **** #endif
+  18:./lib/nxt_avr.c **** 
+  19:./lib/nxt_avr.c **** #define NXT_AVR_N_OUTPUTS 4
+  20:./lib/nxt_avr.c **** #define NXT_AVR_N_INPUTS  4
+  21:./lib/nxt_avr.c **** 
+  22:./lib/nxt_avr.c **** typedef struct{
+  23:./lib/nxt_avr.c **** 	uint8_t power;                   /**< Command byte that is used during power down and firmware upd
+  24:./lib/nxt_avr.c **** 	                                      During normal communication, this byte sould be set to zero 
+  25:./lib/nxt_avr.c **** 	uint8_t pwm_frequency;           /**< Holds the PWM frequency used by the PWM signal for the three
+  26:./lib/nxt_avr.c **** 	                                      Range: 1-32kHz. Units are in kHz. Standard LEGO firmware use
+  27:./lib/nxt_avr.c **** 	 int8_t output_percent[NXT_AVR_N_OUTPUTS]; /**< Holds the power level for the individual output.
+  28:./lib/nxt_avr.c **** 	                                                Range: -100 to +100 */
+  29:./lib/nxt_avr.c **** 	uint8_t output_mode;             /**< Holds the output mode that can be either float or break 
+  30:./lib/nxt_avr.c ****                                           PWM pulses. 0x00 means break, and 0x01 means float	*/
+  31:./lib/nxt_avr.c **** 	uint8_t input_power;             /**< No Supply / Pulsed 9V / Constant 9V */
+  32:./lib/nxt_avr.c **** 	//uint8_t csum;
+  33:./lib/nxt_avr.c **** } __attribute__((packed)) to_avr_t;  // (8+1)Bytes
+  34:./lib/nxt_avr.c **** 
+  35:./lib/nxt_avr.c **** typedef struct {
+  36:./lib/nxt_avr.c **** 	uint16_t adc_value[NXT_AVR_N_INPUTS];  /**< Holds the raw value from the 10 bit A/D converter */
+  37:./lib/nxt_avr.c **** 	uint16_t buttonsVal;                   /**< Holds the status of the buttons. Button 1,2,3 are retu
+  38:./lib/nxt_avr.c **** 	                                            as a 10bit AD value. Button 0 adds 0x7ff to this. */
+  39:./lib/nxt_avr.c **** 	uint16_t extra;                        /**< Holds information about the measured battery level, wh
+  40:./lib/nxt_avr.c ****                                                 Accu pack has been inserted and the AVR firmware ve
+  41:./lib/nxt_avr.c **** 												Bit 15  0->AA batteries  1->Accu pack inserted
+  42:./lib/nxt_avr.c **** 												Bit 13-14->Major Version
+  43:./lib/nxt_avr.c **** 												Bit 10-12->Minor Version
+  44:./lib/nxt_avr.c **** 												Bit  0-9 ->battery raw value (multiply with 0,013848 to get V */
+  45:./lib/nxt_avr.c **** 	//uint8_t csum;
+  46:./lib/nxt_avr.c **** } __attribute__((packed)) from_avr_t;  // (12+1)Bytes
+  47:./lib/nxt_avr.c **** 
+  48:./lib/nxt_avr.c **** 
+  49:./lib/nxt_avr.c **** // This string is used to establish communictions with the AVR
+  50:./lib/nxt_avr.c **** const char avr_brainwash_string[] =
+  51:./lib/nxt_avr.c ****   "\xCC" "Let's samba nxt arm in arm, (c)LEGO System A/S";
+  52:./lib/nxt_avr.c **** 
+  53:./lib/nxt_avr.c **** /* static */ struct {
+  54:./lib/nxt_avr.c **** 	aic_sys_vl_t aic_sys_vl;
+  55:./lib/nxt_avr.c **** 
+  56:./lib/nxt_avr.c **** 	enum {STATE_INIT,
+  57:./lib/nxt_avr.c **** 		  STATE_WAIT1,STATE_WAIT2,//STATE_WAIT3,STATE_WAIT4,
+  58:./lib/nxt_avr.c **** 		  STATE_SEND,STATE_SEND_RETRY,
+  59:./lib/nxt_avr.c **** 		  STATE_RECV,STATE_RECV_RETRY } __attribute__((packed)) state;
+  60:./lib/nxt_avr.c **** 	uint8_t pwm_frequency;
+  61:./lib/nxt_avr.c **** 	button_t buttons;
+  62:./lib/nxt_avr.c **** 
+  63:./lib/nxt_avr.c **** 	// Output data is double buffered via the following (note extra space for csum)
+  64:./lib/nxt_avr.c **** 	uint8_t tofrom_avr_buf[(sizeof(to_avr_t)>sizeof(from_avr_t)?sizeof(to_avr_t):sizeof(from_avr_t))+1
+  65:./lib/nxt_avr.c **** 
+  66:./lib/nxt_avr.c **** 	to_avr_t   to_avr;
+  67:./lib/nxt_avr.c **** 	from_avr_t from_avr;
+  68:./lib/nxt_avr.c **** 
+  69:./lib/nxt_avr.c **** #if ENABLE_DEBUG==1
+  70:./lib/nxt_avr.c **** 	uint16_t good_rx;
+  71:./lib/nxt_avr.c **** 	uint16_t bad_rx;
+  72:./lib/nxt_avr.c **** 	uint16_t resets;
+  73:./lib/nxt_avr.c **** 	uint16_t still_busy;
+  74:./lib/nxt_avr.c **** #endif
+  75:./lib/nxt_avr.c **** } avr;
+  76:./lib/nxt_avr.c **** 
+  77:./lib/nxt_avr.c **** static void buttonsVal2buttons(void);
+  78:./lib/nxt_avr.c **** 
+  79:./lib/nxt_avr.c **** 
+  80:./lib/nxt_avr.c **** static void avr_1kHz_update(void)
+  81:./lib/nxt_avr.c **** {
+  39              		.loc 1 81 1
+  40              		.cfi_startproc
+  41              		@ Function supports interworking.
+  42              		@ args = 0, pretend = 0, frame = 16
+  43              		@ frame_needed = 1, uses_anonymous_args = 0
+  44 0000 00482DE9 		push	{fp, lr}
+  45              		.cfi_def_cfa_offset 8
+  46              		.cfi_offset 11, -8
+  47              		.cfi_offset 14, -4
+  48 0004 04B08DE2 		add	fp, sp, #4
+  49              		.cfi_def_cfa 11, 4
+  50 0008 10D04DE2 		sub	sp, sp, #16
+  82:./lib/nxt_avr.c **** 	uint8_t checkByte;
+  83:./lib/nxt_avr.c **** 	uint8_t *dst;
+  84:./lib/nxt_avr.c **** 	uint8_t *src;
+  85:./lib/nxt_avr.c **** 	
+  86:./lib/nxt_avr.c **** 	switch(avr.state) {
+  51              		.loc 1 86 12
+  52 000c 78339FE5 		ldr	r3, .L27
+  53 0010 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+  54 0014 0320A0E1 		mov	r2, r3
+  55              		.loc 1 86 2
+  56 0018 70339FE5 		ldr	r3, .L27+4
+  57 001c 060052E3 		cmp	r2, #6
+  58 0020 D500008A 		bhi	.L25
+  59 0024 02F193E7 		ldr	pc, [r3, r2, lsl #2]
+  60              	.Lrtx4:
+  61 0028 0000A0E1 		nop
+  62              		.section	.rodata
+  63              		.align	2
+  64              	.L4:
+  65 0030 2C000000 		.word	.L7
+  66 0034 20010000 		.word	.L6
+  67 0038 20010000 		.word	.L6
+  68 003c 3C010000 		.word	.L5
+  69 0040 3C010000 		.word	.L5
+  70 0044 CC020000 		.word	.L3
+  71 0048 CC020000 		.word	.L3
+  72              		.section	.text.avr_1kHz_update
+  73              		.p2align 2
+  74              	.L7:
+  87:./lib/nxt_avr.c **** 	case STATE_INIT:
+  88:./lib/nxt_avr.c **** 		/**
+  89:./lib/nxt_avr.c **** 		* Initialise the link with the AVR by sending the handshake string. 
+  90:./lib/nxt_avr.c **** 		* The transmission time ist because of the length of the string 
+  91:./lib/nxt_avr.c **** 		* 47Bytes*9/400kHz=1,05ms, so we need to slots!
+  92:./lib/nxt_avr.c **** 		*/
+  93:./lib/nxt_avr.c **** 		twi_start_write(NXT_AVR_ADDRESS, (const void *) avr_brainwash_string, strlen(avr_brainwash_string
+  75              		.loc 1 93 73
+  76 002c 60039FE5 		ldr	r0, .L27+8
+  77 0030 60339FE5 		ldr	r3, .L27+12
+  78 0034 0FE0A0E1 		mov	lr, pc
+  79 0038 13FF2FE1 		bx	r3
+  80              	.LVL0:
+  81 003c 0030A0E1 		mov	r3, r0
+  82              		.loc 1 93 3 discriminator 1
+  83 0040 0320A0E1 		mov	r2, r3
+  84 0044 48139FE5 		ldr	r1, .L27+8
+  85 0048 0100A0E3 		mov	r0, #1
+  86 004c 48339FE5 		ldr	r3, .L27+16
+  87 0050 0FE0A0E1 		mov	lr, pc
+  88 0054 13FF2FE1 		bx	r3
+  89              	.LVL1:
+  94:./lib/nxt_avr.c **** 		//twi_init() Set to Default
+  95:./lib/nxt_avr.c **** 		memset(&avr.from_avr,0,sizeof(avr.from_avr));
+  90              		.loc 1 95 3
+  91 0058 0C20A0E3 		mov	r2, #12
+  92 005c 0010A0E3 		mov	r1, #0
+  93 0060 38039FE5 		ldr	r0, .L27+20
+  94 0064 38339FE5 		ldr	r3, .L27+24
+  95 0068 0FE0A0E1 		mov	lr, pc
+  96 006c 13FF2FE1 		bx	r3
+  97              	.LVL2:
+  96:./lib/nxt_avr.c **** 		memset(&avr.to_avr,0,sizeof(avr.to_avr));
+  98              		.loc 1 96 3
+  99 0070 0820A0E3 		mov	r2, #8
+ 100 0074 0010A0E3 		mov	r1, #0
+ 101 0078 28039FE5 		ldr	r0, .L27+28
+ 102 007c 20339FE5 		ldr	r3, .L27+24
+ 103 0080 0FE0A0E1 		mov	lr, pc
+ 104 0084 13FF2FE1 		bx	r3
+ 105              	.LVL3:
+  97:./lib/nxt_avr.c **** 		avr.to_avr.pwm_frequency  = avr.pwm_frequency;
+ 106              		.loc 1 97 34
+ 107 0088 FC329FE5 		ldr	r3, .L27
+ 108 008c 0920D3E5 		ldrb	r2, [r3, #9]	@ zero_extendqisi2
+ 109              		.loc 1 97 29
+ 110 0090 F4329FE5 		ldr	r3, .L27
+ 111 0094 1920C3E5 		strb	r2, [r3, #25]
+  98:./lib/nxt_avr.c **** 		
+  99:./lib/nxt_avr.c **** 		//Prepare avr.tofrom_avr_buf, so the first check creates no error
+ 100:./lib/nxt_avr.c **** 		memcpy(avr.tofrom_avr_buf,&avr.from_avr,sizeof(avr.from_avr));
+ 112              		.loc 1 100 3
+ 113 0098 0C20A0E3 		mov	r2, #12
+ 114 009c FC129FE5 		ldr	r1, .L27+20
+ 115 00a0 04039FE5 		ldr	r0, .L27+32
+ 116 00a4 04339FE5 		ldr	r3, .L27+36
+ 117 00a8 0FE0A0E1 		mov	lr, pc
+ 118 00ac 13FF2FE1 		bx	r3
+ 119              	.LVL4:
+ 101:./lib/nxt_avr.c **** 		checkByte = 0;
+ 120              		.loc 1 101 13
+ 121 00b0 0030A0E3 		mov	r3, #0
+ 122 00b4 05304BE5 		strb	r3, [fp, #-5]
+ 102:./lib/nxt_avr.c **** 		src       = avr.tofrom_avr_buf;
+ 123              		.loc 1 102 13
+ 124 00b8 EC329FE5 		ldr	r3, .L27+32
+ 125 00bc 10300BE5 		str	r3, [fp, #-16]
+ 103:./lib/nxt_avr.c **** 		while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr))) {
+ 126              		.loc 1 103 9
+ 127 00c0 060000EA 		b	.L8
+ 128              	.L9:
+ 104:./lib/nxt_avr.c **** 			checkByte += *src++;
+ 129              		.loc 1 104 21
+ 130 00c4 10301BE5 		ldr	r3, [fp, #-16]
+ 131 00c8 012083E2 		add	r2, r3, #1
+ 132 00cc 10200BE5 		str	r2, [fp, #-16]
+ 133              		.loc 1 104 17
+ 134 00d0 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 135              		.loc 1 104 14
+ 136 00d4 05305BE5 		ldrb	r3, [fp, #-5]
+ 137 00d8 033082E0 		add	r3, r2, r3
+ 138 00dc 05304BE5 		strb	r3, [fp, #-5]
+ 139              	.L8:
+ 103:./lib/nxt_avr.c **** 		while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr))) {
+ 140              		.loc 1 103 36
+ 141 00e0 CC229FE5 		ldr	r2, .L27+40
+ 103:./lib/nxt_avr.c **** 		while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr))) {
+ 142              		.loc 1 103 14
+ 143 00e4 10301BE5 		ldr	r3, [fp, #-16]
+ 144 00e8 020053E1 		cmp	r3, r2
+ 145 00ec F4FFFF3A 		bcc	.L9
+ 105:./lib/nxt_avr.c **** 		}
+ 106:./lib/nxt_avr.c **** 		avr.tofrom_avr_buf[sizeof(avr.from_avr)]=~checkByte;
+ 146              		.loc 1 106 43
+ 147 00f0 05305BE5 		ldrb	r3, [fp, #-5]
+ 148 00f4 0330E0E1 		mvn	r3, r3
+ 149 00f8 FF2003E2 		and	r2, r3, #255
+ 150 00fc 88329FE5 		ldr	r3, .L27
+ 151 0100 1720C3E5 		strb	r2, [r3, #23]
+ 107:./lib/nxt_avr.c **** 		
+ 108:./lib/nxt_avr.c **** 		avr.state++;
+ 152              		.loc 1 108 6
+ 153 0104 80329FE5 		ldr	r3, .L27
+ 154 0108 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 155              		.loc 1 108 12
+ 156 010c 013083E2 		add	r3, r3, #1
+ 157 0110 FF2003E2 		and	r2, r3, #255
+ 158 0114 70329FE5 		ldr	r3, .L27
+ 159 0118 0820C3E5 		strb	r2, [r3, #8]
+ 109:./lib/nxt_avr.c **** 		break;
+ 160              		.loc 1 109 3
+ 161 011c 960000EA 		b	.L2
+ 162              	.L6:
+ 110:./lib/nxt_avr.c **** 	case STATE_WAIT1:
+ 111:./lib/nxt_avr.c **** 	case STATE_WAIT2:
+ 112:./lib/nxt_avr.c **** //	case STATE_WAIT3:
+ 113:./lib/nxt_avr.c **** //	case STATE_WAIT4:
+ 114:./lib/nxt_avr.c **** 		avr.state++;
+ 163              		.loc 1 114 6
+ 164 0120 64329FE5 		ldr	r3, .L27
+ 165 0124 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 166              		.loc 1 114 12
+ 167 0128 013083E2 		add	r3, r3, #1
+ 168 012c FF2003E2 		and	r2, r3, #255
+ 169 0130 54329FE5 		ldr	r3, .L27
+ 170 0134 0820C3E5 		strb	r2, [r3, #8]
+ 115:./lib/nxt_avr.c **** 		break;
+ 171              		.loc 1 115 3
+ 172 0138 8F0000EA 		b	.L2
+ 173              	.L5:
+ 116:./lib/nxt_avr.c **** 	case STATE_SEND:
+ 117:./lib/nxt_avr.c **** 	case STATE_SEND_RETRY:
+ 118:./lib/nxt_avr.c **** 		switch(twi_status()) {
+ 174              		.loc 1 118 10
+ 175 013c 74329FE5 		ldr	r3, .L27+44
+ 176 0140 0FE0A0E1 		mov	lr, pc
+ 177 0144 13FF2FE1 		bx	r3
+ 178              	.LVL5:
+ 179 0148 0030A0E1 		mov	r3, r0
+ 180              		.loc 1 118 3 discriminator 1
+ 181 014c 000053E3 		cmp	r3, #0
+ 182 0150 0200000A 		beq	.L10
+ 183 0154 010053E3 		cmp	r3, #1
+ 184 0158 4B00000A 		beq	.L11
+ 185 015c 550000EA 		b	.L12
+ 186              	.L10:
+ 119:./lib/nxt_avr.c **** 		case 0: {
+ 120:./lib/nxt_avr.c **** 			//Check and unpack received data
+ 121:./lib/nxt_avr.c **** 			checkByte = 0;
+ 187              		.loc 1 121 14
+ 188 0160 0030A0E3 		mov	r3, #0
+ 189 0164 05304BE5 		strb	r3, [fp, #-5]
+ 122:./lib/nxt_avr.c **** 			src       = avr.tofrom_avr_buf;
+ 190              		.loc 1 122 14
+ 191 0168 3C329FE5 		ldr	r3, .L27+32
+ 192 016c 10300BE5 		str	r3, [fp, #-16]
+ 123:./lib/nxt_avr.c **** 			while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr) + 1)) {
+ 193              		.loc 1 123 10
+ 194 0170 060000EA 		b	.L13
+ 195              	.L14:
+ 124:./lib/nxt_avr.c **** 				checkByte += *src++;
+ 196              		.loc 1 124 22
+ 197 0174 10301BE5 		ldr	r3, [fp, #-16]
+ 198 0178 012083E2 		add	r2, r3, #1
+ 199 017c 10200BE5 		str	r2, [fp, #-16]
+ 200              		.loc 1 124 18
+ 201 0180 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 202              		.loc 1 124 15
+ 203 0184 05305BE5 		ldrb	r3, [fp, #-5]
+ 204 0188 033082E0 		add	r3, r2, r3
+ 205 018c 05304BE5 		strb	r3, [fp, #-5]
+ 206              	.L13:
+ 123:./lib/nxt_avr.c **** 			while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr) + 1)) {
+ 207              		.loc 1 123 60
+ 208 0190 10229FE5 		ldr	r2, .L27+28
+ 123:./lib/nxt_avr.c **** 			while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr) + 1)) {
+ 209              		.loc 1 123 15
+ 210 0194 10301BE5 		ldr	r3, [fp, #-16]
+ 211 0198 020053E1 		cmp	r3, r2
+ 212 019c F4FFFF3A 		bcc	.L14
+ 125:./lib/nxt_avr.c **** 			}
+ 126:./lib/nxt_avr.c **** 			// Wenn der AVR beim Empfangen eine falsche Prüfsumme empfängt, 
+ 127:./lib/nxt_avr.c **** 			// generiert dieser beim Senden seinerseits eine falsche Prüfsumme, 
+ 128:./lib/nxt_avr.c **** 			// so dass die Überprüfung hier nie korrekt ist.
+ 129:./lib/nxt_avr.c **** 			if(checkByte == 0xff) {
+ 213              		.loc 1 129 6
+ 214 01a0 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 215 01a4 FF0053E3 		cmp	r3, #255
+ 216 01a8 1000001A 		bne	.L15
+ 130:./lib/nxt_avr.c **** 				STATS(avr.good_rx++);
+ 131:./lib/nxt_avr.c **** 				src = avr.tofrom_avr_buf;
+ 217              		.loc 1 131 9
+ 218 01ac F8319FE5 		ldr	r3, .L27+32
+ 219 01b0 10300BE5 		str	r3, [fp, #-16]
+ 132:./lib/nxt_avr.c **** 				dst = (uint8_t *)&avr.from_avr;
+ 220              		.loc 1 132 9
+ 221 01b4 E4319FE5 		ldr	r3, .L27+20
+ 222 01b8 0C300BE5 		str	r3, [fp, #-12]
+ 133:./lib/nxt_avr.c **** 				while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr))) {
+ 223              		.loc 1 133 11
+ 224 01bc 070000EA 		b	.L16
+ 225              	.L17:
+ 134:./lib/nxt_avr.c **** 					*dst++ = *src++;		
+ 226              		.loc 1 134 19
+ 227 01c0 10201BE5 		ldr	r2, [fp, #-16]
+ 228 01c4 013082E2 		add	r3, r2, #1
+ 229 01c8 10300BE5 		str	r3, [fp, #-16]
+ 230              		.loc 1 134 10
+ 231 01cc 0C301BE5 		ldr	r3, [fp, #-12]
+ 232 01d0 011083E2 		add	r1, r3, #1
+ 233 01d4 0C100BE5 		str	r1, [fp, #-12]
+ 234              		.loc 1 134 15
+ 235 01d8 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 236              		.loc 1 134 13
+ 237 01dc 0020C3E5 		strb	r2, [r3]
+ 238              	.L16:
+ 133:./lib/nxt_avr.c **** 				while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr))) {
+ 239              		.loc 1 133 38
+ 240 01e0 CC219FE5 		ldr	r2, .L27+40
+ 133:./lib/nxt_avr.c **** 				while (src < (avr.tofrom_avr_buf + sizeof(avr.from_avr))) {
+ 241              		.loc 1 133 16
+ 242 01e4 10301BE5 		ldr	r3, [fp, #-16]
+ 243 01e8 020053E1 		cmp	r3, r2
+ 244 01ec F3FFFF3A 		bcc	.L17
+ 245              	.L15:
+ 135:./lib/nxt_avr.c **** 				}
+ 136:./lib/nxt_avr.c **** 			}	
+ 137:./lib/nxt_avr.c **** 			else {
+ 138:./lib/nxt_avr.c **** 				STATS(avr.bad_rx++);
+ 139:./lib/nxt_avr.c **** 			}
+ 140:./lib/nxt_avr.c **** 			
+ 141:./lib/nxt_avr.c **** 			//Pack and send data
+ 142:./lib/nxt_avr.c **** 			checkByte = 0;
+ 246              		.loc 1 142 14
+ 247 01f0 0030A0E3 		mov	r3, #0
+ 248 01f4 05304BE5 		strb	r3, [fp, #-5]
+ 143:./lib/nxt_avr.c **** 			src = (uint8_t *)&avr.to_avr;
+ 249              		.loc 1 143 8
+ 250 01f8 A8319FE5 		ldr	r3, .L27+28
+ 251 01fc 10300BE5 		str	r3, [fp, #-16]
+ 144:./lib/nxt_avr.c **** 			dst = avr.tofrom_avr_buf;
+ 252              		.loc 1 144 8
+ 253 0200 A4319FE5 		ldr	r3, .L27+32
+ 254 0204 0C300BE5 		str	r3, [fp, #-12]
+ 145:./lib/nxt_avr.c **** 			while (src < ((uint8_t *)&avr.to_avr + sizeof(avr.to_avr))) {
+ 255              		.loc 1 145 10
+ 256 0208 0C0000EA 		b	.L18
+ 257              	.L19:
+ 146:./lib/nxt_avr.c **** 				checkByte += *src;
+ 258              		.loc 1 146 18
+ 259 020c 10301BE5 		ldr	r3, [fp, #-16]
+ 260 0210 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 261              		.loc 1 146 15
+ 262 0214 05305BE5 		ldrb	r3, [fp, #-5]
+ 263 0218 033082E0 		add	r3, r2, r3
+ 264 021c 05304BE5 		strb	r3, [fp, #-5]
+ 147:./lib/nxt_avr.c **** 				*dst++ = *src++;
+ 265              		.loc 1 147 18
+ 266 0220 10201BE5 		ldr	r2, [fp, #-16]
+ 267 0224 013082E2 		add	r3, r2, #1
+ 268 0228 10300BE5 		str	r3, [fp, #-16]
+ 269              		.loc 1 147 9
+ 270 022c 0C301BE5 		ldr	r3, [fp, #-12]
+ 271 0230 011083E2 		add	r1, r3, #1
+ 272 0234 0C100BE5 		str	r1, [fp, #-12]
+ 273              		.loc 1 147 14
+ 274 0238 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 275              		.loc 1 147 12
+ 276 023c 0020C3E5 		strb	r2, [r3]
+ 277              	.L18:
+ 145:./lib/nxt_avr.c **** 			while (src < ((uint8_t *)&avr.to_avr + sizeof(avr.to_avr))) {
+ 278              		.loc 1 145 41
+ 279 0240 58219FE5 		ldr	r2, .L27+20
+ 145:./lib/nxt_avr.c **** 			while (src < ((uint8_t *)&avr.to_avr + sizeof(avr.to_avr))) {
+ 280              		.loc 1 145 15
+ 281 0244 10301BE5 		ldr	r3, [fp, #-16]
+ 282 0248 020053E1 		cmp	r3, r2
+ 283 024c EEFFFF3A 		bcc	.L19
+ 148:./lib/nxt_avr.c **** 			}
+ 149:./lib/nxt_avr.c **** 			*dst = ~checkByte;
+ 284              		.loc 1 149 9
+ 285 0250 05305BE5 		ldrb	r3, [fp, #-5]
+ 286 0254 0330E0E1 		mvn	r3, r3
+ 287 0258 FF2003E2 		and	r2, r3, #255
+ 288 025c 0C301BE5 		ldr	r3, [fp, #-12]
+ 289 0260 0020C3E5 		strb	r2, [r3]
+ 150:./lib/nxt_avr.c **** 			twi_start_write(NXT_AVR_ADDRESS, (void *)avr.tofrom_avr_buf,sizeof(to_avr_t)+1);
+ 290              		.loc 1 150 4
+ 291 0264 0920A0E3 		mov	r2, #9
+ 292 0268 3C119FE5 		ldr	r1, .L27+32
+ 293 026c 0100A0E3 		mov	r0, #1
+ 294 0270 24319FE5 		ldr	r3, .L27+16
+ 295 0274 0FE0A0E1 		mov	lr, pc
+ 296 0278 13FF2FE1 		bx	r3
+ 297              	.LVL6:
+ 151:./lib/nxt_avr.c **** 			avr.state=STATE_RECV;
+ 298              		.loc 1 151 13
+ 299 027c 08319FE5 		ldr	r3, .L27
+ 300 0280 0520A0E3 		mov	r2, #5
+ 301 0284 0820C3E5 		strb	r2, [r3, #8]
+ 152:./lib/nxt_avr.c **** 		break; 
+ 302              		.loc 1 152 3
+ 303 0288 0E0000EA 		b	.L20
+ 304              	.L11:
+ 153:./lib/nxt_avr.c **** 		}
+ 154:./lib/nxt_avr.c **** 		case 1:  //Busy
+ 155:./lib/nxt_avr.c **** 			if(avr.state != STATE_SEND_RETRY) {
+ 305              		.loc 1 155 10
+ 306 028c F8309FE5 		ldr	r3, .L27
+ 307 0290 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 308              		.loc 1 155 6
+ 309 0294 040053E3 		cmp	r3, #4
+ 310 0298 0600000A 		beq	.L12
+ 156:./lib/nxt_avr.c **** 				avr.state++;
+ 311              		.loc 1 156 8
+ 312 029c E8309FE5 		ldr	r3, .L27
+ 313 02a0 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 314              		.loc 1 156 14
+ 315 02a4 013083E2 		add	r3, r3, #1
+ 316 02a8 FF2003E2 		and	r2, r3, #255
+ 317 02ac D8309FE5 		ldr	r3, .L27
+ 318 02b0 0820C3E5 		strb	r2, [r3, #8]
+ 157:./lib/nxt_avr.c **** 				STATS(avr.still_busy++);
+ 158:./lib/nxt_avr.c **** 				break;
+ 319              		.loc 1 158 5
+ 320 02b4 030000EA 		b	.L20
+ 321              	.L12:
+ 159:./lib/nxt_avr.c **** 			}
+ 160:./lib/nxt_avr.c **** 			__attribute__((fallthrough));
+ 161:./lib/nxt_avr.c **** 		default:  //Error
+ 162:./lib/nxt_avr.c **** 			avr.state=STATE_INIT;
+ 322              		.loc 1 162 13
+ 323 02b8 CC309FE5 		ldr	r3, .L27
+ 324 02bc 0020A0E3 		mov	r2, #0
+ 325 02c0 0820C3E5 		strb	r2, [r3, #8]
+ 163:./lib/nxt_avr.c **** 			STATS(avr.resets++);
+ 164:./lib/nxt_avr.c **** 			break;
+ 326              		.loc 1 164 4
+ 327 02c4 0000A0E1 		nop
+ 328              	.L20:
+ 165:./lib/nxt_avr.c **** 		}
+ 166:./lib/nxt_avr.c **** 		break;
+ 329              		.loc 1 166 3
+ 330 02c8 2B0000EA 		b	.L2
+ 331              	.L3:
+ 167:./lib/nxt_avr.c **** 	case STATE_RECV:
+ 168:./lib/nxt_avr.c **** 	case STATE_RECV_RETRY:
+ 169:./lib/nxt_avr.c **** 		switch(twi_status()) {
+ 332              		.loc 1 169 10
+ 333 02cc E4309FE5 		ldr	r3, .L27+44
+ 334 02d0 0FE0A0E1 		mov	lr, pc
+ 335 02d4 13FF2FE1 		bx	r3
+ 336              	.LVL7:
+ 337 02d8 0030A0E1 		mov	r3, r0
+ 338              		.loc 1 169 3 discriminator 1
+ 339 02dc 000053E3 		cmp	r3, #0
+ 340 02e0 0200000A 		beq	.L21
+ 341 02e4 010053E3 		cmp	r3, #1
+ 342 02e8 1300000A 		beq	.L22
+ 343 02ec 1D0000EA 		b	.L23
+ 344              	.L21:
+ 170:./lib/nxt_avr.c **** 		case 0:
+ 171:./lib/nxt_avr.c **** 			memset(avr.tofrom_avr_buf, 0, sizeof(avr.tofrom_avr_buf));
+ 345              		.loc 1 171 4
+ 346 02f0 0D20A0E3 		mov	r2, #13
+ 347 02f4 0010A0E3 		mov	r1, #0
+ 348 02f8 AC009FE5 		ldr	r0, .L27+32
+ 349 02fc A0309FE5 		ldr	r3, .L27+24
+ 350 0300 0FE0A0E1 		mov	lr, pc
+ 351 0304 13FF2FE1 		bx	r3
+ 352              	.LVL8:
+ 172:./lib/nxt_avr.c **** 			twi_start_read(NXT_AVR_ADDRESS, (void *)avr.tofrom_avr_buf, sizeof(from_avr_t)+1);
+ 353              		.loc 1 172 4
+ 354 0308 0D20A0E3 		mov	r2, #13
+ 355 030c 98109FE5 		ldr	r1, .L27+32
+ 356 0310 0100A0E3 		mov	r0, #1
+ 357 0314 A0309FE5 		ldr	r3, .L27+48
+ 358 0318 0FE0A0E1 		mov	lr, pc
+ 359 031c 13FF2FE1 		bx	r3
+ 360              	.LVL9:
+ 173:./lib/nxt_avr.c **** 			buttonsVal2buttons();
+ 361              		.loc 1 173 4
+ 362 0320 98309FE5 		ldr	r3, .L27+52
+ 363 0324 0FE0A0E1 		mov	lr, pc
+ 364 0328 13FF2FE1 		bx	r3
+ 365              	.LVL10:
+ 174:./lib/nxt_avr.c **** 			avr.state=STATE_SEND;
+ 366              		.loc 1 174 13
+ 367 032c 58309FE5 		ldr	r3, .L27
+ 368 0330 0320A0E3 		mov	r2, #3
+ 369 0334 0820C3E5 		strb	r2, [r3, #8]
+ 175:./lib/nxt_avr.c **** 			break;
+ 370              		.loc 1 175 4
+ 371 0338 0E0000EA 		b	.L24
+ 372              	.L22:
+ 176:./lib/nxt_avr.c **** 		case 1:  //Busy
+ 177:./lib/nxt_avr.c **** 			if(avr.state != STATE_RECV_RETRY) {
+ 373              		.loc 1 177 10
+ 374 033c 48309FE5 		ldr	r3, .L27
+ 375 0340 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 376              		.loc 1 177 6
+ 377 0344 060053E3 		cmp	r3, #6
+ 378 0348 0600000A 		beq	.L23
+ 178:./lib/nxt_avr.c **** 				avr.state++;
+ 379              		.loc 1 178 8
+ 380 034c 38309FE5 		ldr	r3, .L27
+ 381 0350 0830D3E5 		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 382              		.loc 1 178 14
+ 383 0354 013083E2 		add	r3, r3, #1
+ 384 0358 FF2003E2 		and	r2, r3, #255
+ 385 035c 28309FE5 		ldr	r3, .L27
+ 386 0360 0820C3E5 		strb	r2, [r3, #8]
+ 179:./lib/nxt_avr.c **** 				STATS(avr.still_busy++);
+ 180:./lib/nxt_avr.c **** 				break;
+ 387              		.loc 1 180 5
+ 388 0364 030000EA 		b	.L24
+ 389              	.L23:
+ 181:./lib/nxt_avr.c **** 			}
+ 182:./lib/nxt_avr.c **** 			__attribute__((fallthrough));
+ 183:./lib/nxt_avr.c **** 		default:  //Error
+ 184:./lib/nxt_avr.c **** 			avr.state=STATE_INIT;
+ 390              		.loc 1 184 13
+ 391 0368 1C309FE5 		ldr	r3, .L27
+ 392 036c 0020A0E3 		mov	r2, #0
+ 393 0370 0820C3E5 		strb	r2, [r3, #8]
+ 185:./lib/nxt_avr.c **** 			STATS(avr.resets++);
+ 186:./lib/nxt_avr.c **** 			break;
+ 394              		.loc 1 186 4
+ 395 0374 0000A0E1 		nop
+ 396              	.L24:
+ 187:./lib/nxt_avr.c **** 		}
+ 188:./lib/nxt_avr.c **** 		break;
+ 397              		.loc 1 188 3
+ 398 0378 0000A0E1 		nop
+ 399              	.L2:
+ 400              	.L25:
+ 189:./lib/nxt_avr.c **** 	}
+ 190:./lib/nxt_avr.c **** }
+ 401              		.loc 1 190 1
+ 402 037c 0000A0E1 		nop
+ 403 0380 04D04BE2 		sub	sp, fp, #4
+ 404              		.cfi_def_cfa 13, 8
+ 405              		@ sp needed
+ 406 0384 0048BDE8 		pop	{fp, lr}
+ 407              		.cfi_restore 14
+ 408              		.cfi_restore 11
+ 409              		.cfi_def_cfa_offset 0
+ 410 0388 1EFF2FE1 		bx	lr
+ 411              	.L28:
+ 412              		.align	2
+ 413              	.L27:
+ 414 038c 00000000 		.word	avr
+ 415 0390 30000000 		.word	.L4
+ 416 0394 00000000 		.word	avr_brainwash_string
+ 417 0398 00000000 		.word	strlen
+ 418 039c 00000000 		.word	twi_start_write
+ 419 03a0 20000000 		.word	avr+32
+ 420 03a4 00000000 		.word	memset
+ 421 03a8 18000000 		.word	avr+24
+ 422 03ac 0B000000 		.word	avr+11
+ 423 03b0 00000000 		.word	memcpy
+ 424 03b4 17000000 		.word	avr+23
+ 425 03b8 00000000 		.word	twi_status
+ 426 03bc 00000000 		.word	twi_start_read
+ 427 03c0 00000000 		.word	buttonsVal2buttons
+ 428              		.cfi_endproc
+ 429              	.LFE5:
+ 431              		.section	.text.buttonsVal2buttons,"ax",%progbits
+ 432              		.align	2
+ 433              		.syntax unified
+ 434              		.arm
+ 436              	buttonsVal2buttons:
+ 437              	.LFB6:
+ 191:./lib/nxt_avr.c **** 
+ 192:./lib/nxt_avr.c **** 
+ 193:./lib/nxt_avr.c **** //            +----+     +----+     +----+
+ 194:./lib/nxt_avr.c **** //     5V -+--|4,7k|--+--|2,2k|--+--|1,0k|---- GND
+ 195:./lib/nxt_avr.c **** //         |  +----+  |  +----+  |  +----+
+ 196:./lib/nxt_avr.c **** //         / SW1      / SW2      / SW4
+ 197:./lib/nxt_avr.c **** //         |          |          |  +----+
+ 198:./lib/nxt_avr.c **** //         +----------+----------+--|100k|---- GND
+ 199:./lib/nxt_avr.c **** //                  BUTT_ADC        +----+
+ 200:./lib/nxt_avr.c **** //                  BUTTON0  --------/-------- GND
+ 201:./lib/nxt_avr.c **** //   SW1  SW2  SW3 SW4  BUTT_ADC DIG  DIG/16
+ 202:./lib/nxt_avr.c **** //    -    -        -    0,00V     0     0
+ 203:./lib/nxt_avr.c **** //    1    -        -    5,00V  1023    63 
+ 204:./lib/nxt_avr.c **** //    -    1        -    1,98V   405    25
+ 205:./lib/nxt_avr.c **** //    1    1        -    5,00V  1023    63
+ 206:./lib/nxt_avr.c **** //    -    -        1    0,627   128     8
+ 207:./lib/nxt_avr.c **** //    1    -        1    5,00V  1023    63
+ 208:./lib/nxt_avr.c **** //    -    1        1    0,87V   178    11
+ 209:./lib/nxt_avr.c **** //    1    1        1    5,00V  1023    63
+ 210:./lib/nxt_avr.c **** //             -                   0
+ 211:./lib/nxt_avr.c **** //             1                2047   127    
+ 212:./lib/nxt_avr.c **** // 
+ 213:./lib/nxt_avr.c **** //  SW1 -> UNTEN
+ 214:./lib/nxt_avr.c **** //  SW2 -> RECHTS
+ 215:./lib/nxt_avr.c **** //  SW3 -> MITTE (Orange) SW3/Button0 adds 0x7ff to 10Bit AD-Value
+ 216:./lib/nxt_avr.c **** //  SW4 -> LINKS
+ 217:./lib/nxt_avr.c **** //
+ 218:./lib/nxt_avr.c **** static void buttonsVal2buttons(void)
+ 219:./lib/nxt_avr.c **** {
+ 438              		.loc 1 219 1
+ 439              		.cfi_startproc
+ 440              		@ Function supports interworking.
+ 441              		@ args = 0, pretend = 0, frame = 8
+ 442              		@ frame_needed = 1, uses_anonymous_args = 0
+ 443              		@ link register save eliminated.
+ 444 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 445              		.cfi_def_cfa_offset 4
+ 446              		.cfi_offset 11, -4
+ 447 0004 00B08DE2 		add	fp, sp, #0
+ 448              		.cfi_def_cfa_register 11
+ 449 0008 0CD04DE2 		sub	sp, sp, #12
+ 220:./lib/nxt_avr.c **** 	static uint8_t old[4];
+ 221:./lib/nxt_avr.c **** 	static uint8_t index=0;
+ 222:./lib/nxt_avr.c **** 
+ 223:./lib/nxt_avr.c **** 	old[index]=(avr.from_avr.buttonsVal >> 4) & 0xff;
+ 450              		.loc 1 223 26
+ 451 000c 9C319FE5 		ldr	r3, .L38
+ 452 0010 B832D3E1 		ldrh	r3, [r3, #40]
+ 453              		.loc 1 223 12
+ 454 0014 2332A0E1 		lsr	r3, r3, #4
+ 455 0018 0338A0E1 		lsl	r3, r3, #16
+ 456 001c 2338A0E1 		lsr	r3, r3, #16
+ 457              		.loc 1 223 5
+ 458 0020 8C219FE5 		ldr	r2, .L38+4
+ 459 0024 0020D2E5 		ldrb	r2, [r2]	@ zero_extendqisi2
+ 460              		.loc 1 223 12
+ 461 0028 FF1003E2 		and	r1, r3, #255
+ 462 002c 84319FE5 		ldr	r3, .L38+8
+ 463 0030 0210C3E7 		strb	r1, [r3, r2]
+ 224:./lib/nxt_avr.c **** 	index=(index+1)&3;
+ 464              		.loc 1 224 17
+ 465 0034 78319FE5 		ldr	r3, .L38+4
+ 466 0038 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 467              		.loc 1 224 14
+ 468 003c 013083E2 		add	r3, r3, #1
+ 469 0040 FF3003E2 		and	r3, r3, #255
+ 470              		.loc 1 224 17
+ 471 0044 033003E2 		and	r3, r3, #3
+ 472 0048 FF2003E2 		and	r2, r3, #255
+ 473              		.loc 1 224 7
+ 474 004c 60319FE5 		ldr	r3, .L38+4
+ 475 0050 0020C3E5 		strb	r2, [r3]
+ 225:./lib/nxt_avr.c **** 	
+ 226:./lib/nxt_avr.c **** 	if((old[0] == old[1]) && (old[2]==old[3]) && (old[0]==old[3])) {
+ 476              		.loc 1 226 9
+ 477 0054 5C319FE5 		ldr	r3, .L38+8
+ 478 0058 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 479              		.loc 1 226 19
+ 480 005c 54319FE5 		ldr	r3, .L38+8
+ 481 0060 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 482              		.loc 1 226 4
+ 483 0064 030052E1 		cmp	r2, r3
+ 484 0068 4C00001A 		bne	.L37
+ 485              		.loc 1 226 31 discriminator 1
+ 486 006c 44319FE5 		ldr	r3, .L38+8
+ 487 0070 0220D3E5 		ldrb	r2, [r3, #2]	@ zero_extendqisi2
+ 488              		.loc 1 226 39 discriminator 1
+ 489 0074 3C319FE5 		ldr	r3, .L38+8
+ 490 0078 0330D3E5 		ldrb	r3, [r3, #3]	@ zero_extendqisi2
+ 491              		.loc 1 226 24 discriminator 1
+ 492 007c 030052E1 		cmp	r2, r3
+ 493 0080 4600001A 		bne	.L37
+ 494              		.loc 1 226 51 discriminator 2
+ 495 0084 2C319FE5 		ldr	r3, .L38+8
+ 496 0088 0020D3E5 		ldrb	r2, [r3]	@ zero_extendqisi2
+ 497              		.loc 1 226 59 discriminator 2
+ 498 008c 24319FE5 		ldr	r3, .L38+8
+ 499 0090 0330D3E5 		ldrb	r3, [r3, #3]	@ zero_extendqisi2
+ 500              		.loc 1 226 44 discriminator 2
+ 501 0094 030052E1 		cmp	r2, r3
+ 502 0098 4000001A 		bne	.L37
+ 503              	.LBB2:
+ 227:./lib/nxt_avr.c **** 		button_t new = {};
+ 504              		.loc 1 227 12
+ 505 009c 0030A0E3 		mov	r3, #0
+ 506 00a0 08304BE5 		strb	r3, [fp, #-8]
+ 228:./lib/nxt_avr.c **** 		if(old[0] >= 127) {
+ 507              		.loc 1 228 9
+ 508 00a4 0C319FE5 		ldr	r3, .L38+8
+ 509 00a8 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 510              		.loc 1 228 5
+ 511 00ac 7E0053E3 		cmp	r3, #126
+ 512 00b0 0800009A 		bls	.L31
+ 229:./lib/nxt_avr.c **** 			new.orange = 1;
+ 513              		.loc 1 229 15
+ 514 00b4 08305BE5 		ldrb	r3, [fp, #-8]
+ 515 00b8 013083E3 		orr	r3, r3, #1
+ 516 00bc 08304BE5 		strb	r3, [fp, #-8]
+ 230:./lib/nxt_avr.c **** 			old[0]-=127;
+ 517              		.loc 1 230 7
+ 518 00c0 F0309FE5 		ldr	r3, .L38+8
+ 519 00c4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 520              		.loc 1 230 10
+ 521 00c8 7F3043E2 		sub	r3, r3, #127
+ 522 00cc FF2003E2 		and	r2, r3, #255
+ 523 00d0 E0309FE5 		ldr	r3, .L38+8
+ 524 00d4 0020C3E5 		strb	r2, [r3]
+ 525              	.L31:
+ 231:./lib/nxt_avr.c **** 		}
+ 232:./lib/nxt_avr.c **** 		if((old[0] & 0x7f) >= ((25+63)/2)) {
+ 526              		.loc 1 232 10
+ 527 00d8 D8309FE5 		ldr	r3, .L38+8
+ 528 00dc 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 529              		.loc 1 232 14
+ 530 00e0 7F3003E2 		and	r3, r3, #127
+ 531              		.loc 1 232 5
+ 532 00e4 2B0053E3 		cmp	r3, #43
+ 533 00e8 030000DA 		ble	.L32
+ 233:./lib/nxt_avr.c **** 			new.grey = 1;
+ 534              		.loc 1 233 13
+ 535 00ec 08305BE5 		ldrb	r3, [fp, #-8]
+ 536 00f0 083083E3 		orr	r3, r3, #8
+ 537 00f4 08304BE5 		strb	r3, [fp, #-8]
+ 538 00f8 250000EA 		b	.L33
+ 539              	.L32:
+ 234:./lib/nxt_avr.c **** 		}
+ 235:./lib/nxt_avr.c **** 		else if((old[0] & 0x7f) >= ((63+25)/2)) {
+ 540              		.loc 1 235 15
+ 541 00fc B4309FE5 		ldr	r3, .L38+8
+ 542 0100 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 543              		.loc 1 235 19
+ 544 0104 7F3003E2 		and	r3, r3, #127
+ 545              		.loc 1 235 10
+ 546 0108 2B0053E3 		cmp	r3, #43
+ 547 010c 030000DA 		ble	.L34
+ 236:./lib/nxt_avr.c **** 			new.grey = 1;
+ 548              		.loc 1 236 13
+ 549 0110 08305BE5 		ldrb	r3, [fp, #-8]
+ 550 0114 083083E3 		orr	r3, r3, #8
+ 551 0118 08304BE5 		strb	r3, [fp, #-8]
+ 552 011c 1C0000EA 		b	.L33
+ 553              	.L34:
+ 237:./lib/nxt_avr.c **** 		}
+ 238:./lib/nxt_avr.c **** 		else if((old[0] & 0x7f) >= ((25+11)/2)) {
+ 554              		.loc 1 238 15
+ 555 0120 90309FE5 		ldr	r3, .L38+8
+ 556 0124 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 557              		.loc 1 238 19
+ 558 0128 7F3003E2 		and	r3, r3, #127
+ 559              		.loc 1 238 10
+ 560 012c 110053E3 		cmp	r3, #17
+ 561 0130 030000DA 		ble	.L35
+ 239:./lib/nxt_avr.c **** 			new.right = 1;
+ 562              		.loc 1 239 14
+ 563 0134 08305BE5 		ldrb	r3, [fp, #-8]
+ 564 0138 043083E3 		orr	r3, r3, #4
+ 565 013c 08304BE5 		strb	r3, [fp, #-8]
+ 566 0140 130000EA 		b	.L33
+ 567              	.L35:
+ 240:./lib/nxt_avr.c **** 		}
+ 241:./lib/nxt_avr.c **** 		else if((old[0] & 0x7f) >= ((11+8)/2)) {
+ 568              		.loc 1 241 15
+ 569 0144 6C309FE5 		ldr	r3, .L38+8
+ 570 0148 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 571              		.loc 1 241 19
+ 572 014c 7F3003E2 		and	r3, r3, #127
+ 573              		.loc 1 241 10
+ 574 0150 080053E3 		cmp	r3, #8
+ 575 0154 060000DA 		ble	.L36
+ 242:./lib/nxt_avr.c **** 			new.right = 1;
+ 576              		.loc 1 242 14
+ 577 0158 08305BE5 		ldrb	r3, [fp, #-8]
+ 578 015c 043083E3 		orr	r3, r3, #4
+ 579 0160 08304BE5 		strb	r3, [fp, #-8]
+ 243:./lib/nxt_avr.c **** 			new.left  = 1;
+ 580              		.loc 1 243 14
+ 581 0164 08305BE5 		ldrb	r3, [fp, #-8]
+ 582 0168 023083E3 		orr	r3, r3, #2
+ 583 016c 08304BE5 		strb	r3, [fp, #-8]
+ 584 0170 070000EA 		b	.L33
+ 585              	.L36:
+ 244:./lib/nxt_avr.c **** 		}
+ 245:./lib/nxt_avr.c **** 		else if((old[0] & 0x7f) >= ((8+0)/2)) {
+ 586              		.loc 1 245 15
+ 587 0174 3C309FE5 		ldr	r3, .L38+8
+ 588 0178 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 589              		.loc 1 245 27
+ 590 017c 7C3003E2 		and	r3, r3, #124
+ 591              		.loc 1 245 10
+ 592 0180 000053E3 		cmp	r3, #0
+ 593 0184 0200000A 		beq	.L33
+ 246:./lib/nxt_avr.c **** 			new.left = 1;
+ 594              		.loc 1 246 13
+ 595 0188 08305BE5 		ldrb	r3, [fp, #-8]
+ 596 018c 023083E3 		orr	r3, r3, #2
+ 597 0190 08304BE5 		strb	r3, [fp, #-8]
+ 598              	.L33:
+ 247:./lib/nxt_avr.c **** 		}
+ 248:./lib/nxt_avr.c **** 		avr.buttons=new;
+ 599              		.loc 1 248 14
+ 600 0194 14209FE5 		ldr	r2, .L38
+ 601 0198 08305BE5 		ldrb	r3, [fp, #-8]
+ 602 019c 0A30C2E5 		strb	r3, [r2, #10]
+ 603              	.L37:
+ 604              	.LBE2:
+ 249:./lib/nxt_avr.c **** 	}
+ 250:./lib/nxt_avr.c **** }
+ 605              		.loc 1 250 1
+ 606 01a0 0000A0E1 		nop
+ 607 01a4 00D08BE2 		add	sp, fp, #0
+ 608              		.cfi_def_cfa_register 13
+ 609              		@ sp needed
+ 610 01a8 04B09DE4 		ldr	fp, [sp], #4
+ 611              		.cfi_restore 11
+ 612              		.cfi_def_cfa_offset 0
+ 613 01ac 1EFF2FE1 		bx	lr
+ 614              	.L39:
+ 615              		.align	2
+ 616              	.L38:
+ 617 01b0 00000000 		.word	avr
+ 618 01b4 2C000000 		.word	index.1
+ 619 01b8 30000000 		.word	old.0
+ 620              		.cfi_endproc
+ 621              	.LFE6:
+ 623              		.section	.text.nxt_avr_get_buttons,"ax",%progbits
+ 624              		.align	2
+ 625              		.global	nxt_avr_get_buttons
+ 626              		.syntax unified
+ 627              		.arm
+ 629              	nxt_avr_get_buttons:
+ 630              	.LFB7:
+ 251:./lib/nxt_avr.c **** 
+ 252:./lib/nxt_avr.c **** button_t nxt_avr_get_buttons(void)
+ 253:./lib/nxt_avr.c **** {
+ 631              		.loc 1 253 1
+ 632              		.cfi_startproc
+ 633              		@ Function supports interworking.
+ 634              		@ args = 0, pretend = 0, frame = 0
+ 635              		@ frame_needed = 1, uses_anonymous_args = 0
+ 636              		@ link register save eliminated.
+ 637 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 638              		.cfi_def_cfa_offset 4
+ 639              		.cfi_offset 11, -4
+ 640 0004 00B08DE2 		add	fp, sp, #0
+ 641              		.cfi_def_cfa_register 11
+ 254:./lib/nxt_avr.c **** 	return avr.buttons;
+ 642              		.loc 1 254 12
+ 643 0008 10309FE5 		ldr	r3, .L42
+ 644 000c 0A30D3E5 		ldrb	r3, [r3, #10]
+ 255:./lib/nxt_avr.c **** }
+ 645              		.loc 1 255 1
+ 646 0010 0300A0E1 		mov	r0, r3
+ 647 0014 00D08BE2 		add	sp, fp, #0
+ 648              		.cfi_def_cfa_register 13
+ 649              		@ sp needed
+ 650 0018 04B09DE4 		ldr	fp, [sp], #4
+ 651              		.cfi_restore 11
+ 652              		.cfi_def_cfa_offset 0
+ 653 001c 1EFF2FE1 		bx	lr
+ 654              	.L43:
+ 655              		.align	2
+ 656              	.L42:
+ 657 0020 00000000 		.word	avr
+ 658              		.cfi_endproc
+ 659              	.LFE7:
+ 661              		.section	.text.nxt_avr_get_battery_mv,"ax",%progbits
+ 662              		.align	2
+ 663              		.global	nxt_avr_get_battery_mv
+ 664              		.syntax unified
+ 665              		.arm
+ 667              	nxt_avr_get_battery_mv:
+ 668              	.LFB8:
+ 256:./lib/nxt_avr.c **** 
+ 257:./lib/nxt_avr.c **** 
+ 258:./lib/nxt_avr.c **** #if 0
+ 259:./lib/nxt_avr.c **** static void buttons_calculate(void)
+ 260:./lib/nxt_avr.c **** {
+ 261:./lib/nxt_avr.c **** #define BUTTON_DEBOUNCE_CNT 50/2;
+ 262:./lib/nxt_avr.c **** // 50ms Debounce time. Button read is called every other 1000Hz tick
+ 263:./lib/nxt_avr.c ****          uint16_t buttonsVal;
+ 264:./lib/nxt_avr.c ****          uint16_t newState;
+ 265:./lib/nxt_avr.c ****   static uint16_t prev_buttons=0;
+ 266:./lib/nxt_avr.c ****   static uint16_t button_state=0;
+ 267:./lib/nxt_avr.c ****   static uint16_t debounce_state=0;
+ 268:./lib/nxt_avr.c ****   static uint16_t debounce_cnt== BUTTON_DEBOUNCE_CNT;
+ 269:./lib/nxt_avr.c ****   
+ 270:./lib/nxt_avr.c ****   //Display-Tasten entprellen
+ 271:./lib/nxt_avr.c ****   buttonsVal = avr.from_avr.buttonsVal;
+ 272:./lib/nxt_avr.c ****   if (buttonsVal > 60 || button_state)
+ 273:./lib/nxt_avr.c ****   {
+ 274:./lib/nxt_avr.c ****     // Process the buttons. First we drop any noisy inputs
+ 275:./lib/nxt_avr.c ****     if (buttonsVal != prev_buttons)
+ 276:./lib/nxt_avr.c ****       prev_buttons = buttonsVal;
+ 277:./lib/nxt_avr.c ****     else
+ 278:./lib/nxt_avr.c ****     {
+ 279:./lib/nxt_avr.c ****       // Work out which buttons are down. We allow chording of the enter
+ 280:./lib/nxt_avr.c ****       // button with other buttons
+ 281:./lib/nxt_avr.c ****       newState = 0;
+ 282:./lib/nxt_avr.c ****       if (buttonsVal > 1500) {
+ 283:./lib/nxt_avr.c ****         newState |= 1;
+ 284:./lib/nxt_avr.c ****         buttonsVal -= 0x7ff;
+ 285:./lib/nxt_avr.c ****       }
+ 286:./lib/nxt_avr.c ****   
+ 287:./lib/nxt_avr.c ****       if (buttonsVal > 720)
+ 288:./lib/nxt_avr.c ****         newState |= 0x08;
+ 289:./lib/nxt_avr.c ****       else if (buttonsVal > 270)
+ 290:./lib/nxt_avr.c ****         newState |= 0x04;
+ 291:./lib/nxt_avr.c ****       else if (buttonsVal > 60)
+ 292:./lib/nxt_avr.c ****         newState |= 0x02;
+ 293:./lib/nxt_avr.c ****       // Debounce things...
+ 294:./lib/nxt_avr.c ****       if (newState != debounce_state)
+ 295:./lib/nxt_avr.c ****       {
+ 296:./lib/nxt_avr.c ****         debounce_cnt = BUTTON_DEBOUNCE_CNT;
+ 297:./lib/nxt_avr.c ****         debounce_state = newState;
+ 298:./lib/nxt_avr.c ****       }
+ 299:./lib/nxt_avr.c ****       else if (debounce_cnt > 0)
+ 300:./lib/nxt_avr.c ****         debounce_cnt--;
+ 301:./lib/nxt_avr.c ****       else
+ 302:./lib/nxt_avr.c ****         // Got a good key, make a note of it
+ 303:./lib/nxt_avr.c ****         button_state = debounce_state;
+ 304:./lib/nxt_avr.c ****     }
+ 305:./lib/nxt_avr.c ****   }
+ 306:./lib/nxt_avr.c **** }
+ 307:./lib/nxt_avr.c **** #endif
+ 308:./lib/nxt_avr.c **** 
+ 309:./lib/nxt_avr.c **** uint16_t nxt_avr_get_battery_mv(void)
+ 310:./lib/nxt_avr.c **** {
+ 669              		.loc 1 310 1
+ 670              		.cfi_startproc
+ 671              		@ Function supports interworking.
+ 672              		@ args = 0, pretend = 0, frame = 0
+ 673              		@ frame_needed = 1, uses_anonymous_args = 0
+ 674              		@ link register save eliminated.
+ 675 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 676              		.cfi_def_cfa_offset 4
+ 677              		.cfi_offset 11, -4
+ 678 0004 00B08DE2 		add	fp, sp, #0
+ 679              		.cfi_def_cfa_register 11
+ 311:./lib/nxt_avr.c **** 	//Bit  0-9 ->battery raw value (multiply with 0,013848 to get V) */
+ 312:./lib/nxt_avr.c **** 	// Uq   = 5V/1023
+ 313:./lib/nxt_avr.c **** 	// Ulsb = Uq * (220k+120) / 120k = 13,848mv
+ 314:./lib/nxt_avr.c **** 	// Uadc = 9v * 120k / (220k+120k)
+ 315:./lib/nxt_avr.c **** 	// DIG  = UBAT / Ulsb
+ 316:./lib/nxt_avr.c **** 	// 0,013848 wird angenähert durch 14180/1024 / 1000
+ 317:./lib/nxt_avr.c **** 	return ((uint32_t)(avr.from_avr.extra & 0x3ff) * 14180) >> 10;
+ 680              		.loc 1 317 33
+ 681 0008 2C309FE5 		ldr	r3, .L46
+ 682 000c BA32D3E1 		ldrh	r3, [r3, #42]
+ 683              		.loc 1 317 10
+ 684 0010 033BA0E1 		lsl	r3, r3, #22
+ 685 0014 233BA0E1 		lsr	r3, r3, #22
+ 686              		.loc 1 317 49
+ 687 0018 20209FE5 		ldr	r2, .L46+4
+ 688 001c 920303E0 		mul	r3, r2, r3
+ 689              		.loc 1 317 58
+ 690 0020 2335A0E1 		lsr	r3, r3, #10
+ 691 0024 0338A0E1 		lsl	r3, r3, #16
+ 692 0028 2338A0E1 		lsr	r3, r3, #16
+ 318:./lib/nxt_avr.c **** }
+ 693              		.loc 1 318 1
+ 694 002c 0300A0E1 		mov	r0, r3
+ 695 0030 00D08BE2 		add	sp, fp, #0
+ 696              		.cfi_def_cfa_register 13
+ 697              		@ sp needed
+ 698 0034 04B09DE4 		ldr	fp, [sp], #4
+ 699              		.cfi_restore 11
+ 700              		.cfi_def_cfa_offset 0
+ 701 0038 1EFF2FE1 		bx	lr
+ 702              	.L47:
+ 703              		.align	2
+ 704              	.L46:
+ 705 003c 00000000 		.word	avr
+ 706 0040 64370000 		.word	14180
+ 707              		.cfi_endproc
+ 708              	.LFE8:
+ 710              		.section	.text.nxt_avr_get_battery_type,"ax",%progbits
+ 711              		.align	2
+ 712              		.global	nxt_avr_get_battery_type
+ 713              		.syntax unified
+ 714              		.arm
+ 716              	nxt_avr_get_battery_type:
+ 717              	.LFB9:
+ 319:./lib/nxt_avr.c **** 
+ 320:./lib/nxt_avr.c **** battery_t nxt_avr_get_battery_type(void)
+ 321:./lib/nxt_avr.c **** {
+ 718              		.loc 1 321 1
+ 719              		.cfi_startproc
+ 720              		@ Function supports interworking.
+ 721              		@ args = 0, pretend = 0, frame = 0
+ 722              		@ frame_needed = 1, uses_anonymous_args = 0
+ 723              		@ link register save eliminated.
+ 724 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 725              		.cfi_def_cfa_offset 4
+ 726              		.cfi_offset 11, -4
+ 727 0004 00B08DE2 		add	fp, sp, #0
+ 728              		.cfi_def_cfa_register 11
+ 322:./lib/nxt_avr.c **** 	//Bit 15  0->AA batteries  1->Accu pack inserted
+ 323:./lib/nxt_avr.c **** 	return (avr.from_avr.extra & 0x8000) ? BATTERY_ACCU : BATTERY_AA;
+ 729              		.loc 1 323 22
+ 730 0008 30309FE5 		ldr	r3, .L50
+ 731 000c BA32D3E1 		ldrh	r3, [r3, #42]
+ 732              		.loc 1 323 39
+ 733 0010 0338A0E1 		lsl	r3, r3, #16
+ 734 0014 4338A0E1 		asr	r3, r3, #16
+ 735              		.loc 1 323 54
+ 736 0018 C337A0E1 		asr	r3, r3, #15
+ 737 001c 0338A0E1 		lsl	r3, r3, #16
+ 738 0020 4338A0E1 		asr	r3, r3, #16
+ 739 0024 FF3003E2 		and	r3, r3, #255
+ 740 0028 013003E2 		and	r3, r3, #1
+ 741 002c FF3003E2 		and	r3, r3, #255
+ 324:./lib/nxt_avr.c **** }
+ 742              		.loc 1 324 1
+ 743 0030 0300A0E1 		mov	r0, r3
+ 744 0034 00D08BE2 		add	sp, fp, #0
+ 745              		.cfi_def_cfa_register 13
+ 746              		@ sp needed
+ 747 0038 04B09DE4 		ldr	fp, [sp], #4
+ 748              		.cfi_restore 11
+ 749              		.cfi_def_cfa_offset 0
+ 750 003c 1EFF2FE1 		bx	lr
+ 751              	.L51:
+ 752              		.align	2
+ 753              	.L50:
+ 754 0040 00000000 		.word	avr
+ 755              		.cfi_endproc
+ 756              	.LFE9:
+ 758              		.section	.text.nxt_avr_get_avr_version,"ax",%progbits
+ 759              		.align	2
+ 760              		.global	nxt_avr_get_avr_version
+ 761              		.syntax unified
+ 762              		.arm
+ 764              	nxt_avr_get_avr_version:
+ 765              	.LFB10:
+ 325:./lib/nxt_avr.c **** 
+ 326:./lib/nxt_avr.c **** uint8_t nxt_avr_get_avr_version(void)
+ 327:./lib/nxt_avr.c **** {
+ 766              		.loc 1 327 1
+ 767              		.cfi_startproc
+ 768              		@ Function supports interworking.
+ 769              		@ args = 0, pretend = 0, frame = 0
+ 770              		@ frame_needed = 1, uses_anonymous_args = 0
+ 771              		@ link register save eliminated.
+ 772 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 773              		.cfi_def_cfa_offset 4
+ 774              		.cfi_offset 11, -4
+ 775 0004 00B08DE2 		add	fp, sp, #0
+ 776              		.cfi_def_cfa_register 11
+ 328:./lib/nxt_avr.c **** 	//Bit 13-14->Major Version
+ 329:./lib/nxt_avr.c **** 	//Bit 10-12->Minor Version
+ 330:./lib/nxt_avr.c **** 	return (avr.from_avr.extra & 0x7300)>>10; 
+ 777              		.loc 1 330 22
+ 778 0008 20309FE5 		ldr	r3, .L54
+ 779 000c BA32D3E1 		ldrh	r3, [r3, #42]
+ 780              		.loc 1 330 38
+ 781 0010 4335A0E1 		asr	r3, r3, #10
+ 782 0014 FF3003E2 		and	r3, r3, #255
+ 783 0018 1C3003E2 		and	r3, r3, #28
+ 784 001c FF3003E2 		and	r3, r3, #255
+ 331:./lib/nxt_avr.c **** }
+ 785              		.loc 1 331 1
+ 786 0020 0300A0E1 		mov	r0, r3
+ 787 0024 00D08BE2 		add	sp, fp, #0
+ 788              		.cfi_def_cfa_register 13
+ 789              		@ sp needed
+ 790 0028 04B09DE4 		ldr	fp, [sp], #4
+ 791              		.cfi_restore 11
+ 792              		.cfi_def_cfa_offset 0
+ 793 002c 1EFF2FE1 		bx	lr
+ 794              	.L55:
+ 795              		.align	2
+ 796              	.L54:
+ 797 0030 00000000 		.word	avr
+ 798              		.cfi_endproc
+ 799              	.LFE10:
+ 801              		.section	.text.nxt_avr_get_battery_raw,"ax",%progbits
+ 802              		.align	2
+ 803              		.global	nxt_avr_get_battery_raw
+ 804              		.syntax unified
+ 805              		.arm
+ 807              	nxt_avr_get_battery_raw:
+ 808              	.LFB11:
+ 332:./lib/nxt_avr.c **** 
+ 333:./lib/nxt_avr.c **** uint16_t nxt_avr_get_battery_raw(void)
+ 334:./lib/nxt_avr.c **** {
+ 809              		.loc 1 334 1
+ 810              		.cfi_startproc
+ 811              		@ Function supports interworking.
+ 812              		@ args = 0, pretend = 0, frame = 0
+ 813              		@ frame_needed = 1, uses_anonymous_args = 0
+ 814              		@ link register save eliminated.
+ 815 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 816              		.cfi_def_cfa_offset 4
+ 817              		.cfi_offset 11, -4
+ 818 0004 00B08DE2 		add	fp, sp, #0
+ 819              		.cfi_def_cfa_register 11
+ 335:./lib/nxt_avr.c **** 	//Bit  0-9 ->battery raw value (multiply with 0,013848 to get V */
+ 336:./lib/nxt_avr.c **** 	return avr.from_avr.extra & 0x3ff;
+ 820              		.loc 1 336 21
+ 821 0008 20309FE5 		ldr	r3, .L58
+ 822 000c BA32D3E1 		ldrh	r3, [r3, #42]
+ 823              		.loc 1 336 28
+ 824 0010 033BA0E1 		lsl	r3, r3, #22
+ 825 0014 233BA0E1 		lsr	r3, r3, #22
+ 826 0018 0338A0E1 		lsl	r3, r3, #16
+ 827 001c 2338A0E1 		lsr	r3, r3, #16
+ 337:./lib/nxt_avr.c **** }
+ 828              		.loc 1 337 1
+ 829 0020 0300A0E1 		mov	r0, r3
+ 830 0024 00D08BE2 		add	sp, fp, #0
+ 831              		.cfi_def_cfa_register 13
+ 832              		@ sp needed
+ 833 0028 04B09DE4 		ldr	fp, [sp], #4
+ 834              		.cfi_restore 11
+ 835              		.cfi_def_cfa_offset 0
+ 836 002c 1EFF2FE1 		bx	lr
+ 837              	.L59:
+ 838              		.align	2
+ 839              	.L58:
+ 840 0030 00000000 		.word	avr
+ 841              		.cfi_endproc
+ 842              	.LFE11:
+ 844              		.section	.text.nxt_avr_get_sensor_adc_raw,"ax",%progbits
+ 845              		.align	2
+ 846              		.global	nxt_avr_get_sensor_adc_raw
+ 847              		.syntax unified
+ 848              		.arm
+ 850              	nxt_avr_get_sensor_adc_raw:
+ 851              	.LFB12:
+ 338:./lib/nxt_avr.c **** 
+ 339:./lib/nxt_avr.c **** uint16_t nxt_avr_get_sensor_adc_raw(sensor_t sens)
+ 340:./lib/nxt_avr.c **** {
+ 852              		.loc 1 340 1
+ 853              		.cfi_startproc
+ 854              		@ Function supports interworking.
+ 855              		@ args = 0, pretend = 0, frame = 8
+ 856              		@ frame_needed = 1, uses_anonymous_args = 0
+ 857              		@ link register save eliminated.
+ 858 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 859              		.cfi_def_cfa_offset 4
+ 860              		.cfi_offset 11, -4
+ 861 0004 00B08DE2 		add	fp, sp, #0
+ 862              		.cfi_def_cfa_register 11
+ 863 0008 0CD04DE2 		sub	sp, sp, #12
+ 864 000c 0030A0E1 		mov	r3, r0
+ 865 0010 05304BE5 		strb	r3, [fp, #-5]
+ 341:./lib/nxt_avr.c **** 	if ((sens <= SENSOR_4) && (((avr.to_avr.input_power>>sens)&0x11) != SENSOR_9V) )
+ 866              		.loc 1 341 5
+ 867 0014 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 868 0018 030053E3 		cmp	r3, #3
+ 869 001c 1200008A 		bhi	.L61
+ 870              		.loc 1 341 41 discriminator 1
+ 871 0020 58309FE5 		ldr	r3, .L63
+ 872 0024 1F30D3E5 		ldrb	r3, [r3, #31]	@ zero_extendqisi2
+ 873 0028 0320A0E1 		mov	r2, r3
+ 874              		.loc 1 341 53 discriminator 1
+ 875 002c 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 876 0030 5233A0E1 		asr	r3, r2, r3
+ 877              		.loc 1 341 60 discriminator 1
+ 878 0034 113003E2 		and	r3, r3, #17
+ 879              		.loc 1 341 25 discriminator 1
+ 880 0038 100053E3 		cmp	r3, #16
+ 881 003c 0A00000A 		beq	.L61
+ 342:./lib/nxt_avr.c **** 		return avr.from_avr.adc_value[sens] & 0x3ff;
+ 882              		.loc 1 342 32
+ 883 0040 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 884 0044 34209FE5 		ldr	r2, .L63
+ 885 0048 103083E2 		add	r3, r3, #16
+ 886 004c 8330A0E1 		lsl	r3, r3, #1
+ 887 0050 033082E0 		add	r3, r2, r3
+ 888 0054 B030D3E1 		ldrh	r3, [r3]
+ 889              		.loc 1 342 39
+ 890 0058 033BA0E1 		lsl	r3, r3, #22
+ 891 005c 233BA0E1 		lsr	r3, r3, #22
+ 892 0060 0338A0E1 		lsl	r3, r3, #16
+ 893 0064 2338A0E1 		lsr	r3, r3, #16
+ 894 0068 000000EA 		b	.L62
+ 895              	.L61:
+ 343:./lib/nxt_avr.c **** 	else
+ 344:./lib/nxt_avr.c **** 		return UINT16_MAX;
+ 896              		.loc 1 344 10
+ 897 006c 10309FE5 		ldr	r3, .L63+4
+ 898              	.L62:
+ 345:./lib/nxt_avr.c **** }
+ 899              		.loc 1 345 1
+ 900 0070 0300A0E1 		mov	r0, r3
+ 901 0074 00D08BE2 		add	sp, fp, #0
+ 902              		.cfi_def_cfa_register 13
+ 903              		@ sp needed
+ 904 0078 04B09DE4 		ldr	fp, [sp], #4
+ 905              		.cfi_restore 11
+ 906              		.cfi_def_cfa_offset 0
+ 907 007c 1EFF2FE1 		bx	lr
+ 908              	.L64:
+ 909              		.align	2
+ 910              	.L63:
+ 911 0080 00000000 		.word	avr
+ 912 0084 FFFF0000 		.word	65535
+ 913              		.cfi_endproc
+ 914              	.LFE12:
+ 916              		.section	.text.nxt_avr_set_sensor_power,"ax",%progbits
+ 917              		.align	2
+ 918              		.global	nxt_avr_set_sensor_power
+ 919              		.syntax unified
+ 920              		.arm
+ 922              	nxt_avr_set_sensor_power:
+ 923              	.LFB13:
+ 346:./lib/nxt_avr.c **** 
+ 347:./lib/nxt_avr.c **** void nxt_avr_set_sensor_power(sensor_t sens, sensor_power_t sensor_power)
+ 348:./lib/nxt_avr.c **** {
+ 924              		.loc 1 348 1
+ 925              		.cfi_startproc
+ 926              		@ Function supports interworking.
+ 927              		@ args = 0, pretend = 0, frame = 8
+ 928              		@ frame_needed = 1, uses_anonymous_args = 0
+ 929              		@ link register save eliminated.
+ 930 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 931              		.cfi_def_cfa_offset 4
+ 932              		.cfi_offset 11, -4
+ 933 0004 00B08DE2 		add	fp, sp, #0
+ 934              		.cfi_def_cfa_register 11
+ 935 0008 0CD04DE2 		sub	sp, sp, #12
+ 936 000c 0030A0E1 		mov	r3, r0
+ 937 0010 0120A0E1 		mov	r2, r1
+ 938 0014 05304BE5 		strb	r3, [fp, #-5]
+ 939 0018 0230A0E1 		mov	r3, r2
+ 940 001c 06304BE5 		strb	r3, [fp, #-6]
+ 349:./lib/nxt_avr.c **** 	//input_power   s3 s2 s1 s0 | s3 s2 s1 s0
+ 350:./lib/nxt_avr.c **** 	//              -----------   -----------
+ 351:./lib/nxt_avr.c **** 	//                 |             +-> 9V Pulsed (sensor could read)
+ 352:./lib/nxt_avr.c **** 	//                 +--> 9V Constantly on
+ 353:./lib/nxt_avr.c **** 	// - Both clear -> 9V is not supplied
+ 354:./lib/nxt_avr.c **** 	// - Both on    -> Invalid / Is not supported
+ 355:./lib/nxt_avr.c **** 	if ((sens <= SENSOR_4) && (sensor_power <= SENSOR_9V)) {
+ 941              		.loc 1 355 5
+ 942 0020 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 943 0024 030053E3 		cmp	r3, #3
+ 944 0028 2600008A 		bhi	.L67
+ 945              		.loc 1 355 25 discriminator 1
+ 946 002c 06305BE5 		ldrb	r3, [fp, #-6]	@ zero_extendqisi2
+ 947 0030 100053E3 		cmp	r3, #16
+ 948 0034 2300008A 		bhi	.L67
+ 356:./lib/nxt_avr.c **** 		sensor_power &= 0x11;
+ 949              		.loc 1 356 16
+ 950 0038 06305BE5 		ldrb	r3, [fp, #-6]
+ 951 003c 113003E2 		and	r3, r3, #17
+ 952 0040 06304BE5 		strb	r3, [fp, #-6]
+ 357:./lib/nxt_avr.c **** 		avr.to_avr.input_power &= ~(0x11 << sens);
+ 953              		.loc 1 357 13
+ 954 0044 8C309FE5 		ldr	r3, .L68
+ 955 0048 1F30D3E5 		ldrb	r3, [r3, #31]	@ zero_extendqisi2
+ 956 004c 033CA0E1 		lsl	r3, r3, #24
+ 957 0050 432CA0E1 		asr	r2, r3, #24
+ 958              		.loc 1 357 36
+ 959 0054 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 960 0058 1110A0E3 		mov	r1, #17
+ 961 005c 1133A0E1 		lsl	r3, r1, r3
+ 962              		.loc 1 357 26
+ 963 0060 033CA0E1 		lsl	r3, r3, #24
+ 964 0064 433CA0E1 		asr	r3, r3, #24
+ 965 0068 0330E0E1 		mvn	r3, r3
+ 966 006c 033CA0E1 		lsl	r3, r3, #24
+ 967 0070 433CA0E1 		asr	r3, r3, #24
+ 968 0074 023003E0 		and	r3, r3, r2
+ 969 0078 033CA0E1 		lsl	r3, r3, #24
+ 970 007c 433CA0E1 		asr	r3, r3, #24
+ 971 0080 FF2003E2 		and	r2, r3, #255
+ 972 0084 4C309FE5 		ldr	r3, .L68
+ 973 0088 1F20C3E5 		strb	r2, [r3, #31]
+ 358:./lib/nxt_avr.c **** 		avr.to_avr.input_power |= sensor_power << sens;
+ 974              		.loc 1 358 13
+ 975 008c 44309FE5 		ldr	r3, .L68
+ 976 0090 1F30D3E5 		ldrb	r3, [r3, #31]	@ zero_extendqisi2
+ 977 0094 033CA0E1 		lsl	r3, r3, #24
+ 978 0098 432CA0E1 		asr	r2, r3, #24
+ 979              		.loc 1 358 42
+ 980 009c 06105BE5 		ldrb	r1, [fp, #-6]	@ zero_extendqisi2
+ 981 00a0 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 982 00a4 1133A0E1 		lsl	r3, r1, r3
+ 983              		.loc 1 358 26
+ 984 00a8 033CA0E1 		lsl	r3, r3, #24
+ 985 00ac 433CA0E1 		asr	r3, r3, #24
+ 986 00b0 033082E1 		orr	r3, r2, r3
+ 987 00b4 033CA0E1 		lsl	r3, r3, #24
+ 988 00b8 433CA0E1 		asr	r3, r3, #24
+ 989 00bc FF2003E2 		and	r2, r3, #255
+ 990 00c0 10309FE5 		ldr	r3, .L68
+ 991 00c4 1F20C3E5 		strb	r2, [r3, #31]
+ 992              	.L67:
+ 359:./lib/nxt_avr.c **** 	}
+ 360:./lib/nxt_avr.c **** }
+ 993              		.loc 1 360 1
+ 994 00c8 0000A0E1 		nop
+ 995 00cc 00D08BE2 		add	sp, fp, #0
+ 996              		.cfi_def_cfa_register 13
+ 997              		@ sp needed
+ 998 00d0 04B09DE4 		ldr	fp, [sp], #4
+ 999              		.cfi_restore 11
+ 1000              		.cfi_def_cfa_offset 0
+ 1001 00d4 1EFF2FE1 		bx	lr
+ 1002              	.L69:
+ 1003              		.align	2
+ 1004              	.L68:
+ 1005 00d8 00000000 		.word	avr
+ 1006              		.cfi_endproc
+ 1007              	.LFE13:
+ 1009              		.section	.text.nxt_avr_power_down,"ax",%progbits
+ 1010              		.align	2
+ 1011              		.global	nxt_avr_power_down
+ 1012              		.syntax unified
+ 1013              		.arm
+ 1015              	nxt_avr_power_down:
+ 1016              	.LFB14:
+ 361:./lib/nxt_avr.c **** 
+ 362:./lib/nxt_avr.c **** void nxt_avr_power_down(void)
+ 363:./lib/nxt_avr.c **** {
+ 1017              		.loc 1 363 1
+ 1018              		.cfi_startproc
+ 1019              		@ Function supports interworking.
+ 1020              		@ args = 0, pretend = 0, frame = 0
+ 1021              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1022              		@ link register save eliminated.
+ 1023 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1024              		.cfi_def_cfa_offset 4
+ 1025              		.cfi_offset 11, -4
+ 1026 0004 00B08DE2 		add	fp, sp, #0
+ 1027              		.cfi_def_cfa_register 11
+ 364:./lib/nxt_avr.c **** 	avr.to_avr.power = 0x5a;
+ 1028              		.loc 1 364 19
+ 1029 0008 20309FE5 		ldr	r3, .L71
+ 1030 000c 5A20A0E3 		mov	r2, #90
+ 1031 0010 1820C3E5 		strb	r2, [r3, #24]
+ 365:./lib/nxt_avr.c **** 	avr.to_avr.pwm_frequency = 0x00;
+ 1032              		.loc 1 365 27
+ 1033 0014 14309FE5 		ldr	r3, .L71
+ 1034 0018 0020A0E3 		mov	r2, #0
+ 1035 001c 1920C3E5 		strb	r2, [r3, #25]
+ 366:./lib/nxt_avr.c **** }
+ 1036              		.loc 1 366 1
+ 1037 0020 0000A0E1 		nop
+ 1038 0024 00D08BE2 		add	sp, fp, #0
+ 1039              		.cfi_def_cfa_register 13
+ 1040              		@ sp needed
+ 1041 0028 04B09DE4 		ldr	fp, [sp], #4
+ 1042              		.cfi_restore 11
+ 1043              		.cfi_def_cfa_offset 0
+ 1044 002c 1EFF2FE1 		bx	lr
+ 1045              	.L72:
+ 1046              		.align	2
+ 1047              	.L71:
+ 1048 0030 00000000 		.word	avr
+ 1049              		.cfi_endproc
+ 1050              	.LFE14:
+ 1052              		.section	.text.nxt_avr_firmware_update_enter,"ax",%progbits
+ 1053              		.align	2
+ 1054              		.global	nxt_avr_firmware_update_enter
+ 1055              		.syntax unified
+ 1056              		.arm
+ 1058              	nxt_avr_firmware_update_enter:
+ 1059              	.LFB15:
+ 367:./lib/nxt_avr.c **** 
+ 368:./lib/nxt_avr.c **** void nxt_avr_firmware_update_enter(void)
+ 369:./lib/nxt_avr.c **** {
+ 1060              		.loc 1 369 1
+ 1061              		.cfi_startproc
+ 1062              		@ Function supports interworking.
+ 1063              		@ args = 0, pretend = 0, frame = 0
+ 1064              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1065              		@ link register save eliminated.
+ 1066 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1067              		.cfi_def_cfa_offset 4
+ 1068              		.cfi_offset 11, -4
+ 1069 0004 00B08DE2 		add	fp, sp, #0
+ 1070              		.cfi_def_cfa_register 11
+ 370:./lib/nxt_avr.c **** 	avr.to_avr.power = 0xA5;
+ 1071              		.loc 1 370 19
+ 1072 0008 20309FE5 		ldr	r3, .L74
+ 1073 000c 5A20E0E3 		mvn	r2, #90
+ 1074 0010 1820C3E5 		strb	r2, [r3, #24]
+ 371:./lib/nxt_avr.c **** 	avr.to_avr.pwm_frequency = 0x5A;
+ 1075              		.loc 1 371 27
+ 1076 0014 14309FE5 		ldr	r3, .L74
+ 1077 0018 5A20A0E3 		mov	r2, #90
+ 1078 001c 1920C3E5 		strb	r2, [r3, #25]
+ 372:./lib/nxt_avr.c **** }
+ 1079              		.loc 1 372 1
+ 1080 0020 0000A0E1 		nop
+ 1081 0024 00D08BE2 		add	sp, fp, #0
+ 1082              		.cfi_def_cfa_register 13
+ 1083              		@ sp needed
+ 1084 0028 04B09DE4 		ldr	fp, [sp], #4
+ 1085              		.cfi_restore 11
+ 1086              		.cfi_def_cfa_offset 0
+ 1087 002c 1EFF2FE1 		bx	lr
+ 1088              	.L75:
+ 1089              		.align	2
+ 1090              	.L74:
+ 1091 0030 00000000 		.word	avr
+ 1092              		.cfi_endproc
+ 1093              	.LFE15:
+ 1095              		.section	.text.nxt_avr_set_motor,"ax",%progbits
+ 1096              		.align	2
+ 1097              		.global	nxt_avr_set_motor
+ 1098              		.syntax unified
+ 1099              		.arm
+ 1101              	nxt_avr_set_motor:
+ 1102              	.LFB16:
+ 373:./lib/nxt_avr.c **** 
+ 374:./lib/nxt_avr.c **** void nxt_avr_set_motor(motor_t motor, int power_percent, motor_zustand_t brake)
+ 375:./lib/nxt_avr.c **** {
+ 1103              		.loc 1 375 1
+ 1104              		.cfi_startproc
+ 1105              		@ Function supports interworking.
+ 1106              		@ args = 0, pretend = 0, frame = 8
+ 1107              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1108              		@ link register save eliminated.
+ 1109 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1110              		.cfi_def_cfa_offset 4
+ 1111              		.cfi_offset 11, -4
+ 1112 0004 00B08DE2 		add	fp, sp, #0
+ 1113              		.cfi_def_cfa_register 11
+ 1114 0008 0CD04DE2 		sub	sp, sp, #12
+ 1115 000c 0030A0E1 		mov	r3, r0
+ 1116 0010 0C100BE5 		str	r1, [fp, #-12]
+ 1117 0014 05304BE5 		strb	r3, [fp, #-5]
+ 1118 0018 0230A0E1 		mov	r3, r2
+ 1119 001c 06304BE5 		strb	r3, [fp, #-6]
+ 376:./lib/nxt_avr.c **** 	if (motor <= MOTOR_C) {
+ 1120              		.loc 1 376 5
+ 1121 0020 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 1122 0024 020053E3 		cmp	r3, #2
+ 1123 0028 3600008A 		bhi	.L81
+ 377:./lib/nxt_avr.c **** 		//output_percent  ist int8_t  hat also nur Wertbereich von -128..+127
+ 378:./lib/nxt_avr.c **** 		//Werte größer  +100..+127 werden vom AVR auf 100 und 
+ 379:./lib/nxt_avr.c **** 		//      kleiner -100..-128 werden vom AVR auf -100 begrenzt
+ 380:./lib/nxt_avr.c **** 		//Da power_percent integer ist, ist hier ein Begrenzung notwendig
+ 381:./lib/nxt_avr.c **** 		if(power_percent > +100) 
+ 1124              		.loc 1 381 5
+ 1125 002c 0C301BE5 		ldr	r3, [fp, #-12]
+ 1126 0030 640053E3 		cmp	r3, #100
+ 1127 0034 010000DA 		ble	.L78
+ 382:./lib/nxt_avr.c **** 			power_percent=+100;
+ 1128              		.loc 1 382 17
+ 1129 0038 6430A0E3 		mov	r3, #100
+ 1130 003c 0C300BE5 		str	r3, [fp, #-12]
+ 1131              	.L78:
+ 383:./lib/nxt_avr.c **** 		if(power_percent < -100) 
+ 1132              		.loc 1 383 5
+ 1133 0040 0C301BE5 		ldr	r3, [fp, #-12]
+ 1134 0044 640073E3 		cmn	r3, #100
+ 1135 0048 010000AA 		bge	.L79
+ 384:./lib/nxt_avr.c **** 			power_percent=-100;
+ 1136              		.loc 1 384 17
+ 1137 004c 6330E0E3 		mvn	r3, #99
+ 1138 0050 0C300BE5 		str	r3, [fp, #-12]
+ 1139              	.L79:
+ 385:./lib/nxt_avr.c **** 		avr.to_avr.output_percent[motor] = power_percent;
+ 1140              		.loc 1 385 28
+ 1141 0054 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 1142              		.loc 1 385 36
+ 1143 0058 0C201BE5 		ldr	r2, [fp, #-12]
+ 1144 005c 022CA0E1 		lsl	r2, r2, #24
+ 1145 0060 421CA0E1 		asr	r1, r2, #24
+ 1146 0064 AC209FE5 		ldr	r2, .L82
+ 1147 0068 033082E0 		add	r3, r2, r3
+ 1148 006c 0120A0E1 		mov	r2, r1
+ 1149 0070 1A20C3E5 		strb	r2, [r3, #26]
+ 386:./lib/nxt_avr.c **** 		
+ 387:./lib/nxt_avr.c **** 		if (brake == MOTOR_BREAK)
+ 1150              		.loc 1 387 6
+ 1151 0074 06305BE5 		ldrb	r3, [fp, #-6]	@ zero_extendqisi2
+ 1152 0078 000053E3 		cmp	r3, #0
+ 1153 007c 0F00001A 		bne	.L80
+ 388:./lib/nxt_avr.c **** 			avr.to_avr.output_mode |=  (1 << motor);
+ 1154              		.loc 1 388 14
+ 1155 0080 90309FE5 		ldr	r3, .L82
+ 1156 0084 1E30D3E5 		ldrb	r3, [r3, #30]	@ zero_extendqisi2
+ 1157 0088 033CA0E1 		lsl	r3, r3, #24
+ 1158 008c 432CA0E1 		asr	r2, r3, #24
+ 1159              		.loc 1 388 34
+ 1160 0090 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 1161 0094 0110A0E3 		mov	r1, #1
+ 1162 0098 1133A0E1 		lsl	r3, r1, r3
+ 1163              		.loc 1 388 27
+ 1164 009c 033CA0E1 		lsl	r3, r3, #24
+ 1165 00a0 433CA0E1 		asr	r3, r3, #24
+ 1166 00a4 033082E1 		orr	r3, r2, r3
+ 1167 00a8 033CA0E1 		lsl	r3, r3, #24
+ 1168 00ac 433CA0E1 		asr	r3, r3, #24
+ 1169 00b0 FF2003E2 		and	r2, r3, #255
+ 1170 00b4 5C309FE5 		ldr	r3, .L82
+ 1171 00b8 1E20C3E5 		strb	r2, [r3, #30]
+ 389:./lib/nxt_avr.c **** 		else
+ 390:./lib/nxt_avr.c **** 			avr.to_avr.output_mode &= ~(1 << motor);
+ 391:./lib/nxt_avr.c **** 	}
+ 392:./lib/nxt_avr.c **** }
+ 1172              		.loc 1 392 1
+ 1173 00bc 110000EA 		b	.L81
+ 1174              	.L80:
+ 390:./lib/nxt_avr.c **** 	}
+ 1175              		.loc 1 390 14
+ 1176 00c0 50309FE5 		ldr	r3, .L82
+ 1177 00c4 1E30D3E5 		ldrb	r3, [r3, #30]	@ zero_extendqisi2
+ 1178 00c8 033CA0E1 		lsl	r3, r3, #24
+ 1179 00cc 432CA0E1 		asr	r2, r3, #24
+ 390:./lib/nxt_avr.c **** 	}
+ 1180              		.loc 1 390 34
+ 1181 00d0 05305BE5 		ldrb	r3, [fp, #-5]	@ zero_extendqisi2
+ 1182 00d4 0110A0E3 		mov	r1, #1
+ 1183 00d8 1133A0E1 		lsl	r3, r1, r3
+ 390:./lib/nxt_avr.c **** 	}
+ 1184              		.loc 1 390 27
+ 1185 00dc 033CA0E1 		lsl	r3, r3, #24
+ 1186 00e0 433CA0E1 		asr	r3, r3, #24
+ 1187 00e4 0330E0E1 		mvn	r3, r3
+ 1188 00e8 033CA0E1 		lsl	r3, r3, #24
+ 1189 00ec 433CA0E1 		asr	r3, r3, #24
+ 1190 00f0 023003E0 		and	r3, r3, r2
+ 1191 00f4 033CA0E1 		lsl	r3, r3, #24
+ 1192 00f8 433CA0E1 		asr	r3, r3, #24
+ 1193 00fc FF2003E2 		and	r2, r3, #255
+ 1194 0100 10309FE5 		ldr	r3, .L82
+ 1195 0104 1E20C3E5 		strb	r2, [r3, #30]
+ 1196              	.L81:
+ 1197              		.loc 1 392 1
+ 1198 0108 0000A0E1 		nop
+ 1199 010c 00D08BE2 		add	sp, fp, #0
+ 1200              		.cfi_def_cfa_register 13
+ 1201              		@ sp needed
+ 1202 0110 04B09DE4 		ldr	fp, [sp], #4
+ 1203              		.cfi_restore 11
+ 1204              		.cfi_def_cfa_offset 0
+ 1205 0114 1EFF2FE1 		bx	lr
+ 1206              	.L83:
+ 1207              		.align	2
+ 1208              	.L82:
+ 1209 0118 00000000 		.word	avr
+ 1210              		.cfi_endproc
+ 1211              	.LFE16:
+ 1213              		.section	.text.nxt_avr_init,"ax",%progbits
+ 1214              		.align	2
+ 1215              		.global	nxt_avr_init
+ 1216              		.syntax unified
+ 1217              		.arm
+ 1219              	nxt_avr_init:
+ 1220              	.LFB17:
+ 393:./lib/nxt_avr.c **** 
+ 394:./lib/nxt_avr.c **** void nxt_avr_init(uint8_t pwm_frequency_kHz)
+ 395:./lib/nxt_avr.c **** {
+ 1221              		.loc 1 395 1
+ 1222              		.cfi_startproc
+ 1223              		@ Function supports interworking.
+ 1224              		@ args = 0, pretend = 0, frame = 8
+ 1225              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1226 0000 00482DE9 		push	{fp, lr}
+ 1227              		.cfi_def_cfa_offset 8
+ 1228              		.cfi_offset 11, -8
+ 1229              		.cfi_offset 14, -4
+ 1230 0004 04B08DE2 		add	fp, sp, #4
+ 1231              		.cfi_def_cfa 11, 4
+ 1232 0008 08D04DE2 		sub	sp, sp, #8
+ 1233 000c 0030A0E1 		mov	r3, r0
+ 1234 0010 05304BE5 		strb	r3, [fp, #-5]
+ 396:./lib/nxt_avr.c **** 	avr.state=STATE_INIT;
+ 1235              		.loc 1 396 11
+ 1236 0014 4C309FE5 		ldr	r3, .L85
+ 1237 0018 0020A0E3 		mov	r2, #0
+ 1238 001c 0820C3E5 		strb	r2, [r3, #8]
+ 397:./lib/nxt_avr.c **** 	avr.buttons = (button_t){};
+ 1239              		.loc 1 397 14
+ 1240 0020 40309FE5 		ldr	r3, .L85
+ 1241 0024 0020A0E3 		mov	r2, #0
+ 1242 0028 0A20C3E5 		strb	r2, [r3, #10]
+ 398:./lib/nxt_avr.c **** 	avr.pwm_frequency = pwm_frequency_kHz;
+ 1243              		.loc 1 398 20
+ 1244 002c 34209FE5 		ldr	r2, .L85
+ 1245 0030 05305BE5 		ldrb	r3, [fp, #-5]
+ 1246 0034 0930C2E5 		strb	r3, [r2, #9]
+ 399:./lib/nxt_avr.c **** #if ENABLE_DEBUG==1
+ 400:./lib/nxt_avr.c **** 	avr.good_rx    = 0;
+ 401:./lib/nxt_avr.c **** 	avr.bad_rx     = 0;
+ 402:./lib/nxt_avr.c **** 	avr.resets     = 0;
+ 403:./lib/nxt_avr.c **** 	avr.still_busy = 0;
+ 404:./lib/nxt_avr.c **** #endif
+ 405:./lib/nxt_avr.c **** 	twi_init();
+ 1247              		.loc 1 405 2
+ 1248 0038 2C309FE5 		ldr	r3, .L85+4
+ 1249 003c 0FE0A0E1 		mov	lr, pc
+ 1250 0040 13FF2FE1 		bx	r3
+ 1251              	.LVL11:
+ 406:./lib/nxt_avr.c **** 	
+ 407:./lib/nxt_avr.c **** 	/* Callback Routine einhängen */
+ 408:./lib/nxt_avr.c **** 	aic_sys_register_pit(&avr.aic_sys_vl,avr_1kHz_update);
+ 1252              		.loc 1 408 2
+ 1253 0044 24109FE5 		ldr	r1, .L85+8
+ 1254 0048 18009FE5 		ldr	r0, .L85
+ 1255 004c 20309FE5 		ldr	r3, .L85+12
+ 1256 0050 0FE0A0E1 		mov	lr, pc
+ 1257 0054 13FF2FE1 		bx	r3
+ 1258              	.LVL12:
+ 409:./lib/nxt_avr.c **** }
+ 1259              		.loc 1 409 1
+ 1260 0058 0000A0E1 		nop
+ 1261 005c 04D04BE2 		sub	sp, fp, #4
+ 1262              		.cfi_def_cfa 13, 8
+ 1263              		@ sp needed
+ 1264 0060 0048BDE8 		pop	{fp, lr}
+ 1265              		.cfi_restore 14
+ 1266              		.cfi_restore 11
+ 1267              		.cfi_def_cfa_offset 0
+ 1268 0064 1EFF2FE1 		bx	lr
+ 1269              	.L86:
+ 1270              		.align	2
+ 1271              	.L85:
+ 1272 0068 00000000 		.word	avr
+ 1273 006c 00000000 		.word	twi_init
+ 1274 0070 00000000 		.word	avr_1kHz_update
+ 1275 0074 00000000 		.word	aic_sys_register_pit
+ 1276              		.cfi_endproc
+ 1277              	.LFE17:
+ 1279              		.bss
+ 1280              	index.1:
+ 1281 002c 00       		.space	1
+ 1283 002d 000000   		.align	2
+ 1284              	old.0:
+ 1285 0030 00000000 		.space	4
+ 1287              		.text
+ 1288              	.Letext0:
+ 1289              		.file 2 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 1290              		.file 3 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
+ 1291              		.file 4 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 1292              		.file 5 "./lib/../main.h"
+ 1293              		.file 6 "./lib/aic.h"
+ 1294              		.file 7 "./lib/twi.h"
+ 1295              		.file 8 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/strin
+DEFINED SYMBOLS
+                            *ABS*:00000000 nxt_avr.c
+     /tmp/ccsHBfx9.s:23     .rodata:00000000 avr_brainwash_string
+     /tmp/ccsHBfx9.s:20     .rodata:00000000 $d
+     /tmp/ccsHBfx9.s:30     .bss:00000000 avr
+     /tmp/ccsHBfx9.s:27     .bss:00000000 $d
+     /tmp/ccsHBfx9.s:33     .text.avr_1kHz_update:00000000 $a
+     /tmp/ccsHBfx9.s:37     .text.avr_1kHz_update:00000000 avr_1kHz_update
+     /tmp/ccsHBfx9.s:414    .text.avr_1kHz_update:0000038c $d
+     /tmp/ccsHBfx9.s:436    .text.buttonsVal2buttons:00000000 buttonsVal2buttons
+     /tmp/ccsHBfx9.s:432    .text.buttonsVal2buttons:00000000 $a
+     /tmp/ccsHBfx9.s:617    .text.buttonsVal2buttons:000001b0 $d
+     /tmp/ccsHBfx9.s:1280   .bss:0000002c index.1
+     /tmp/ccsHBfx9.s:1284   .bss:00000030 old.0
+     /tmp/ccsHBfx9.s:624    .text.nxt_avr_get_buttons:00000000 $a
+     /tmp/ccsHBfx9.s:629    .text.nxt_avr_get_buttons:00000000 nxt_avr_get_buttons
+     /tmp/ccsHBfx9.s:657    .text.nxt_avr_get_buttons:00000020 $d
+     /tmp/ccsHBfx9.s:662    .text.nxt_avr_get_battery_mv:00000000 $a
+     /tmp/ccsHBfx9.s:667    .text.nxt_avr_get_battery_mv:00000000 nxt_avr_get_battery_mv
+     /tmp/ccsHBfx9.s:705    .text.nxt_avr_get_battery_mv:0000003c $d
+     /tmp/ccsHBfx9.s:711    .text.nxt_avr_get_battery_type:00000000 $a
+     /tmp/ccsHBfx9.s:716    .text.nxt_avr_get_battery_type:00000000 nxt_avr_get_battery_type
+     /tmp/ccsHBfx9.s:754    .text.nxt_avr_get_battery_type:00000040 $d
+     /tmp/ccsHBfx9.s:759    .text.nxt_avr_get_avr_version:00000000 $a
+     /tmp/ccsHBfx9.s:764    .text.nxt_avr_get_avr_version:00000000 nxt_avr_get_avr_version
+     /tmp/ccsHBfx9.s:797    .text.nxt_avr_get_avr_version:00000030 $d
+     /tmp/ccsHBfx9.s:802    .text.nxt_avr_get_battery_raw:00000000 $a
+     /tmp/ccsHBfx9.s:807    .text.nxt_avr_get_battery_raw:00000000 nxt_avr_get_battery_raw
+     /tmp/ccsHBfx9.s:840    .text.nxt_avr_get_battery_raw:00000030 $d
+     /tmp/ccsHBfx9.s:845    .text.nxt_avr_get_sensor_adc_raw:00000000 $a
+     /tmp/ccsHBfx9.s:850    .text.nxt_avr_get_sensor_adc_raw:00000000 nxt_avr_get_sensor_adc_raw
+     /tmp/ccsHBfx9.s:911    .text.nxt_avr_get_sensor_adc_raw:00000080 $d
+     /tmp/ccsHBfx9.s:917    .text.nxt_avr_set_sensor_power:00000000 $a
+     /tmp/ccsHBfx9.s:922    .text.nxt_avr_set_sensor_power:00000000 nxt_avr_set_sensor_power
+     /tmp/ccsHBfx9.s:1005   .text.nxt_avr_set_sensor_power:000000d8 $d
+     /tmp/ccsHBfx9.s:1010   .text.nxt_avr_power_down:00000000 $a
+     /tmp/ccsHBfx9.s:1015   .text.nxt_avr_power_down:00000000 nxt_avr_power_down
+     /tmp/ccsHBfx9.s:1048   .text.nxt_avr_power_down:00000030 $d
+     /tmp/ccsHBfx9.s:1053   .text.nxt_avr_firmware_update_enter:00000000 $a
+     /tmp/ccsHBfx9.s:1058   .text.nxt_avr_firmware_update_enter:00000000 nxt_avr_firmware_update_enter
+     /tmp/ccsHBfx9.s:1091   .text.nxt_avr_firmware_update_enter:00000030 $d
+     /tmp/ccsHBfx9.s:1096   .text.nxt_avr_set_motor:00000000 $a
+     /tmp/ccsHBfx9.s:1101   .text.nxt_avr_set_motor:00000000 nxt_avr_set_motor
+     /tmp/ccsHBfx9.s:1209   .text.nxt_avr_set_motor:00000118 $d
+     /tmp/ccsHBfx9.s:1214   .text.nxt_avr_init:00000000 $a
+     /tmp/ccsHBfx9.s:1219   .text.nxt_avr_init:00000000 nxt_avr_init
+     /tmp/ccsHBfx9.s:1272   .text.nxt_avr_init:00000068 $d
+
+UNDEFINED SYMBOLS
+strlen
+twi_start_write
+memset
+memcpy
+twi_status
+twi_start_read
+twi_init
+aic_sys_register_pit

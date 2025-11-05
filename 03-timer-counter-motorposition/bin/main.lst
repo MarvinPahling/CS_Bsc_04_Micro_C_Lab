@@ -1,0 +1,3305 @@
+   1              		.cpu arm7tdmi
+   2              		.arch armv4t
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 6
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.file	"main.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.file 1 "main.c"
+  18              		.section	.text.byte_fifo_put_possible,"ax",%progbits
+  19              		.align	2
+  20              		.syntax unified
+  21              		.arm
+  23              	byte_fifo_put_possible:
+  24              	.LFB5:
+  25              		.file 2 "trace32/../lib/byte_fifo.h"
+   1:trace32/../lib/byte_fifo.h **** /* Byte FIFO queue implementation.
+   2:trace32/../lib/byte_fifo.h ****  *
+   3:trace32/../lib/byte_fifo.h ****  * Implements a simple reader/write save byte FIFO on top of a data buffer, that lets
+   4:trace32/../lib/byte_fifo.h ****  * you enqueue and dequeue single bytes.
+   5:trace32/../lib/byte_fifo.h ****  */
+   6:trace32/../lib/byte_fifo.h **** 
+   7:trace32/../lib/byte_fifo.h **** #ifndef __BYTE_FIFO_H__
+   8:trace32/../lib/byte_fifo.h **** #define __BYTE_FIFO_H__
+   9:trace32/../lib/byte_fifo.h **** 
+  10:trace32/../lib/byte_fifo.h **** 
+  11:trace32/../lib/byte_fifo.h **** typedef struct
+  12:trace32/../lib/byte_fifo.h **** {
+  13:trace32/../lib/byte_fifo.h **** 	unsigned short rd;
+  14:trace32/../lib/byte_fifo.h **** 	unsigned short wr;
+  15:trace32/../lib/byte_fifo.h ****     unsigned short mask;
+  16:trace32/../lib/byte_fifo.h **** 	unsigned char  buf[];
+  17:trace32/../lib/byte_fifo.h **** } byte_fifo_t;
+  18:trace32/../lib/byte_fifo.h **** 
+  19:trace32/../lib/byte_fifo.h **** #define TEST_2erPOTENZ(x) (((x) & ((x) - 1))?0:(x))
+  20:trace32/../lib/byte_fifo.h **** #define TEST_64k(x)       ((x)>0x10000?0:(x))
+  21:trace32/../lib/byte_fifo.h **** #define TEST_SIZE(x)      (TEST_64k(TEST_2erPOTENZ(x)))
+  22:trace32/../lib/byte_fifo.h **** 
+  23:trace32/../lib/byte_fifo.h **** //size muss einer 2er Potenzzahl sein, andernfalls gibt der Compiler
+  24:trace32/../lib/byte_fifo.h **** //die Fehlermeldung aus, dass die Array-Größe (hier -1) ungültit ist
+  25:trace32/../lib/byte_fifo.h **** #define BYTE_FIFO_INIT(size)  (byte_fifo_t) {.rd=0,\
+  26:trace32/../lib/byte_fifo.h ****                                              .wr=0,\
+  27:trace32/../lib/byte_fifo.h **** 						        	         .mask=TEST_SIZE(size)-1,\
+  28:trace32/../lib/byte_fifo.h **** 								    		 .buf={[TEST_SIZE(size)-1]=0}\
+  29:trace32/../lib/byte_fifo.h **** 									    	}
+  30:trace32/../lib/byte_fifo.h **** 
+  31:trace32/../lib/byte_fifo.h **** #define BYTE_FIFO_TYPEOF_RDWR typeof (((byte_fifo_t *)0)->rd)
+  32:trace32/../lib/byte_fifo.h **** 
+  33:trace32/../lib/byte_fifo.h **** #pragma GCC diagnostic push
+  34:trace32/../lib/byte_fifo.h **** #pragma GCC diagnostic ignored "-Wunused-function"
+  35:trace32/../lib/byte_fifo.h **** 
+  36:trace32/../lib/byte_fifo.h **** static int byte_fifo_put_possible(byte_fifo_t *fifo)
+  37:trace32/../lib/byte_fifo.h **** {
+  26              		.loc 2 37 1
+  27              		.cfi_startproc
+  28              		@ Function supports interworking.
+  29              		@ args = 0, pretend = 0, frame = 8
+  30              		@ frame_needed = 1, uses_anonymous_args = 0
+  31              		@ link register save eliminated.
+  32 0000 04B02DE5 		str	fp, [sp, #-4]!
+  33              		.cfi_def_cfa_offset 4
+  34              		.cfi_offset 11, -4
+  35 0004 00B08DE2 		add	fp, sp, #0
+  36              		.cfi_def_cfa_register 11
+  37 0008 0CD04DE2 		sub	sp, sp, #12
+  38 000c 08000BE5 		str	r0, [fp, #-8]
+  38:trace32/../lib/byte_fifo.h **** 	if(((fifo->wr+1)&(fifo->mask)) == fifo->rd)
+  39              		.loc 2 38 11
+  40 0010 08301BE5 		ldr	r3, [fp, #-8]
+  41 0014 B230D3E1 		ldrh	r3, [r3, #2]
+  42              		.loc 2 38 15
+  43 0018 013083E2 		add	r3, r3, #1
+  44              		.loc 2 38 24
+  45 001c 08201BE5 		ldr	r2, [fp, #-8]
+  46 0020 B420D2E1 		ldrh	r2, [r2, #4]
+  47              		.loc 2 38 18
+  48 0024 023003E0 		and	r3, r3, r2
+  49              		.loc 2 38 40
+  50 0028 08201BE5 		ldr	r2, [fp, #-8]
+  51 002c B020D2E1 		ldrh	r2, [r2]
+  52              		.loc 2 38 4
+  53 0030 020053E1 		cmp	r3, r2
+  54 0034 0100001A 		bne	.L2
+  39:trace32/../lib/byte_fifo.h **** 		return -1;
+  55              		.loc 2 39 10
+  56 0038 0030E0E3 		mvn	r3, #0
+  57 003c 000000EA 		b	.L3
+  58              	.L2:
+  40:trace32/../lib/byte_fifo.h **** 	
+  41:trace32/../lib/byte_fifo.h **** 	return 0;
+  59              		.loc 2 41 9
+  60 0040 0030A0E3 		mov	r3, #0
+  61              	.L3:
+  42:trace32/../lib/byte_fifo.h **** }
+  62              		.loc 2 42 1
+  63 0044 0300A0E1 		mov	r0, r3
+  64 0048 00D08BE2 		add	sp, fp, #0
+  65              		.cfi_def_cfa_register 13
+  66              		@ sp needed
+  67 004c 04B09DE4 		ldr	fp, [sp], #4
+  68              		.cfi_restore 11
+  69              		.cfi_def_cfa_offset 0
+  70 0050 1EFF2FE1 		bx	lr
+  71              		.cfi_endproc
+  72              	.LFE5:
+  74              		.section	.text.byte_fifo_remain,"ax",%progbits
+  75              		.align	2
+  76              		.syntax unified
+  77              		.arm
+  79              	byte_fifo_remain:
+  80              	.LFB6:
+  43:trace32/../lib/byte_fifo.h **** 
+  44:trace32/../lib/byte_fifo.h **** static BYTE_FIFO_TYPEOF_RDWR byte_fifo_remain(byte_fifo_t *fifo)
+  45:trace32/../lib/byte_fifo.h **** {
+  81              		.loc 2 45 1
+  82              		.cfi_startproc
+  83              		@ Function supports interworking.
+  84              		@ args = 0, pretend = 0, frame = 8
+  85              		@ frame_needed = 1, uses_anonymous_args = 0
+  86              		@ link register save eliminated.
+  87 0000 04B02DE5 		str	fp, [sp, #-4]!
+  88              		.cfi_def_cfa_offset 4
+  89              		.cfi_offset 11, -4
+  90 0004 00B08DE2 		add	fp, sp, #0
+  91              		.cfi_def_cfa_register 11
+  92 0008 0CD04DE2 		sub	sp, sp, #12
+  93 000c 08000BE5 		str	r0, [fp, #-8]
+  46:trace32/../lib/byte_fifo.h **** 	return fifo->mask - ((fifo->wr-fifo->rd)&fifo->mask);
+  94              		.loc 2 46 37
+  95 0010 08301BE5 		ldr	r3, [fp, #-8]
+  96 0014 B020D3E1 		ldrh	r2, [r3]
+  97              		.loc 2 46 28
+  98 0018 08301BE5 		ldr	r3, [fp, #-8]
+  99 001c B230D3E1 		ldrh	r3, [r3, #2]
+ 100              		.loc 2 46 20
+ 101 0020 033042E0 		sub	r3, r2, r3
+ 102 0024 0338A0E1 		lsl	r3, r3, #16
+ 103 0028 2338A0E1 		lsr	r3, r3, #16
+ 104 002c 013043E2 		sub	r3, r3, #1
+ 105 0030 0338A0E1 		lsl	r3, r3, #16
+ 106 0034 2338A0E1 		lsr	r3, r3, #16
+ 107 0038 0338A0E1 		lsl	r3, r3, #16
+ 108 003c 4328A0E1 		asr	r2, r3, #16
+ 109              		.loc 2 46 47
+ 110 0040 08301BE5 		ldr	r3, [fp, #-8]
+ 111 0044 B430D3E1 		ldrh	r3, [r3, #4]
+ 112 0048 0338A0E1 		lsl	r3, r3, #16
+ 113 004c 4338A0E1 		asr	r3, r3, #16
+ 114              		.loc 2 46 20
+ 115 0050 023003E0 		and	r3, r3, r2
+ 116 0054 0338A0E1 		lsl	r3, r3, #16
+ 117 0058 4338A0E1 		asr	r3, r3, #16
+ 118 005c 0338A0E1 		lsl	r3, r3, #16
+ 119 0060 2338A0E1 		lsr	r3, r3, #16
+  47:trace32/../lib/byte_fifo.h **** }
+ 120              		.loc 2 47 1
+ 121 0064 0300A0E1 		mov	r0, r3
+ 122 0068 00D08BE2 		add	sp, fp, #0
+ 123              		.cfi_def_cfa_register 13
+ 124              		@ sp needed
+ 125 006c 04B09DE4 		ldr	fp, [sp], #4
+ 126              		.cfi_restore 11
+ 127              		.cfi_def_cfa_offset 0
+ 128 0070 1EFF2FE1 		bx	lr
+ 129              		.cfi_endproc
+ 130              	.LFE6:
+ 132              		.section	.text.byte_fifo_used,"ax",%progbits
+ 133              		.align	2
+ 134              		.syntax unified
+ 135              		.arm
+ 137              	byte_fifo_used:
+ 138              	.LFB7:
+  48:trace32/../lib/byte_fifo.h **** 	
+  49:trace32/../lib/byte_fifo.h **** static BYTE_FIFO_TYPEOF_RDWR byte_fifo_used(byte_fifo_t *fifo)
+  50:trace32/../lib/byte_fifo.h **** {
+ 139              		.loc 2 50 1
+ 140              		.cfi_startproc
+ 141              		@ Function supports interworking.
+ 142              		@ args = 0, pretend = 0, frame = 8
+ 143              		@ frame_needed = 1, uses_anonymous_args = 0
+ 144              		@ link register save eliminated.
+ 145 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 146              		.cfi_def_cfa_offset 4
+ 147              		.cfi_offset 11, -4
+ 148 0004 00B08DE2 		add	fp, sp, #0
+ 149              		.cfi_def_cfa_register 11
+ 150 0008 0CD04DE2 		sub	sp, sp, #12
+ 151 000c 08000BE5 		str	r0, [fp, #-8]
+  51:trace32/../lib/byte_fifo.h **** 	return (fifo->wr-fifo->rd)&fifo->mask;
+ 152              		.loc 2 51 14
+ 153 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 154 0014 B220D3E1 		ldrh	r2, [r3, #2]
+ 155              		.loc 2 51 23
+ 156 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 157 001c B030D3E1 		ldrh	r3, [r3]
+ 158              		.loc 2 51 18
+ 159 0020 033042E0 		sub	r3, r2, r3
+ 160 0024 0338A0E1 		lsl	r3, r3, #16
+ 161 0028 2338A0E1 		lsr	r3, r3, #16
+ 162 002c 0338A0E1 		lsl	r3, r3, #16
+ 163 0030 4328A0E1 		asr	r2, r3, #16
+ 164              		.loc 2 51 33
+ 165 0034 08301BE5 		ldr	r3, [fp, #-8]
+ 166 0038 B430D3E1 		ldrh	r3, [r3, #4]
+ 167 003c 0338A0E1 		lsl	r3, r3, #16
+ 168 0040 4338A0E1 		asr	r3, r3, #16
+ 169              		.loc 2 51 28
+ 170 0044 023003E0 		and	r3, r3, r2
+ 171 0048 0338A0E1 		lsl	r3, r3, #16
+ 172 004c 4338A0E1 		asr	r3, r3, #16
+ 173 0050 0338A0E1 		lsl	r3, r3, #16
+ 174 0054 2338A0E1 		lsr	r3, r3, #16
+  52:trace32/../lib/byte_fifo.h **** }
+ 175              		.loc 2 52 1
+ 176 0058 0300A0E1 		mov	r0, r3
+ 177 005c 00D08BE2 		add	sp, fp, #0
+ 178              		.cfi_def_cfa_register 13
+ 179              		@ sp needed
+ 180 0060 04B09DE4 		ldr	fp, [sp], #4
+ 181              		.cfi_restore 11
+ 182              		.cfi_def_cfa_offset 0
+ 183 0064 1EFF2FE1 		bx	lr
+ 184              		.cfi_endproc
+ 185              	.LFE7:
+ 187              		.section	.text.byte_fifo_put,"ax",%progbits
+ 188              		.align	2
+ 189              		.syntax unified
+ 190              		.arm
+ 192              	byte_fifo_put:
+ 193              	.LFB8:
+  53:trace32/../lib/byte_fifo.h **** 	
+  54:trace32/../lib/byte_fifo.h **** static int byte_fifo_put(byte_fifo_t *fifo,unsigned char val)
+  55:trace32/../lib/byte_fifo.h **** {
+ 194              		.loc 2 55 1
+ 195              		.cfi_startproc
+ 196              		@ Function supports interworking.
+ 197              		@ args = 0, pretend = 0, frame = 8
+ 198              		@ frame_needed = 1, uses_anonymous_args = 0
+ 199              		@ link register save eliminated.
+ 200 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 201              		.cfi_def_cfa_offset 4
+ 202              		.cfi_offset 11, -4
+ 203 0004 00B08DE2 		add	fp, sp, #0
+ 204              		.cfi_def_cfa_register 11
+ 205 0008 0CD04DE2 		sub	sp, sp, #12
+ 206 000c 08000BE5 		str	r0, [fp, #-8]
+ 207 0010 0130A0E1 		mov	r3, r1
+ 208 0014 09304BE5 		strb	r3, [fp, #-9]
+  56:trace32/../lib/byte_fifo.h **** 	if(((fifo->wr+1)&(fifo->mask)) == fifo->rd)
+ 209              		.loc 2 56 11
+ 210 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 211 001c B230D3E1 		ldrh	r3, [r3, #2]
+ 212              		.loc 2 56 15
+ 213 0020 013083E2 		add	r3, r3, #1
+ 214              		.loc 2 56 24
+ 215 0024 08201BE5 		ldr	r2, [fp, #-8]
+ 216 0028 B420D2E1 		ldrh	r2, [r2, #4]
+ 217              		.loc 2 56 18
+ 218 002c 023003E0 		and	r3, r3, r2
+ 219              		.loc 2 56 40
+ 220 0030 08201BE5 		ldr	r2, [fp, #-8]
+ 221 0034 B020D2E1 		ldrh	r2, [r2]
+ 222              		.loc 2 56 4
+ 223 0038 020053E1 		cmp	r3, r2
+ 224 003c 0100001A 		bne	.L9
+  57:trace32/../lib/byte_fifo.h **** 		return -1;
+ 225              		.loc 2 57 10
+ 226 0040 0030E0E3 		mvn	r3, #0
+ 227 0044 190000EA 		b	.L10
+ 228              	.L9:
+  58:trace32/../lib/byte_fifo.h **** 	
+  59:trace32/../lib/byte_fifo.h **** 	fifo->buf[fifo->wr]=val;
+ 229              		.loc 2 59 16
+ 230 0048 08301BE5 		ldr	r3, [fp, #-8]
+ 231 004c B230D3E1 		ldrh	r3, [r3, #2]
+ 232 0050 0320A0E1 		mov	r2, r3
+ 233              		.loc 2 59 21
+ 234 0054 08301BE5 		ldr	r3, [fp, #-8]
+ 235 0058 023083E0 		add	r3, r3, r2
+ 236 005c 09205BE5 		ldrb	r2, [fp, #-9]
+ 237 0060 0620C3E5 		strb	r2, [r3, #6]
+  60:trace32/../lib/byte_fifo.h **** 	fifo->wr=(fifo->wr+1)&(fifo->mask);
+ 238              		.loc 2 60 16
+ 239 0064 08301BE5 		ldr	r3, [fp, #-8]
+ 240 0068 B230D3E1 		ldrh	r3, [r3, #2]
+ 241              		.loc 2 60 20
+ 242 006c 013083E2 		add	r3, r3, #1
+ 243 0070 0338A0E1 		lsl	r3, r3, #16
+ 244 0074 2338A0E1 		lsr	r3, r3, #16
+ 245 0078 0338A0E1 		lsl	r3, r3, #16
+ 246 007c 4328A0E1 		asr	r2, r3, #16
+ 247              		.loc 2 60 29
+ 248 0080 08301BE5 		ldr	r3, [fp, #-8]
+ 249 0084 B430D3E1 		ldrh	r3, [r3, #4]
+ 250 0088 0338A0E1 		lsl	r3, r3, #16
+ 251 008c 4338A0E1 		asr	r3, r3, #16
+ 252              		.loc 2 60 23
+ 253 0090 023003E0 		and	r3, r3, r2
+ 254 0094 0338A0E1 		lsl	r3, r3, #16
+ 255 0098 4338A0E1 		asr	r3, r3, #16
+ 256 009c 0338A0E1 		lsl	r3, r3, #16
+ 257 00a0 2328A0E1 		lsr	r2, r3, #16
+ 258              		.loc 2 60 10
+ 259 00a4 08301BE5 		ldr	r3, [fp, #-8]
+ 260 00a8 B220C3E1 		strh	r2, [r3, #2]	@ movhi
+  61:trace32/../lib/byte_fifo.h **** 	return 0;
+ 261              		.loc 2 61 9
+ 262 00ac 0030A0E3 		mov	r3, #0
+ 263              	.L10:
+  62:trace32/../lib/byte_fifo.h **** }
+ 264              		.loc 2 62 1
+ 265 00b0 0300A0E1 		mov	r0, r3
+ 266 00b4 00D08BE2 		add	sp, fp, #0
+ 267              		.cfi_def_cfa_register 13
+ 268              		@ sp needed
+ 269 00b8 04B09DE4 		ldr	fp, [sp], #4
+ 270              		.cfi_restore 11
+ 271              		.cfi_def_cfa_offset 0
+ 272 00bc 1EFF2FE1 		bx	lr
+ 273              		.cfi_endproc
+ 274              	.LFE8:
+ 276              		.section	.text.byte_fifo_get_possible,"ax",%progbits
+ 277              		.align	2
+ 278              		.syntax unified
+ 279              		.arm
+ 281              	byte_fifo_get_possible:
+ 282              	.LFB9:
+  63:trace32/../lib/byte_fifo.h **** 
+  64:trace32/../lib/byte_fifo.h **** static int byte_fifo_get_possible(byte_fifo_t *fifo)
+  65:trace32/../lib/byte_fifo.h **** {
+ 283              		.loc 2 65 1
+ 284              		.cfi_startproc
+ 285              		@ Function supports interworking.
+ 286              		@ args = 0, pretend = 0, frame = 8
+ 287              		@ frame_needed = 1, uses_anonymous_args = 0
+ 288              		@ link register save eliminated.
+ 289 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 290              		.cfi_def_cfa_offset 4
+ 291              		.cfi_offset 11, -4
+ 292 0004 00B08DE2 		add	fp, sp, #0
+ 293              		.cfi_def_cfa_register 11
+ 294 0008 0CD04DE2 		sub	sp, sp, #12
+ 295 000c 08000BE5 		str	r0, [fp, #-8]
+  66:trace32/../lib/byte_fifo.h **** 	if(fifo->rd == fifo->wr)
+ 296              		.loc 2 66 9
+ 297 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 298 0014 B020D3E1 		ldrh	r2, [r3]
+ 299              		.loc 2 66 21
+ 300 0018 08301BE5 		ldr	r3, [fp, #-8]
+ 301 001c B230D3E1 		ldrh	r3, [r3, #2]
+ 302              		.loc 2 66 4
+ 303 0020 030052E1 		cmp	r2, r3
+ 304 0024 0100001A 		bne	.L12
+  67:trace32/../lib/byte_fifo.h **** 		return -1;
+ 305              		.loc 2 67 10
+ 306 0028 0030E0E3 		mvn	r3, #0
+ 307 002c 000000EA 		b	.L13
+ 308              	.L12:
+  68:trace32/../lib/byte_fifo.h **** 		
+  69:trace32/../lib/byte_fifo.h **** 	return 0;
+ 309              		.loc 2 69 9
+ 310 0030 0030A0E3 		mov	r3, #0
+ 311              	.L13:
+  70:trace32/../lib/byte_fifo.h **** }
+ 312              		.loc 2 70 1
+ 313 0034 0300A0E1 		mov	r0, r3
+ 314 0038 00D08BE2 		add	sp, fp, #0
+ 315              		.cfi_def_cfa_register 13
+ 316              		@ sp needed
+ 317 003c 04B09DE4 		ldr	fp, [sp], #4
+ 318              		.cfi_restore 11
+ 319              		.cfi_def_cfa_offset 0
+ 320 0040 1EFF2FE1 		bx	lr
+ 321              		.cfi_endproc
+ 322              	.LFE9:
+ 324              		.section	.text.byte_fifo_get,"ax",%progbits
+ 325              		.align	2
+ 326              		.syntax unified
+ 327              		.arm
+ 329              	byte_fifo_get:
+ 330              	.LFB10:
+  71:trace32/../lib/byte_fifo.h **** 
+  72:trace32/../lib/byte_fifo.h **** static int byte_fifo_get(byte_fifo_t *fifo,unsigned char *val)
+  73:trace32/../lib/byte_fifo.h **** {
+ 331              		.loc 2 73 1
+ 332              		.cfi_startproc
+ 333              		@ Function supports interworking.
+ 334              		@ args = 0, pretend = 0, frame = 8
+ 335              		@ frame_needed = 1, uses_anonymous_args = 0
+ 336              		@ link register save eliminated.
+ 337 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 338              		.cfi_def_cfa_offset 4
+ 339              		.cfi_offset 11, -4
+ 340 0004 00B08DE2 		add	fp, sp, #0
+ 341              		.cfi_def_cfa_register 11
+ 342 0008 0CD04DE2 		sub	sp, sp, #12
+ 343 000c 08000BE5 		str	r0, [fp, #-8]
+ 344 0010 0C100BE5 		str	r1, [fp, #-12]
+  74:trace32/../lib/byte_fifo.h **** 	if(fifo->rd == fifo->wr)
+ 345              		.loc 2 74 9
+ 346 0014 08301BE5 		ldr	r3, [fp, #-8]
+ 347 0018 B020D3E1 		ldrh	r2, [r3]
+ 348              		.loc 2 74 21
+ 349 001c 08301BE5 		ldr	r3, [fp, #-8]
+ 350 0020 B230D3E1 		ldrh	r3, [r3, #2]
+ 351              		.loc 2 74 4
+ 352 0024 030052E1 		cmp	r2, r3
+ 353 0028 0100001A 		bne	.L15
+  75:trace32/../lib/byte_fifo.h **** 		return -1;
+ 354              		.loc 2 75 10
+ 355 002c 0030E0E3 		mvn	r3, #0
+ 356 0030 1A0000EA 		b	.L16
+ 357              	.L15:
+  76:trace32/../lib/byte_fifo.h **** 		
+  77:trace32/../lib/byte_fifo.h **** 	*val=fifo->buf[fifo->rd];
+ 358              		.loc 2 77 21
+ 359 0034 08301BE5 		ldr	r3, [fp, #-8]
+ 360 0038 B030D3E1 		ldrh	r3, [r3]
+ 361 003c 0320A0E1 		mov	r2, r3
+ 362              		.loc 2 77 16
+ 363 0040 08301BE5 		ldr	r3, [fp, #-8]
+ 364 0044 023083E0 		add	r3, r3, r2
+ 365 0048 0620D3E5 		ldrb	r2, [r3, #6]	@ zero_extendqisi2
+ 366              		.loc 2 77 6
+ 367 004c 0C301BE5 		ldr	r3, [fp, #-12]
+ 368 0050 0020C3E5 		strb	r2, [r3]
+  78:trace32/../lib/byte_fifo.h **** 	fifo->rd=(fifo->rd+1)&(fifo->mask);
+ 369              		.loc 2 78 16
+ 370 0054 08301BE5 		ldr	r3, [fp, #-8]
+ 371 0058 B030D3E1 		ldrh	r3, [r3]
+ 372              		.loc 2 78 20
+ 373 005c 013083E2 		add	r3, r3, #1
+ 374 0060 0338A0E1 		lsl	r3, r3, #16
+ 375 0064 2338A0E1 		lsr	r3, r3, #16
+ 376 0068 0338A0E1 		lsl	r3, r3, #16
+ 377 006c 4328A0E1 		asr	r2, r3, #16
+ 378              		.loc 2 78 29
+ 379 0070 08301BE5 		ldr	r3, [fp, #-8]
+ 380 0074 B430D3E1 		ldrh	r3, [r3, #4]
+ 381 0078 0338A0E1 		lsl	r3, r3, #16
+ 382 007c 4338A0E1 		asr	r3, r3, #16
+ 383              		.loc 2 78 23
+ 384 0080 023003E0 		and	r3, r3, r2
+ 385 0084 0338A0E1 		lsl	r3, r3, #16
+ 386 0088 4338A0E1 		asr	r3, r3, #16
+ 387 008c 0338A0E1 		lsl	r3, r3, #16
+ 388 0090 2328A0E1 		lsr	r2, r3, #16
+ 389              		.loc 2 78 10
+ 390 0094 08301BE5 		ldr	r3, [fp, #-8]
+ 391 0098 B020C3E1 		strh	r2, [r3]	@ movhi
+  79:trace32/../lib/byte_fifo.h **** 	return 0;
+ 392              		.loc 2 79 9
+ 393 009c 0030A0E3 		mov	r3, #0
+ 394              	.L16:
+  80:trace32/../lib/byte_fifo.h **** }
+ 395              		.loc 2 80 1
+ 396 00a0 0300A0E1 		mov	r0, r3
+ 397 00a4 00D08BE2 		add	sp, fp, #0
+ 398              		.cfi_def_cfa_register 13
+ 399              		@ sp needed
+ 400 00a8 04B09DE4 		ldr	fp, [sp], #4
+ 401              		.cfi_restore 11
+ 402              		.cfi_def_cfa_offset 0
+ 403 00ac 1EFF2FE1 		bx	lr
+ 404              		.cfi_endproc
+ 405              	.LFE10:
+ 407              		.section	.text.byte_fifo_cb_put_possible,"ax",%progbits
+ 408              		.align	2
+ 409              		.syntax unified
+ 410              		.arm
+ 412              	byte_fifo_cb_put_possible:
+ 413              	.LFB11:
+ 414              		.file 3 "trace32/../lib/byte_fifo_cb.h"
+   1:trace32/../lib/byte_fifo_cb.h **** /* Byte FIFO with CallBack
+   2:trace32/../lib/byte_fifo_cb.h ****  *
+   3:trace32/../lib/byte_fifo_cb.h ****  * Appends the Byte_Fifo with a callback function, which is called
+   4:trace32/../lib/byte_fifo_cb.h ****  * when putting some stuff into the fifo (e.g. Enable transmitting interrupt)
+   5:trace32/../lib/byte_fifo_cb.h ****  */
+   6:trace32/../lib/byte_fifo_cb.h **** 
+   7:trace32/../lib/byte_fifo_cb.h **** #ifndef __BYTE_FIFO_CB_H__
+   8:trace32/../lib/byte_fifo_cb.h **** #define __BYTE_FIFO_CB_H__
+   9:trace32/../lib/byte_fifo_cb.h **** 
+  10:trace32/../lib/byte_fifo_cb.h **** #include "byte_fifo.h"
+  11:trace32/../lib/byte_fifo_cb.h **** 
+  12:trace32/../lib/byte_fifo_cb.h **** typedef void (*byte_fifo_cb)(void);
+  13:trace32/../lib/byte_fifo_cb.h **** 
+  14:trace32/../lib/byte_fifo_cb.h **** typedef struct {
+  15:trace32/../lib/byte_fifo_cb.h **** 	byte_fifo_cb cb;
+  16:trace32/../lib/byte_fifo_cb.h **** 	byte_fifo_t  byte_fifo; //Aufgrund des Flexible Array Member hier hinter keine weiteren Strukturel
+  17:trace32/../lib/byte_fifo_cb.h **** } byte_fifo_cb_t;
+  18:trace32/../lib/byte_fifo_cb.h **** 
+  19:trace32/../lib/byte_fifo_cb.h **** #define BYTE_FIFO_CB_INIT(size,func)  (byte_fifo_cb_t) {.cb=func, \
+  20:trace32/../lib/byte_fifo_cb.h ****                                                         .byte_fifo=BYTE_FIFO_INIT(size) \
+  21:trace32/../lib/byte_fifo_cb.h **** 									    			   }
+  22:trace32/../lib/byte_fifo_cb.h **** 
+  23:trace32/../lib/byte_fifo_cb.h **** size_t byte_fifo_cb_putsize(byte_fifo_cb_t *fifo,const unsigned char *start,size_t len);
+  24:trace32/../lib/byte_fifo_cb.h **** 
+  25:trace32/../lib/byte_fifo_cb.h **** #pragma GCC diagnostic push
+  26:trace32/../lib/byte_fifo_cb.h **** #pragma GCC diagnostic ignored "-Wunused-function"
+  27:trace32/../lib/byte_fifo_cb.h **** 
+  28:trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_put_possible(byte_fifo_cb_t *fifo)
+  29:trace32/../lib/byte_fifo_cb.h **** {
+ 415              		.loc 3 29 1
+ 416              		.cfi_startproc
+ 417              		@ Function supports interworking.
+ 418              		@ args = 0, pretend = 0, frame = 8
+ 419              		@ frame_needed = 1, uses_anonymous_args = 0
+ 420 0000 00482DE9 		push	{fp, lr}
+ 421              		.cfi_def_cfa_offset 8
+ 422              		.cfi_offset 11, -8
+ 423              		.cfi_offset 14, -4
+ 424 0004 04B08DE2 		add	fp, sp, #4
+ 425              		.cfi_def_cfa 11, 4
+ 426 0008 08D04DE2 		sub	sp, sp, #8
+ 427 000c 08000BE5 		str	r0, [fp, #-8]
+  30:trace32/../lib/byte_fifo_cb.h **** 	return byte_fifo_put_possible(&fifo->byte_fifo);
+ 428              		.loc 3 30 9
+ 429 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 430 0014 043083E2 		add	r3, r3, #4
+ 431 0018 0300A0E1 		mov	r0, r3
+ 432 001c 18309FE5 		ldr	r3, .L19
+ 433 0020 0FE0A0E1 		mov	lr, pc
+ 434 0024 13FF2FE1 		bx	r3
+ 435              	.LVL0:
+ 436 0028 0030A0E1 		mov	r3, r0
+  31:trace32/../lib/byte_fifo_cb.h **** }
+ 437              		.loc 3 31 1
+ 438 002c 0300A0E1 		mov	r0, r3
+ 439 0030 04D04BE2 		sub	sp, fp, #4
+ 440              		.cfi_def_cfa 13, 8
+ 441              		@ sp needed
+ 442 0034 0048BDE8 		pop	{fp, lr}
+ 443              		.cfi_restore 14
+ 444              		.cfi_restore 11
+ 445              		.cfi_def_cfa_offset 0
+ 446 0038 1EFF2FE1 		bx	lr
+ 447              	.L20:
+ 448              		.align	2
+ 449              	.L19:
+ 450 003c 00000000 		.word	byte_fifo_put_possible
+ 451              		.cfi_endproc
+ 452              	.LFE11:
+ 454              		.section	.text.byte_fifo_cb_put,"ax",%progbits
+ 455              		.align	2
+ 456              		.syntax unified
+ 457              		.arm
+ 459              	byte_fifo_cb_put:
+ 460              	.LFB12:
+  32:trace32/../lib/byte_fifo_cb.h **** 	
+  33:trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_put(byte_fifo_cb_t *fifo,unsigned char val)
+  34:trace32/../lib/byte_fifo_cb.h **** {
+ 461              		.loc 3 34 1
+ 462              		.cfi_startproc
+ 463              		@ Function supports interworking.
+ 464              		@ args = 0, pretend = 0, frame = 16
+ 465              		@ frame_needed = 1, uses_anonymous_args = 0
+ 466 0000 00482DE9 		push	{fp, lr}
+ 467              		.cfi_def_cfa_offset 8
+ 468              		.cfi_offset 11, -8
+ 469              		.cfi_offset 14, -4
+ 470 0004 04B08DE2 		add	fp, sp, #4
+ 471              		.cfi_def_cfa 11, 4
+ 472 0008 10D04DE2 		sub	sp, sp, #16
+ 473 000c 10000BE5 		str	r0, [fp, #-16]
+ 474 0010 0130A0E1 		mov	r3, r1
+ 475 0014 11304BE5 		strb	r3, [fp, #-17]
+  35:trace32/../lib/byte_fifo_cb.h **** 	int ret=byte_fifo_put(&fifo->byte_fifo,val);
+ 476              		.loc 3 35 10
+ 477 0018 10301BE5 		ldr	r3, [fp, #-16]
+ 478 001c 043083E2 		add	r3, r3, #4
+ 479 0020 11205BE5 		ldrb	r2, [fp, #-17]	@ zero_extendqisi2
+ 480 0024 0210A0E1 		mov	r1, r2
+ 481 0028 0300A0E1 		mov	r0, r3
+ 482 002c 48309FE5 		ldr	r3, .L24
+ 483 0030 0FE0A0E1 		mov	lr, pc
+ 484 0034 13FF2FE1 		bx	r3
+ 485              	.LVL1:
+ 486 0038 08000BE5 		str	r0, [fp, #-8]
+  36:trace32/../lib/byte_fifo_cb.h **** 	if( !ret && fifo->cb)
+ 487              		.loc 3 36 4
+ 488 003c 08301BE5 		ldr	r3, [fp, #-8]
+ 489 0040 000053E3 		cmp	r3, #0
+ 490 0044 0700001A 		bne	.L22
+ 491              		.loc 3 36 18 discriminator 1
+ 492 0048 10301BE5 		ldr	r3, [fp, #-16]
+ 493 004c 003093E5 		ldr	r3, [r3]
+ 494              		.loc 3 36 11 discriminator 1
+ 495 0050 000053E3 		cmp	r3, #0
+ 496 0054 0300000A 		beq	.L22
+  37:trace32/../lib/byte_fifo_cb.h **** 		fifo->cb();
+ 497              		.loc 3 37 7
+ 498 0058 10301BE5 		ldr	r3, [fp, #-16]
+ 499 005c 003093E5 		ldr	r3, [r3]
+ 500              		.loc 3 37 3
+ 501 0060 0FE0A0E1 		mov	lr, pc
+ 502 0064 13FF2FE1 		bx	r3
+ 503              	.LVL2:
+ 504              	.L22:
+  38:trace32/../lib/byte_fifo_cb.h **** 	return ret;
+ 505              		.loc 3 38 9
+ 506 0068 08301BE5 		ldr	r3, [fp, #-8]
+  39:trace32/../lib/byte_fifo_cb.h **** }
+ 507              		.loc 3 39 1
+ 508 006c 0300A0E1 		mov	r0, r3
+ 509 0070 04D04BE2 		sub	sp, fp, #4
+ 510              		.cfi_def_cfa 13, 8
+ 511              		@ sp needed
+ 512 0074 0048BDE8 		pop	{fp, lr}
+ 513              		.cfi_restore 14
+ 514              		.cfi_restore 11
+ 515              		.cfi_def_cfa_offset 0
+ 516 0078 1EFF2FE1 		bx	lr
+ 517              	.L25:
+ 518              		.align	2
+ 519              	.L24:
+ 520 007c 00000000 		.word	byte_fifo_put
+ 521              		.cfi_endproc
+ 522              	.LFE12:
+ 524              		.section	.text.byte_fifo_cb_get_possible,"ax",%progbits
+ 525              		.align	2
+ 526              		.syntax unified
+ 527              		.arm
+ 529              	byte_fifo_cb_get_possible:
+ 530              	.LFB13:
+  40:trace32/../lib/byte_fifo_cb.h **** 
+  41:trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_get_possible(byte_fifo_cb_t *fifo)
+  42:trace32/../lib/byte_fifo_cb.h **** {
+ 531              		.loc 3 42 1
+ 532              		.cfi_startproc
+ 533              		@ Function supports interworking.
+ 534              		@ args = 0, pretend = 0, frame = 8
+ 535              		@ frame_needed = 1, uses_anonymous_args = 0
+ 536 0000 00482DE9 		push	{fp, lr}
+ 537              		.cfi_def_cfa_offset 8
+ 538              		.cfi_offset 11, -8
+ 539              		.cfi_offset 14, -4
+ 540 0004 04B08DE2 		add	fp, sp, #4
+ 541              		.cfi_def_cfa 11, 4
+ 542 0008 08D04DE2 		sub	sp, sp, #8
+ 543 000c 08000BE5 		str	r0, [fp, #-8]
+  43:trace32/../lib/byte_fifo_cb.h **** 	return byte_fifo_get_possible(&fifo->byte_fifo);
+ 544              		.loc 3 43 9
+ 545 0010 08301BE5 		ldr	r3, [fp, #-8]
+ 546 0014 043083E2 		add	r3, r3, #4
+ 547 0018 0300A0E1 		mov	r0, r3
+ 548 001c 18309FE5 		ldr	r3, .L28
+ 549 0020 0FE0A0E1 		mov	lr, pc
+ 550 0024 13FF2FE1 		bx	r3
+ 551              	.LVL3:
+ 552 0028 0030A0E1 		mov	r3, r0
+  44:trace32/../lib/byte_fifo_cb.h **** }
+ 553              		.loc 3 44 1
+ 554 002c 0300A0E1 		mov	r0, r3
+ 555 0030 04D04BE2 		sub	sp, fp, #4
+ 556              		.cfi_def_cfa 13, 8
+ 557              		@ sp needed
+ 558 0034 0048BDE8 		pop	{fp, lr}
+ 559              		.cfi_restore 14
+ 560              		.cfi_restore 11
+ 561              		.cfi_def_cfa_offset 0
+ 562 0038 1EFF2FE1 		bx	lr
+ 563              	.L29:
+ 564              		.align	2
+ 565              	.L28:
+ 566 003c 00000000 		.word	byte_fifo_get_possible
+ 567              		.cfi_endproc
+ 568              	.LFE13:
+ 570              		.section	.text.byte_fifo_cb_get,"ax",%progbits
+ 571              		.align	2
+ 572              		.syntax unified
+ 573              		.arm
+ 575              	byte_fifo_cb_get:
+ 576              	.LFB14:
+  45:trace32/../lib/byte_fifo_cb.h **** 
+  46:trace32/../lib/byte_fifo_cb.h **** static int byte_fifo_cb_get(byte_fifo_cb_t *fifo,unsigned char *val)
+  47:trace32/../lib/byte_fifo_cb.h **** {
+ 577              		.loc 3 47 1
+ 578              		.cfi_startproc
+ 579              		@ Function supports interworking.
+ 580              		@ args = 0, pretend = 0, frame = 8
+ 581              		@ frame_needed = 1, uses_anonymous_args = 0
+ 582 0000 00482DE9 		push	{fp, lr}
+ 583              		.cfi_def_cfa_offset 8
+ 584              		.cfi_offset 11, -8
+ 585              		.cfi_offset 14, -4
+ 586 0004 04B08DE2 		add	fp, sp, #4
+ 587              		.cfi_def_cfa 11, 4
+ 588 0008 08D04DE2 		sub	sp, sp, #8
+ 589 000c 08000BE5 		str	r0, [fp, #-8]
+ 590 0010 0C100BE5 		str	r1, [fp, #-12]
+  48:trace32/../lib/byte_fifo_cb.h **** 	return byte_fifo_get(&fifo->byte_fifo,val);
+ 591              		.loc 3 48 9
+ 592 0014 08301BE5 		ldr	r3, [fp, #-8]
+ 593 0018 043083E2 		add	r3, r3, #4
+ 594 001c 0C101BE5 		ldr	r1, [fp, #-12]
+ 595 0020 0300A0E1 		mov	r0, r3
+ 596 0024 18309FE5 		ldr	r3, .L32
+ 597 0028 0FE0A0E1 		mov	lr, pc
+ 598 002c 13FF2FE1 		bx	r3
+ 599              	.LVL4:
+ 600 0030 0030A0E1 		mov	r3, r0
+  49:trace32/../lib/byte_fifo_cb.h **** }
+ 601              		.loc 3 49 1
+ 602 0034 0300A0E1 		mov	r0, r3
+ 603 0038 04D04BE2 		sub	sp, fp, #4
+ 604              		.cfi_def_cfa 13, 8
+ 605              		@ sp needed
+ 606 003c 0048BDE8 		pop	{fp, lr}
+ 607              		.cfi_restore 14
+ 608              		.cfi_restore 11
+ 609              		.cfi_def_cfa_offset 0
+ 610 0040 1EFF2FE1 		bx	lr
+ 611              	.L33:
+ 612              		.align	2
+ 613              	.L32:
+ 614 0044 00000000 		.word	byte_fifo_get
+ 615              		.cfi_endproc
+ 616              	.LFE14:
+ 618              		.global	main_data
+ 619              		.bss
+ 620              		.align	2
+ 623              	main_data:
+ 624 0000 000000   		.space	3
+ 625              		.section	.text._exit,"ax",%progbits
+ 626              		.align	2
+ 627              		.global	_exit
+ 628              		.syntax unified
+ 629              		.arm
+ 631              	_exit:
+ 632              	.LFB15:
+   1:main.c        **** #include <stdio.h>
+   2:main.c        **** #include <unistd.h>      //fuer _exit()
+   3:main.c        **** #include <stdint.h>
+   4:main.c        **** #include <string.h>
+   5:main.c        **** 
+   6:main.c        **** #include "main.h"
+   7:main.c        **** #include "AT91SAM7S64.h"
+   8:main.c        **** #include "lib/nxt_avr.h"
+   9:main.c        **** #include "lib/aic.h"
+  10:main.c        **** #include "lib/display.h"
+  11:main.c        **** #include "lib/systick.h"
+  12:main.c        **** #include "lib/term.h"
+  13:main.c        **** //#include "lib/adc.h"
+  14:main.c        **** #if defined(MODE_RAM) || defined(MODE_SIM)
+  15:main.c        **** #include "trace32/udmon3.h"
+  16:main.c        **** #endif
+  17:main.c        **** 
+  18:main.c        **** #define ZYKLUS_MS 2
+  19:main.c        **** #define IDLE_MS   1
+  20:main.c        **** 
+  21:main.c        **** #if IDLE_MS >= ZYKLUS_MS
+  22:main.c        **** #error "Idle_ms muss kleiner als zyklus_ms sein"
+  23:main.c        **** #endif
+  24:main.c        **** 
+  25:main.c        **** /*****************************************************************************/
+  26:main.c        **** /*   Globale Variablen                                                       */
+  27:main.c        **** /*****************************************************************************/
+  28:main.c        **** struct {
+  29:main.c        **** 	  signed char term_status;  //0->false->Alles Bestens   -1->true->Overflow
+  30:main.c        **** 	unsigned char term_cnt;
+  31:main.c        **** 	unsigned char lowbat_cnt;
+  32:main.c        **** 	} main_data = {
+  33:main.c        **** 	.term_status=0, 
+  34:main.c        **** 	.term_cnt=0,
+  35:main.c        **** 	.lowbat_cnt=0,
+  36:main.c        **** };
+  37:main.c        **** 
+  38:main.c        **** /*****************************************************************************/
+  39:main.c        **** /*   Hilfsroutinen                                                           */
+  40:main.c        **** /*   Standard-C-Library (weitere befinden sich in newlib_syscalls.c)         */
+  41:main.c        **** /*****************************************************************************/
+  42:main.c        **** //Routine wird von C-Lib aufgerufen (bspw. printf() abort())
+  43:main.c        **** void _exit(int status)
+  44:main.c        **** {
+ 633              		.loc 1 44 1
+ 634              		.cfi_startproc
+ 635              		@ Function supports interworking.
+ 636              		@ args = 0, pretend = 0, frame = 8
+ 637              		@ frame_needed = 1, uses_anonymous_args = 0
+ 638              		@ link register save eliminated.
+ 639 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 640              		.cfi_def_cfa_offset 4
+ 641              		.cfi_offset 11, -4
+ 642 0004 00B08DE2 		add	fp, sp, #0
+ 643              		.cfi_def_cfa_register 11
+ 644 0008 0CD04DE2 		sub	sp, sp, #12
+ 645 000c 08000BE5 		str	r0, [fp, #-8]
+ 646              	.L35:
+  45:main.c        **** 	(void) status;
+  46:main.c        **** 	//LED-Blinken lassen
+  47:main.c        **** 	//Breakpoint setzen
+  48:main.c        **** 	while(1);
+ 647              		.loc 1 48 7
+ 648 0010 0000A0E1 		nop
+ 649 0014 FDFFFFEA 		b	.L35
+ 650              		.cfi_endproc
+ 651              	.LFE15:
+ 653              		.global	trace_buf0
+ 654              		.bss
+ 655 0003 00       		.align	2
+ 658              	trace_buf0:
+ 659 0004 00000000 		.space	400
+ 659      00000000 
+ 659      00000000 
+ 659      00000000 
+ 659      00000000 
+ 660              		.global	trace_buf1
+ 661              		.align	2
+ 664              	trace_buf1:
+ 665 0194 00000000 		.space	400
+ 665      00000000 
+ 665      00000000 
+ 665      00000000 
+ 665      00000000 
+ 666              		.global	trace_buf2
+ 667              		.align	2
+ 670              	trace_buf2:
+ 671 0324 00000000 		.space	400
+ 671      00000000 
+ 671      00000000 
+ 671      00000000 
+ 671      00000000 
+ 672              		.section	.text.trace_scope,"ax",%progbits
+ 673              		.align	2
+ 674              		.global	trace_scope
+ 675              		.syntax unified
+ 676              		.arm
+ 678              	trace_scope:
+ 679              	.LFB16:
+  49:main.c        **** }
+  50:main.c        **** 
+  51:main.c        **** /************************************************************************/
+  52:main.c        **** /*   Hilfsroutine zur Darstellung eines analogen Verlaufes entsprechend */
+  53:main.c        **** /*   einem Oszillosop                                                   */
+  54:main.c        **** /************************************************************************/
+  55:main.c        **** #define TRACE_SIZE 200
+  56:main.c        **** int16_t  trace_buf0[TRACE_SIZE];
+  57:main.c        **** int16_t  trace_buf1[TRACE_SIZE];
+  58:main.c        **** int16_t  trace_buf2[TRACE_SIZE];
+  59:main.c        **** //Darstellung des Puffers über 'v.draw %e trace_buf0 trace_buf1'
+  60:main.c        **** void trace_scope(int channel,int16_t value)
+  61:main.c        **** {
+ 680              		.loc 1 61 1
+ 681              		.cfi_startproc
+ 682              		@ Function supports interworking.
+ 683              		@ args = 0, pretend = 0, frame = 24
+ 684              		@ frame_needed = 1, uses_anonymous_args = 0
+ 685              		@ link register save eliminated.
+ 686 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 687              		.cfi_def_cfa_offset 4
+ 688              		.cfi_offset 11, -4
+ 689 0004 00B08DE2 		add	fp, sp, #0
+ 690              		.cfi_def_cfa_register 11
+ 691 0008 1CD04DE2 		sub	sp, sp, #28
+ 692 000c 18000BE5 		str	r0, [fp, #-24]
+ 693 0010 0130A0E1 		mov	r3, r1
+ 694 0014 BA314BE1 		strh	r3, [fp, #-26]	@ movhi
+  62:main.c        **** #define TRACE_ROLL
+  63:main.c        **** 	#ifdef TRACE_ROLL
+  64:main.c        **** 	if(channel==0) {
+ 695              		.loc 1 64 4
+ 696 0018 18301BE5 		ldr	r3, [fp, #-24]
+ 697 001c 000053E3 		cmp	r3, #0
+ 698 0020 1900001A 		bne	.L37
+ 699              	.LBB7:
+  65:main.c        **** 		for(int lauf=0;lauf<(TRACE_SIZE-1);lauf++)
+ 700              		.loc 1 65 11
+ 701 0024 0030A0E3 		mov	r3, #0
+ 702 0028 08300BE5 		str	r3, [fp, #-8]
+ 703              		.loc 1 65 3
+ 704 002c 0D0000EA 		b	.L38
+ 705              	.L39:
+  66:main.c        **** 			trace_buf0[lauf]=trace_buf0[lauf+1];
+ 706              		.loc 1 66 36
+ 707 0030 08301BE5 		ldr	r3, [fp, #-8]
+ 708 0034 013083E2 		add	r3, r3, #1
+ 709              		.loc 1 66 31
+ 710 0038 34219FE5 		ldr	r2, .L47
+ 711 003c 8330A0E1 		lsl	r3, r3, #1
+ 712 0040 033082E0 		add	r3, r2, r3
+ 713 0044 F020D3E1 		ldrsh	r2, [r3]
+ 714              		.loc 1 66 20
+ 715 0048 24119FE5 		ldr	r1, .L47
+ 716 004c 08301BE5 		ldr	r3, [fp, #-8]
+ 717 0050 8330A0E1 		lsl	r3, r3, #1
+ 718 0054 033081E0 		add	r3, r1, r3
+ 719 0058 B020C3E1 		strh	r2, [r3]	@ movhi
+  65:main.c        **** 		for(int lauf=0;lauf<(TRACE_SIZE-1);lauf++)
+ 720              		.loc 1 65 42 discriminator 3
+ 721 005c 08301BE5 		ldr	r3, [fp, #-8]
+ 722 0060 013083E2 		add	r3, r3, #1
+ 723 0064 08300BE5 		str	r3, [fp, #-8]
+ 724              	.L38:
+  65:main.c        **** 		for(int lauf=0;lauf<(TRACE_SIZE-1);lauf++)
+ 725              		.loc 1 65 22 discriminator 1
+ 726 0068 08301BE5 		ldr	r3, [fp, #-8]
+ 727 006c C60053E3 		cmp	r3, #198
+ 728 0070 EEFFFFDA 		ble	.L39
+ 729              	.LBE7:
+  67:main.c        **** 		trace_buf0[TRACE_SIZE-1]=value;
+ 730              		.loc 1 67 27
+ 731 0074 F8309FE5 		ldr	r3, .L47
+ 732 0078 633F83E2 		add	r3, r3, #396
+ 733 007c 023083E2 		add	r3, r3, #2
+ 734 0080 BA215BE1 		ldrh	r2, [fp, #-26]	@ movhi
+ 735 0084 B020C3E1 		strh	r2, [r3]	@ movhi
+  68:main.c        **** 	}
+  69:main.c        **** 	else if(channel==1) {
+  70:main.c        **** 		for(int lauf=0;lauf<(TRACE_SIZE-1);lauf++)
+  71:main.c        **** 			trace_buf1[lauf]=trace_buf1[lauf+1];
+  72:main.c        **** 		trace_buf1[TRACE_SIZE-1]=value;
+  73:main.c        **** 	}
+  74:main.c        **** 	else {
+  75:main.c        **** 		for(int lauf=0;lauf<(TRACE_SIZE-1);lauf++)
+  76:main.c        **** 			trace_buf2[lauf]=trace_buf2[lauf+1];
+  77:main.c        **** 		trace_buf2[TRACE_SIZE-1]=value;
+  78:main.c        **** 	}
+  79:main.c        **** 	#else
+  80:main.c        **** 	static int trace_index=0;
+  81:main.c        **** 	if(trace_index<TRACE_SIZE) {
+  82:main.c        **** 		if(channel==0)
+  83:main.c        **** 			trace_buf0[trace_index]=value;
+  84:main.c        **** 		else if(channel==1)
+  85:main.c        **** 			trace_buf1[trace_index]=value;
+  86:main.c        **** 		else
+  87:main.c        **** 			trace_buf2[trace_index]=value;
+  88:main.c        **** 	}
+  89:main.c        **** 	else {
+  90:main.c        **** 		//Pause, damit der Debugger in 'Ruhe' den gesamten Speicher auslesen kann
+  91:main.c        **** 	}
+  92:main.c        **** 	if(channel==1) {
+  93:main.c        **** 		trace_index++;
+  94:main.c        **** 		trace_index=trace_index>=(3*TRACE_SIZE)?0:trace_index;
+  95:main.c        **** 	}
+  96:main.c        **** 	#endif
+  97:main.c        **** }
+ 736              		.loc 1 97 1
+ 737 0088 350000EA 		b	.L46
+ 738              	.L37:
+  69:main.c        **** 		for(int lauf=0;lauf<(TRACE_SIZE-1);lauf++)
+ 739              		.loc 1 69 9
+ 740 008c 18301BE5 		ldr	r3, [fp, #-24]
+ 741 0090 010053E3 		cmp	r3, #1
+ 742 0094 1900001A 		bne	.L41
+ 743              	.LBB8:
+  70:main.c        **** 			trace_buf1[lauf]=trace_buf1[lauf+1];
+ 744              		.loc 1 70 11
+ 745 0098 0030A0E3 		mov	r3, #0
+ 746 009c 0C300BE5 		str	r3, [fp, #-12]
+  70:main.c        **** 			trace_buf1[lauf]=trace_buf1[lauf+1];
+ 747              		.loc 1 70 3
+ 748 00a0 0D0000EA 		b	.L42
+ 749              	.L43:
+  71:main.c        **** 		trace_buf1[TRACE_SIZE-1]=value;
+ 750              		.loc 1 71 36
+ 751 00a4 0C301BE5 		ldr	r3, [fp, #-12]
+ 752 00a8 013083E2 		add	r3, r3, #1
+  71:main.c        **** 		trace_buf1[TRACE_SIZE-1]=value;
+ 753              		.loc 1 71 31
+ 754 00ac C4209FE5 		ldr	r2, .L47+4
+ 755 00b0 8330A0E1 		lsl	r3, r3, #1
+ 756 00b4 033082E0 		add	r3, r2, r3
+ 757 00b8 F020D3E1 		ldrsh	r2, [r3]
+  71:main.c        **** 		trace_buf1[TRACE_SIZE-1]=value;
+ 758              		.loc 1 71 20
+ 759 00bc B4109FE5 		ldr	r1, .L47+4
+ 760 00c0 0C301BE5 		ldr	r3, [fp, #-12]
+ 761 00c4 8330A0E1 		lsl	r3, r3, #1
+ 762 00c8 033081E0 		add	r3, r1, r3
+ 763 00cc B020C3E1 		strh	r2, [r3]	@ movhi
+  70:main.c        **** 			trace_buf1[lauf]=trace_buf1[lauf+1];
+ 764              		.loc 1 70 42 discriminator 3
+ 765 00d0 0C301BE5 		ldr	r3, [fp, #-12]
+ 766 00d4 013083E2 		add	r3, r3, #1
+ 767 00d8 0C300BE5 		str	r3, [fp, #-12]
+ 768              	.L42:
+  70:main.c        **** 			trace_buf1[lauf]=trace_buf1[lauf+1];
+ 769              		.loc 1 70 22 discriminator 1
+ 770 00dc 0C301BE5 		ldr	r3, [fp, #-12]
+ 771 00e0 C60053E3 		cmp	r3, #198
+ 772 00e4 EEFFFFDA 		ble	.L43
+ 773              	.LBE8:
+  72:main.c        **** 	}
+ 774              		.loc 1 72 27
+ 775 00e8 88309FE5 		ldr	r3, .L47+4
+ 776 00ec 633F83E2 		add	r3, r3, #396
+ 777 00f0 023083E2 		add	r3, r3, #2
+ 778 00f4 BA215BE1 		ldrh	r2, [fp, #-26]	@ movhi
+ 779 00f8 B020C3E1 		strh	r2, [r3]	@ movhi
+ 780              		.loc 1 97 1
+ 781 00fc 180000EA 		b	.L46
+ 782              	.L41:
+ 783              	.LBB9:
+  75:main.c        **** 			trace_buf2[lauf]=trace_buf2[lauf+1];
+ 784              		.loc 1 75 11
+ 785 0100 0030A0E3 		mov	r3, #0
+ 786 0104 10300BE5 		str	r3, [fp, #-16]
+  75:main.c        **** 			trace_buf2[lauf]=trace_buf2[lauf+1];
+ 787              		.loc 1 75 3
+ 788 0108 0D0000EA 		b	.L44
+ 789              	.L45:
+  76:main.c        **** 		trace_buf2[TRACE_SIZE-1]=value;
+ 790              		.loc 1 76 36
+ 791 010c 10301BE5 		ldr	r3, [fp, #-16]
+ 792 0110 013083E2 		add	r3, r3, #1
+  76:main.c        **** 		trace_buf2[TRACE_SIZE-1]=value;
+ 793              		.loc 1 76 31
+ 794 0114 60209FE5 		ldr	r2, .L47+8
+ 795 0118 8330A0E1 		lsl	r3, r3, #1
+ 796 011c 033082E0 		add	r3, r2, r3
+ 797 0120 F020D3E1 		ldrsh	r2, [r3]
+  76:main.c        **** 		trace_buf2[TRACE_SIZE-1]=value;
+ 798              		.loc 1 76 20
+ 799 0124 50109FE5 		ldr	r1, .L47+8
+ 800 0128 10301BE5 		ldr	r3, [fp, #-16]
+ 801 012c 8330A0E1 		lsl	r3, r3, #1
+ 802 0130 033081E0 		add	r3, r1, r3
+ 803 0134 B020C3E1 		strh	r2, [r3]	@ movhi
+  75:main.c        **** 			trace_buf2[lauf]=trace_buf2[lauf+1];
+ 804              		.loc 1 75 42 discriminator 3
+ 805 0138 10301BE5 		ldr	r3, [fp, #-16]
+ 806 013c 013083E2 		add	r3, r3, #1
+ 807 0140 10300BE5 		str	r3, [fp, #-16]
+ 808              	.L44:
+  75:main.c        **** 			trace_buf2[lauf]=trace_buf2[lauf+1];
+ 809              		.loc 1 75 22 discriminator 1
+ 810 0144 10301BE5 		ldr	r3, [fp, #-16]
+ 811 0148 C60053E3 		cmp	r3, #198
+ 812 014c EEFFFFDA 		ble	.L45
+ 813              	.LBE9:
+  77:main.c        **** 	}
+ 814              		.loc 1 77 27
+ 815 0150 24309FE5 		ldr	r3, .L47+8
+ 816 0154 633F83E2 		add	r3, r3, #396
+ 817 0158 023083E2 		add	r3, r3, #2
+ 818 015c BA215BE1 		ldrh	r2, [fp, #-26]	@ movhi
+ 819 0160 B020C3E1 		strh	r2, [r3]	@ movhi
+ 820              	.L46:
+ 821              		.loc 1 97 1
+ 822 0164 0000A0E1 		nop
+ 823 0168 00D08BE2 		add	sp, fp, #0
+ 824              		.cfi_def_cfa_register 13
+ 825              		@ sp needed
+ 826 016c 04B09DE4 		ldr	fp, [sp], #4
+ 827              		.cfi_restore 11
+ 828              		.cfi_def_cfa_offset 0
+ 829 0170 1EFF2FE1 		bx	lr
+ 830              	.L48:
+ 831              		.align	2
+ 832              	.L47:
+ 833 0174 00000000 		.word	trace_buf0
+ 834 0178 00000000 		.word	trace_buf1
+ 835 017c 00000000 		.word	trace_buf2
+ 836              		.cfi_endproc
+ 837              	.LFE16:
+ 839              		.global	motor_data
+ 840              		.bss
+ 841              		.align	2
+ 844              	motor_data:
+ 845 04b4 00000000 		.space	40
+ 845      00000000 
+ 845      00000000 
+ 845      00000000 
+ 845      00000000 
+ 846              		.section	.text.gpio_isr_entry,"ax",%progbits
+ 847              		.align	2
+ 848              		.global	gpio_isr_entry
+ 849              		.syntax unified
+ 850              		.arm
+ 852              	gpio_isr_entry:
+ 853              	.LFB17:
+  98:main.c        **** 
+  99:main.c        **** /*****************************************************************************/
+ 100:main.c        **** /*   Ihr Programm                                                            */
+ 101:main.c        **** /*****************************************************************************/
+ 102:main.c        **** 
+ 103:main.c        **** //GPIO-Portzuweisung
+ 104:main.c        **** #define MA0 15     //PerA=TF    PerB=TioA1   <-- Pos=Timer-IRQ  Geschwindigkeit=Timer1   
+ 105:main.c        **** #define MA1 1      //PerA=PWM1  PerB=TioB0   <-- Pos=Gpio-IRQ							 //Encoder Input Motor 0?
+ 106:main.c        **** 
+ 107:main.c        **** #define MB0 26     //PerA=DCD1  PerB=TioA2   <-- Pos=Timer-IRQ  Geschwindigkeit=Timer2   
+ 108:main.c        **** #define MB1 9      //PerA=DRxD  PerB=NPCs1   <-- Pos=Gpio-IRQ							 //Encoder Input Motor 1?
+ 109:main.c        **** 
+ 110:main.c        **** #define MC0 0      //PerA=PWM0  PerB=TioA0   <-- Pos=Timer-IRQ  Geschwindigkeit=Timer0   
+ 111:main.c        **** #define MC1 8      //PerA=CTS0  PerB=ADTrg   <-- Pos=Gpio-IRQ							 //Encoder Input Motor 2?
+ 112:main.c        **** 
+ 113:main.c        **** typedef enum __attribute__((packed)) {TV_MANUELL,TV_VARIABEL,TV_END} TV_MODE;
+ 114:main.c        **** 
+ 115:main.c        **** typedef enum __attribute__((packed)) {POSITION_MANUELL,POSITION_KONTINUIERLICH,POSITION_END} POSITI
+ 116:main.c        **** 
+ 117:main.c        **** struct {
+ 118:main.c        **** 	button_t      button_old;
+ 119:main.c        **** 	motor_t       motor_aktiv;
+ 120:main.c        **** 	TV_MODE       schritt_mode;
+ 121:main.c        **** 	POSITION_MODE position_mode;
+ 122:main.c        **** 	struct {
+ 123:main.c        **** 		uint32_t   pos;
+ 124:main.c        **** 		int8_t     dir;
+ 125:main.c        **** 		int32_t    speed;
+ 126:main.c        **** 	} motor[3];
+ 127:main.c        **** } motor_data = {
+ 128:main.c        **** 	.motor_aktiv=MOTOR_A,
+ 129:main.c        **** 	.motor[0]={
+ 130:main.c        **** 		.pos=0,
+ 131:main.c        **** 		.dir=0,
+ 132:main.c        **** 		.speed=0,
+ 133:main.c        **** 	},
+ 134:main.c        **** 	.motor[1]={
+ 135:main.c        **** 		.pos=0,
+ 136:main.c        **** 		.dir=0,
+ 137:main.c        **** 		.speed=0,
+ 138:main.c        **** 	},
+ 139:main.c        **** 	.motor[2]={
+ 140:main.c        **** 		.pos=0,
+ 141:main.c        **** 		.dir=0,
+ 142:main.c        **** 		.speed=0,
+ 143:main.c        **** 	},
+ 144:main.c        **** };
+ 145:main.c        **** //Anzeigen über v.view %e %spotlight motor_data
+ 146:main.c        **** 
+ 147:main.c        **** void gpio_isr_entry(void)
+ 148:main.c        **** {
+ 854              		.loc 1 148 1
+ 855              		.cfi_startproc
+ 856              		@ Function supports interworking.
+ 857              		@ args = 0, pretend = 0, frame = 8
+ 858              		@ frame_needed = 1, uses_anonymous_args = 0
+ 859              		@ link register save eliminated.
+ 860 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 861              		.cfi_def_cfa_offset 4
+ 862              		.cfi_offset 11, -4
+ 863 0004 00B08DE2 		add	fp, sp, #0
+ 864              		.cfi_def_cfa_register 11
+ 865 0008 0CD04DE2 		sub	sp, sp, #12
+ 149:main.c        **** //  uint32_t i_state = interrupts_get_and_disable();
+ 150:main.c        **** 
+ 151:main.c        **** 	uint32_t pinChanges  = *AT91C_PIOA_ISR;		// IRQ-Quelle auslesen + IRQ zurücksetzen
+ 866              		.loc 1 151 25
+ 867 000c 20309FE5 		ldr	r3, .L50
+ 868              		.loc 1 151 11
+ 869 0010 003093E5 		ldr	r3, [r3]
+ 870 0014 08300BE5 		str	r3, [fp, #-8]
+ 152:main.c        **** 	uint32_t currentPins = *AT91C_PIOA_PDSR;	// Read pins
+ 871              		.loc 1 152 25
+ 872 0018 18309FE5 		ldr	r3, .L50+4
+ 873              		.loc 1 152 11
+ 874 001c 003093E5 		ldr	r3, [r3]
+ 875 0020 0C300BE5 		str	r3, [fp, #-12]
+ 153:main.c        **** 
+ 154:main.c        **** //...
+ 155:main.c        **** 
+ 156:main.c        **** //  if (i_state)
+ 157:main.c        **** //    interrupts_enable();
+ 158:main.c        **** }
+ 876              		.loc 1 158 1
+ 877 0024 0000A0E1 		nop
+ 878 0028 00D08BE2 		add	sp, fp, #0
+ 879              		.cfi_def_cfa_register 13
+ 880              		@ sp needed
+ 881 002c 04B09DE4 		ldr	fp, [sp], #4
+ 882              		.cfi_restore 11
+ 883              		.cfi_def_cfa_offset 0
+ 884 0030 1EFF2FE1 		bx	lr
+ 885              	.L51:
+ 886              		.align	2
+ 887              	.L50:
+ 888 0034 4CF4FFFF 		.word	-2996
+ 889 0038 3CF4FFFF 		.word	-3012
+ 890              		.cfi_endproc
+ 891              	.LFE17:
+ 893              		.section	.text.motor_init,"ax",%progbits
+ 894              		.align	2
+ 895              		.global	motor_init
+ 896              		.syntax unified
+ 897              		.arm
+ 899              	motor_init:
+ 900              	.LFB18:
+ 159:main.c        **** 
+ 160:main.c        **** int motor_init(void)
+ 161:main.c        **** {
+ 901              		.loc 1 161 1
+ 902              		.cfi_startproc
+ 903              		@ Function supports interworking.
+ 904              		@ args = 0, pretend = 0, frame = 0
+ 905              		@ frame_needed = 1, uses_anonymous_args = 0
+ 906 0000 00482DE9 		push	{fp, lr}
+ 907              		.cfi_def_cfa_offset 8
+ 908              		.cfi_offset 11, -8
+ 909              		.cfi_offset 14, -4
+ 910 0004 04B08DE2 		add	fp, sp, #4
+ 911              		.cfi_def_cfa 11, 4
+ 162:main.c        **** 	//Motor PWM 'aktivieren'
+ 163:main.c        **** 	//PWM-Signale laufen über den AVR-Prozessor
+ 164:main.c        **** 	//Initialisierung nicht notwendig, da dieser zuvor 
+ 165:main.c        **** 	//bereits mittels nxt_avr_init()()ininitialisiert wurde
+ 166:main.c        **** 	
+ 167:main.c        **** 	//Motoren Stoppen und in Freilauf stzen
+ 168:main.c        ****     nxt_avr_set_motor(MOTOR_A,0,MOTOR_FLOAT);  //Motor A, PWM=0
+ 912              		.loc 1 168 5
+ 913 0008 0120A0E3 		mov	r2, #1
+ 914 000c 0010A0E3 		mov	r1, #0
+ 915 0010 0000A0E3 		mov	r0, #0
+ 916 0014 60309FE5 		ldr	r3, .L54
+ 917 0018 0FE0A0E1 		mov	lr, pc
+ 918 001c 13FF2FE1 		bx	r3
+ 919              	.LVL5:
+ 169:main.c        **** 	nxt_avr_set_motor(MOTOR_B,0,MOTOR_FLOAT);  //Motor B, PWM=0
+ 920              		.loc 1 169 2
+ 921 0020 0120A0E3 		mov	r2, #1
+ 922 0024 0010A0E3 		mov	r1, #0
+ 923 0028 0100A0E3 		mov	r0, #1
+ 924 002c 48309FE5 		ldr	r3, .L54
+ 925 0030 0FE0A0E1 		mov	lr, pc
+ 926 0034 13FF2FE1 		bx	r3
+ 927              	.LVL6:
+ 170:main.c        **** 	nxt_avr_set_motor(MOTOR_C,0,MOTOR_FLOAT);  //Motor C; PWM=0
+ 928              		.loc 1 170 2
+ 929 0038 0120A0E3 		mov	r2, #1
+ 930 003c 0010A0E3 		mov	r1, #0
+ 931 0040 0200A0E3 		mov	r0, #2
+ 932 0044 30309FE5 		ldr	r3, .L54
+ 933 0048 0FE0A0E1 		mov	lr, pc
+ 934 004c 13FF2FE1 		bx	r3
+ 935              	.LVL7:
+ 171:main.c        **** 
+ 172:main.c        **** 	//GPIO Clock einschalten (bereits erledigt)
+ 173:main.c        **** 	//AIC  Clock einschalten (bereits erledigt)
+ 174:main.c        **** 		
+ 175:main.c        **** 	//AIC Initialisieren
+ 176:main.c        **** //	aic_mask_off(AT91C_ID_PIOA);
+ 177:main.c        **** 	aic_set_vector(AT91C_ID_PIOA, AT91C_AIC_SRCTYPE_INT_HIGH_LEVEL | // Art 
+ 936              		.loc 1 177 2
+ 937 0050 28209FE5 		ldr	r2, .L54+4
+ 938 0054 0510A0E3 		mov	r1, #5
+ 939 0058 0200A0E3 		mov	r0, #2
+ 940 005c 20309FE5 		ldr	r3, .L54+8
+ 941 0060 0FE0A0E1 		mov	lr, pc
+ 942 0064 13FF2FE1 		bx	r3
+ 943              	.LVL8:
+ 178:main.c        ****                                   AIC_INT_LEVEL_ABOVE_NORMAL       , //Prio
+ 179:main.c        **** 	                              gpio_isr_entry);                   //ISR
+ 180:main.c        **** //	aic_mask_on(AT91C_ID_PIOA);
+ 181:main.c        **** 
+ 182:main.c        **** 	return 0;
+ 944              		.loc 1 182 9
+ 945 0068 0030A0E3 		mov	r3, #0
+ 183:main.c        **** }
+ 946              		.loc 1 183 1
+ 947 006c 0300A0E1 		mov	r0, r3
+ 948 0070 04D04BE2 		sub	sp, fp, #4
+ 949              		.cfi_def_cfa 13, 8
+ 950              		@ sp needed
+ 951 0074 0048BDE8 		pop	{fp, lr}
+ 952              		.cfi_restore 14
+ 953              		.cfi_restore 11
+ 954              		.cfi_def_cfa_offset 0
+ 955 0078 1EFF2FE1 		bx	lr
+ 956              	.L55:
+ 957              		.align	2
+ 958              	.L54:
+ 959 007c 00000000 		.word	nxt_avr_set_motor
+ 960 0080 00000000 		.word	gpio_isr_entry
+ 961 0084 00000000 		.word	aic_set_vector
+ 962              		.cfi_endproc
+ 963              	.LFE18:
+ 965              		.section	.text.motor_get,"ax",%progbits
+ 966              		.align	2
+ 967              		.global	motor_get
+ 968              		.syntax unified
+ 969              		.arm
+ 971              	motor_get:
+ 972              	.LFB19:
+ 184:main.c        **** 
+ 185:main.c        **** //Getter-Methode zur Abfrage der Position und Geschwindigkeit
+ 186:main.c        **** int motor_get(int8_t port,uint32_t *pos,int16_t *speed)
+ 187:main.c        **** {
+ 973              		.loc 1 187 1
+ 974              		.cfi_startproc
+ 975              		@ Function supports interworking.
+ 976              		@ args = 0, pretend = 0, frame = 16
+ 977              		@ frame_needed = 1, uses_anonymous_args = 0
+ 978              		@ link register save eliminated.
+ 979 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 980              		.cfi_def_cfa_offset 4
+ 981              		.cfi_offset 11, -4
+ 982 0004 00B08DE2 		add	fp, sp, #0
+ 983              		.cfi_def_cfa_register 11
+ 984 0008 14D04DE2 		sub	sp, sp, #20
+ 985 000c 0030A0E1 		mov	r3, r0
+ 986 0010 0C100BE5 		str	r1, [fp, #-12]
+ 987 0014 10200BE5 		str	r2, [fp, #-16]
+ 988 0018 05304BE5 		strb	r3, [fp, #-5]
+ 188:main.c        **** 	if((port<0) || (port>2))
+ 989              		.loc 1 188 4
+ 990 001c D5305BE1 		ldrsb	r3, [fp, #-5]
+ 991 0020 000053E3 		cmp	r3, #0
+ 992 0024 020000BA 		blt	.L57
+ 993              		.loc 1 188 14 discriminator 1
+ 994 0028 D5305BE1 		ldrsb	r3, [fp, #-5]
+ 995 002c 020053E3 		cmp	r3, #2
+ 996 0030 010000DA 		ble	.L58
+ 997              	.L57:
+ 189:main.c        **** 		return -1;
+ 998              		.loc 1 189 10
+ 999 0034 0030E0E3 		mvn	r3, #0
+ 1000 0038 200000EA 		b	.L59
+ 1001              	.L58:
+ 190:main.c        **** 	if((pos==NULL) || (speed==NULL))
+ 1002              		.loc 1 190 4
+ 1003 003c 0C301BE5 		ldr	r3, [fp, #-12]
+ 1004 0040 000053E3 		cmp	r3, #0
+ 1005 0044 0200000A 		beq	.L60
+ 1006              		.loc 1 190 17 discriminator 1
+ 1007 0048 10301BE5 		ldr	r3, [fp, #-16]
+ 1008 004c 000053E3 		cmp	r3, #0
+ 1009 0050 0100001A 		bne	.L61
+ 1010              	.L60:
+ 191:main.c        **** 		return -1;
+ 1011              		.loc 1 191 10
+ 1012 0054 0030E0E3 		mvn	r3, #0
+ 1013 0058 180000EA 		b	.L59
+ 1014              	.L61:
+ 192:main.c        **** 
+ 193:main.c        **** 	*pos = motor_data.motor[port].pos;
+ 1015              		.loc 1 193 31
+ 1016 005c D5205BE1 		ldrsb	r2, [fp, #-5]
+ 1017 0060 68109FE5 		ldr	r1, .L62
+ 1018 0064 0230A0E1 		mov	r3, r2
+ 1019 0068 8330A0E1 		lsl	r3, r3, #1
+ 1020 006c 023083E0 		add	r3, r3, r2
+ 1021 0070 0331A0E1 		lsl	r3, r3, #2
+ 1022 0074 033081E0 		add	r3, r1, r3
+ 1023 0078 043083E2 		add	r3, r3, #4
+ 1024 007c 002093E5 		ldr	r2, [r3]
+ 1025              		.loc 1 193 7
+ 1026 0080 0C301BE5 		ldr	r3, [fp, #-12]
+ 1027 0084 002083E5 		str	r2, [r3]
+ 194:main.c        **** 	//Ob das reicht, ist ihre Entscheidung
+ 195:main.c        **** 	*speed = motor_data.motor[port].speed;
+ 1028              		.loc 1 195 33
+ 1029 0088 D5205BE1 		ldrsb	r2, [fp, #-5]
+ 1030 008c 3C109FE5 		ldr	r1, .L62
+ 1031 0090 0230A0E1 		mov	r3, r2
+ 1032 0094 8330A0E1 		lsl	r3, r3, #1
+ 1033 0098 023083E0 		add	r3, r3, r2
+ 1034 009c 0331A0E1 		lsl	r3, r3, #2
+ 1035 00a0 033081E0 		add	r3, r1, r3
+ 1036 00a4 0C3083E2 		add	r3, r3, #12
+ 1037 00a8 003093E5 		ldr	r3, [r3]
+ 1038              		.loc 1 195 9
+ 1039 00ac 0338A0E1 		lsl	r3, r3, #16
+ 1040 00b0 4328A0E1 		asr	r2, r3, #16
+ 1041 00b4 10301BE5 		ldr	r3, [fp, #-16]
+ 1042 00b8 B020C3E1 		strh	r2, [r3]	@ movhi
+ 196:main.c        **** 	
+ 197:main.c        **** 	return 0;
+ 1043              		.loc 1 197 9
+ 1044 00bc 0030A0E3 		mov	r3, #0
+ 1045              	.L59:
+ 198:main.c        **** }
+ 1046              		.loc 1 198 1
+ 1047 00c0 0300A0E1 		mov	r0, r3
+ 1048 00c4 00D08BE2 		add	sp, fp, #0
+ 1049              		.cfi_def_cfa_register 13
+ 1050              		@ sp needed
+ 1051 00c8 04B09DE4 		ldr	fp, [sp], #4
+ 1052              		.cfi_restore 11
+ 1053              		.cfi_def_cfa_offset 0
+ 1054 00cc 1EFF2FE1 		bx	lr
+ 1055              	.L63:
+ 1056              		.align	2
+ 1057              	.L62:
+ 1058 00d0 00000000 		.word	motor_data
+ 1059              		.cfi_endproc
+ 1060              	.LFE19:
+ 1062              		.section	.text.motor_process,"ax",%progbits
+ 1063              		.align	2
+ 1064              		.global	motor_process
+ 1065              		.syntax unified
+ 1066              		.arm
+ 1068              	motor_process:
+ 1069              	.LFB20:
+ 199:main.c        **** 
+ 200:main.c        **** //Funktion wird alle 16ms aufgerufen
+ 201:main.c        **** void motor_process(void)
+ 202:main.c        **** {
+ 1070              		.loc 1 202 1
+ 1071              		.cfi_startproc
+ 1072              		@ Function supports interworking.
+ 1073              		@ args = 0, pretend = 0, frame = 8
+ 1074              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1075 0000 00482DE9 		push	{fp, lr}
+ 1076              		.cfi_def_cfa_offset 8
+ 1077              		.cfi_offset 11, -8
+ 1078              		.cfi_offset 14, -4
+ 1079 0004 04B08DE2 		add	fp, sp, #4
+ 1080              		.cfi_def_cfa 11, 4
+ 1081 0008 08D04DE2 		sub	sp, sp, #8
+ 203:main.c        **** 	uint32_t pos;
+ 204:main.c        **** 	int16_t  speed;
+ 205:main.c        **** 
+ 206:main.c        **** 	//Aktuellen Motor aus UI lesen
+ 207:main.c        **** 	motor_get(motor_data.motor_aktiv,&pos,&speed);
+ 1082              		.loc 1 207 22
+ 1083 000c 88309FE5 		ldr	r3, .L65
+ 1084 0010 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 1085              		.loc 1 207 2
+ 1086 0014 033CA0E1 		lsl	r3, r3, #24
+ 1087 0018 433CA0E1 		asr	r3, r3, #24
+ 1088 001c 0A204BE2 		sub	r2, fp, #10
+ 1089 0020 08104BE2 		sub	r1, fp, #8
+ 1090 0024 0300A0E1 		mov	r0, r3
+ 1091 0028 70309FE5 		ldr	r3, .L65+4
+ 1092 002c 0FE0A0E1 		mov	lr, pc
+ 1093 0030 13FF2FE1 		bx	r3
+ 1094              	.LVL9:
+ 208:main.c        **** 	trace_scope(0,(int16_t)(pos&0xffff));
+ 1095              		.loc 1 208 2
+ 1096 0034 08301BE5 		ldr	r3, [fp, #-8]
+ 1097 0038 0338A0E1 		lsl	r3, r3, #16
+ 1098 003c 4338A0E1 		asr	r3, r3, #16
+ 1099 0040 0310A0E1 		mov	r1, r3
+ 1100 0044 0000A0E3 		mov	r0, #0
+ 1101 0048 54309FE5 		ldr	r3, .L65+8
+ 1102 004c 0FE0A0E1 		mov	lr, pc
+ 1103 0050 13FF2FE1 		bx	r3
+ 1104              	.LVL10:
+ 209:main.c        **** 	trace_scope(1,speed);
+ 1105              		.loc 1 209 2
+ 1106 0054 FA305BE1 		ldrsh	r3, [fp, #-10]
+ 1107 0058 0310A0E1 		mov	r1, r3
+ 1108 005c 0100A0E3 		mov	r0, #1
+ 1109 0060 3C309FE5 		ldr	r3, .L65+8
+ 1110 0064 0FE0A0E1 		mov	lr, pc
+ 1111 0068 13FF2FE1 		bx	r3
+ 1112              	.LVL11:
+ 210:main.c        **** 	trace_scope(2,(int16_t)pos);
+ 1113              		.loc 1 210 2
+ 1114 006c 08301BE5 		ldr	r3, [fp, #-8]
+ 1115 0070 0338A0E1 		lsl	r3, r3, #16
+ 1116 0074 4338A0E1 		asr	r3, r3, #16
+ 1117 0078 0310A0E1 		mov	r1, r3
+ 1118 007c 0200A0E3 		mov	r0, #2
+ 1119 0080 1C309FE5 		ldr	r3, .L65+8
+ 1120 0084 0FE0A0E1 		mov	lr, pc
+ 1121 0088 13FF2FE1 		bx	r3
+ 1122              	.LVL12:
+ 211:main.c        **** 
+ 212:main.c        **** 	//Geschwindigkeitsvorgabe aus UI umsetzen
+ 213:main.c        **** 	//nxt_motor_set();
+ 214:main.c        **** }
+ 1123              		.loc 1 214 1
+ 1124 008c 0000A0E1 		nop
+ 1125 0090 04D04BE2 		sub	sp, fp, #4
+ 1126              		.cfi_def_cfa 13, 8
+ 1127              		@ sp needed
+ 1128 0094 0048BDE8 		pop	{fp, lr}
+ 1129              		.cfi_restore 14
+ 1130              		.cfi_restore 11
+ 1131              		.cfi_def_cfa_offset 0
+ 1132 0098 1EFF2FE1 		bx	lr
+ 1133              	.L66:
+ 1134              		.align	2
+ 1135              	.L65:
+ 1136 009c 00000000 		.word	motor_data
+ 1137 00a0 00000000 		.word	motor_get
+ 1138 00a4 00000000 		.word	trace_scope
+ 1139              		.cfi_endproc
+ 1140              	.LFE20:
+ 1142              		.section	.rodata
+ 1143              		.align	2
+ 1144              	.LC0:
+ 1145 0000 4F72616E 		.ascii	"Orange pressed\012\015\000"
+ 1145      67652070 
+ 1145      72657373 
+ 1145      65640A0D 
+ 1145      00
+ 1146 0011 000000   		.align	2
+ 1147              	.LC1:
+ 1148 0014 4F72616E 		.ascii	"Orange released\012\015\000"
+ 1148      67652072 
+ 1148      656C6561 
+ 1148      7365640A 
+ 1148      0D00
+ 1149 0026 0000     		.align	2
+ 1150              	.LC2:
+ 1151 0028 4C656674 		.ascii	"Left pressed\012\015\000"
+ 1151      20707265 
+ 1151      73736564 
+ 1151      0A0D00
+ 1152 0037 00       		.align	2
+ 1153              	.LC3:
+ 1154 0038 52696768 		.ascii	"Right pressed\012\015\000"
+ 1154      74207072 
+ 1154      65737365 
+ 1154      640A0D00 
+ 1155              		.align	2
+ 1156              	.LC4:
+ 1157 0048 47726579 		.ascii	"Grey pressed\012\015\000"
+ 1157      20707265 
+ 1157      73736564 
+ 1157      0A0D00
+ 1158              		.section	.text.ui_process,"ax",%progbits
+ 1159              		.align	2
+ 1160              		.global	ui_process
+ 1161              		.syntax unified
+ 1162              		.arm
+ 1164              	ui_process:
+ 1165              	.LFB21:
+ 215:main.c        ****       
+ 216:main.c        **** 
+ 217:main.c        **** //Funktion wird alle 64ms aufgerufen
+ 218:main.c        **** void ui_process(void) 
+ 219:main.c        **** {
+ 1166              		.loc 1 219 1
+ 1167              		.cfi_startproc
+ 1168              		@ Function supports interworking.
+ 1169              		@ args = 0, pretend = 0, frame = 8
+ 1170              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1171 0000 00482DE9 		push	{fp, lr}
+ 1172              		.cfi_def_cfa_offset 8
+ 1173              		.cfi_offset 11, -8
+ 1174              		.cfi_offset 14, -4
+ 1175 0004 04B08DE2 		add	fp, sp, #4
+ 1176              		.cfi_def_cfa 11, 4
+ 1177 0008 08D04DE2 		sub	sp, sp, #8
+ 220:main.c        **** 	button_t button_new=nxt_avr_get_buttons();
+ 1178              		.loc 1 220 22
+ 1179 000c 68319FE5 		ldr	r3, .L73
+ 1180 0010 0FE0A0E1 		mov	lr, pc
+ 1181 0014 13FF2FE1 		bx	r3
+ 1182              	.LVL13:
+ 1183 0018 0030A0E1 		mov	r3, r0
+ 1184 001c 08304BE5 		strb	r3, [fp, #-8]
+ 221:main.c        **** 	
+ 222:main.c        **** //Beispiel für Tastenauswertung		   
+ 223:main.c        **** 	if(!motor_data.button_old.orange && button_new.orange) {
+ 1185              		.loc 1 223 5
+ 1186 0020 58319FE5 		ldr	r3, .L73+4
+ 1187 0024 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1188 0028 013003E2 		and	r3, r3, #1
+ 1189 002c FF3003E2 		and	r3, r3, #255
+ 1190              		.loc 1 223 4
+ 1191 0030 000053E3 		cmp	r3, #0
+ 1192 0034 0900001A 		bne	.L68
+ 1193              		.loc 1 223 35 discriminator 1
+ 1194 0038 08305BE5 		ldrb	r3, [fp, #-8]	@ zero_extendqisi2
+ 1195 003c 013003E2 		and	r3, r3, #1
+ 1196 0040 FF3003E2 		and	r3, r3, #255
+ 1197 0044 000053E3 		cmp	r3, #0
+ 1198 0048 0400000A 		beq	.L68
+ 224:main.c        **** 		(void)term_string("Orange pressed\n\r",ASYNCSYNC_NONBLOCK);
+ 1199              		.loc 1 224 9
+ 1200 004c 0010A0E3 		mov	r1, #0
+ 1201 0050 2C019FE5 		ldr	r0, .L73+8
+ 1202 0054 2C319FE5 		ldr	r3, .L73+12
+ 1203 0058 0FE0A0E1 		mov	lr, pc
+ 1204 005c 13FF2FE1 		bx	r3
+ 1205              	.LVL14:
+ 1206              	.L68:
+ 225:main.c        **** 	}
+ 226:main.c        **** 	if(motor_data.button_old.orange && !button_new.orange) {
+ 1207              		.loc 1 226 5
+ 1208 0060 18319FE5 		ldr	r3, .L73+4
+ 1209 0064 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1210 0068 013003E2 		and	r3, r3, #1
+ 1211 006c FF3003E2 		and	r3, r3, #255
+ 1212              		.loc 1 226 4
+ 1213 0070 000053E3 		cmp	r3, #0
+ 1214 0074 0900000A 		beq	.L69
+ 1215              		.loc 1 226 37 discriminator 1
+ 1216 0078 08305BE5 		ldrb	r3, [fp, #-8]	@ zero_extendqisi2
+ 1217 007c 013003E2 		and	r3, r3, #1
+ 1218 0080 FF3003E2 		and	r3, r3, #255
+ 1219              		.loc 1 226 34 discriminator 1
+ 1220 0084 000053E3 		cmp	r3, #0
+ 1221 0088 0400001A 		bne	.L69
+ 227:main.c        **** 		(void)term_string("Orange released\n\r",ASYNCSYNC_NONBLOCK);
+ 1222              		.loc 1 227 9
+ 1223 008c 0010A0E3 		mov	r1, #0
+ 1224 0090 F4009FE5 		ldr	r0, .L73+16
+ 1225 0094 EC309FE5 		ldr	r3, .L73+12
+ 1226 0098 0FE0A0E1 		mov	lr, pc
+ 1227 009c 13FF2FE1 		bx	r3
+ 1228              	.LVL15:
+ 1229              	.L69:
+ 228:main.c        **** 	}
+ 229:main.c        **** 	if(motor_data.button_old.left && !button_new.left) {
+ 1230              		.loc 1 229 5
+ 1231 00a0 D8309FE5 		ldr	r3, .L73+4
+ 1232 00a4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1233 00a8 023003E2 		and	r3, r3, #2
+ 1234 00ac FF3003E2 		and	r3, r3, #255
+ 1235              		.loc 1 229 4
+ 1236 00b0 000053E3 		cmp	r3, #0
+ 1237 00b4 0900000A 		beq	.L70
+ 1238              		.loc 1 229 35 discriminator 1
+ 1239 00b8 08305BE5 		ldrb	r3, [fp, #-8]	@ zero_extendqisi2
+ 1240 00bc 023003E2 		and	r3, r3, #2
+ 1241 00c0 FF3003E2 		and	r3, r3, #255
+ 1242              		.loc 1 229 32 discriminator 1
+ 1243 00c4 000053E3 		cmp	r3, #0
+ 1244 00c8 0400001A 		bne	.L70
+ 230:main.c        **** 		(void)term_string("Left pressed\n\r",ASYNCSYNC_NONBLOCK);
+ 1245              		.loc 1 230 9
+ 1246 00cc 0010A0E3 		mov	r1, #0
+ 1247 00d0 B8009FE5 		ldr	r0, .L73+20
+ 1248 00d4 AC309FE5 		ldr	r3, .L73+12
+ 1249 00d8 0FE0A0E1 		mov	lr, pc
+ 1250 00dc 13FF2FE1 		bx	r3
+ 1251              	.LVL16:
+ 1252              	.L70:
+ 231:main.c        **** 	}
+ 232:main.c        **** 	if(!motor_data.button_old.right && button_new.right) {
+ 1253              		.loc 1 232 5
+ 1254 00e0 98309FE5 		ldr	r3, .L73+4
+ 1255 00e4 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1256 00e8 043003E2 		and	r3, r3, #4
+ 1257 00ec FF3003E2 		and	r3, r3, #255
+ 1258              		.loc 1 232 4
+ 1259 00f0 000053E3 		cmp	r3, #0
+ 1260 00f4 0900001A 		bne	.L71
+ 1261              		.loc 1 232 34 discriminator 1
+ 1262 00f8 08305BE5 		ldrb	r3, [fp, #-8]	@ zero_extendqisi2
+ 1263 00fc 043003E2 		and	r3, r3, #4
+ 1264 0100 FF3003E2 		and	r3, r3, #255
+ 1265 0104 000053E3 		cmp	r3, #0
+ 1266 0108 0400000A 		beq	.L71
+ 233:main.c        **** 		(void)term_string("Right pressed\n\r",ASYNCSYNC_NONBLOCK);
+ 1267              		.loc 1 233 9
+ 1268 010c 0010A0E3 		mov	r1, #0
+ 1269 0110 7C009FE5 		ldr	r0, .L73+24
+ 1270 0114 6C309FE5 		ldr	r3, .L73+12
+ 1271 0118 0FE0A0E1 		mov	lr, pc
+ 1272 011c 13FF2FE1 		bx	r3
+ 1273              	.LVL17:
+ 1274              	.L71:
+ 234:main.c        **** 	}
+ 235:main.c        **** 	if(!motor_data.button_old.grey && button_new.grey) {
+ 1275              		.loc 1 235 5
+ 1276 0120 58309FE5 		ldr	r3, .L73+4
+ 1277 0124 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1278 0128 083003E2 		and	r3, r3, #8
+ 1279 012c FF3003E2 		and	r3, r3, #255
+ 1280              		.loc 1 235 4
+ 1281 0130 000053E3 		cmp	r3, #0
+ 1282 0134 0900001A 		bne	.L72
+ 1283              		.loc 1 235 33 discriminator 1
+ 1284 0138 08305BE5 		ldrb	r3, [fp, #-8]	@ zero_extendqisi2
+ 1285 013c 083003E2 		and	r3, r3, #8
+ 1286 0140 FF3003E2 		and	r3, r3, #255
+ 1287 0144 000053E3 		cmp	r3, #0
+ 1288 0148 0400000A 		beq	.L72
+ 236:main.c        **** 		(void)term_string("Grey pressed\n\r",ASYNCSYNC_BLOCK);
+ 1289              		.loc 1 236 9
+ 1290 014c 0110A0E3 		mov	r1, #1
+ 1291 0150 40009FE5 		ldr	r0, .L73+28
+ 1292 0154 2C309FE5 		ldr	r3, .L73+12
+ 1293 0158 0FE0A0E1 		mov	lr, pc
+ 1294 015c 13FF2FE1 		bx	r3
+ 1295              	.LVL18:
+ 1296              	.L72:
+ 237:main.c        **** 	}
+ 238:main.c        **** 	
+ 239:main.c        **** 	motor_data.button_old=button_new;
+ 1297              		.loc 1 239 23
+ 1298 0160 18209FE5 		ldr	r2, .L73+4
+ 1299 0164 08305BE5 		ldrb	r3, [fp, #-8]
+ 1300 0168 0030C2E5 		strb	r3, [r2]
+ 240:main.c        **** }
+ 1301              		.loc 1 240 1
+ 1302 016c 0000A0E1 		nop
+ 1303 0170 04D04BE2 		sub	sp, fp, #4
+ 1304              		.cfi_def_cfa 13, 8
+ 1305              		@ sp needed
+ 1306 0174 0048BDE8 		pop	{fp, lr}
+ 1307              		.cfi_restore 14
+ 1308              		.cfi_restore 11
+ 1309              		.cfi_def_cfa_offset 0
+ 1310 0178 1EFF2FE1 		bx	lr
+ 1311              	.L74:
+ 1312              		.align	2
+ 1313              	.L73:
+ 1314 017c 00000000 		.word	nxt_avr_get_buttons
+ 1315 0180 00000000 		.word	motor_data
+ 1316 0184 00000000 		.word	.LC0
+ 1317 0188 00000000 		.word	term_string
+ 1318 018c 14000000 		.word	.LC1
+ 1319 0190 28000000 		.word	.LC2
+ 1320 0194 38000000 		.word	.LC3
+ 1321 0198 48000000 		.word	.LC4
+ 1322              		.cfi_endproc
+ 1323              	.LFE21:
+ 1325              		.section	.text.task_4ms,"ax",%progbits
+ 1326              		.align	2
+ 1327              		.global	task_4ms
+ 1328              		.syntax unified
+ 1329              		.arm
+ 1331              	task_4ms:
+ 1332              	.LFB22:
+ 241:main.c        **** 
+ 242:main.c        **** /*****************************************************************************/
+ 243:main.c        **** /*   Hilfsroutinen                                                           */
+ 244:main.c        **** /*****************************************************************************/
+ 245:main.c        **** 
+ 246:main.c        **** void task_4ms(void) 
+ 247:main.c        **** {
+ 1333              		.loc 1 247 1
+ 1334              		.cfi_startproc
+ 1335              		@ Function supports interworking.
+ 1336              		@ args = 0, pretend = 0, frame = 0
+ 1337              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1338              		@ link register save eliminated.
+ 1339 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1340              		.cfi_def_cfa_offset 4
+ 1341              		.cfi_offset 11, -4
+ 1342 0004 00B08DE2 		add	fp, sp, #0
+ 1343              		.cfi_def_cfa_register 11
+ 248:main.c        **** 	//Keine blockierende Aufrufe
+ 249:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 250:main.c        **** }
+ 1344              		.loc 1 250 1
+ 1345 0008 0000A0E1 		nop
+ 1346 000c 00D08BE2 		add	sp, fp, #0
+ 1347              		.cfi_def_cfa_register 13
+ 1348              		@ sp needed
+ 1349 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1350              		.cfi_restore 11
+ 1351              		.cfi_def_cfa_offset 0
+ 1352 0014 1EFF2FE1 		bx	lr
+ 1353              		.cfi_endproc
+ 1354              	.LFE22:
+ 1356              		.section	.text.task_8ms,"ax",%progbits
+ 1357              		.align	2
+ 1358              		.global	task_8ms
+ 1359              		.syntax unified
+ 1360              		.arm
+ 1362              	task_8ms:
+ 1363              	.LFB23:
+ 251:main.c        **** 
+ 252:main.c        **** 
+ 253:main.c        **** void task_8ms(void) 
+ 254:main.c        **** {
+ 1364              		.loc 1 254 1
+ 1365              		.cfi_startproc
+ 1366              		@ Function supports interworking.
+ 1367              		@ args = 0, pretend = 0, frame = 0
+ 1368              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1369              		@ link register save eliminated.
+ 1370 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1371              		.cfi_def_cfa_offset 4
+ 1372              		.cfi_offset 11, -4
+ 1373 0004 00B08DE2 		add	fp, sp, #0
+ 1374              		.cfi_def_cfa_register 11
+ 255:main.c        **** 	//Keine blockierende Aufrufe
+ 256:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 257:main.c        **** }
+ 1375              		.loc 1 257 1
+ 1376 0008 0000A0E1 		nop
+ 1377 000c 00D08BE2 		add	sp, fp, #0
+ 1378              		.cfi_def_cfa_register 13
+ 1379              		@ sp needed
+ 1380 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1381              		.cfi_restore 11
+ 1382              		.cfi_def_cfa_offset 0
+ 1383 0014 1EFF2FE1 		bx	lr
+ 1384              		.cfi_endproc
+ 1385              	.LFE23:
+ 1387              		.section	.text.task_16ms,"ax",%progbits
+ 1388              		.align	2
+ 1389              		.global	task_16ms
+ 1390              		.syntax unified
+ 1391              		.arm
+ 1393              	task_16ms:
+ 1394              	.LFB24:
+ 258:main.c        **** 
+ 259:main.c        **** void task_16ms(void) 
+ 260:main.c        **** {
+ 1395              		.loc 1 260 1
+ 1396              		.cfi_startproc
+ 1397              		@ Function supports interworking.
+ 1398              		@ args = 0, pretend = 0, frame = 0
+ 1399              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1400 0000 00482DE9 		push	{fp, lr}
+ 1401              		.cfi_def_cfa_offset 8
+ 1402              		.cfi_offset 11, -8
+ 1403              		.cfi_offset 14, -4
+ 1404 0004 04B08DE2 		add	fp, sp, #4
+ 1405              		.cfi_def_cfa 11, 4
+ 261:main.c        **** 	//Keine blockierende Aufrufe
+ 262:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 263:main.c        **** 	motor_process();
+ 1406              		.loc 1 263 2
+ 1407 0008 14309FE5 		ldr	r3, .L78
+ 1408 000c 0FE0A0E1 		mov	lr, pc
+ 1409 0010 13FF2FE1 		bx	r3
+ 1410              	.LVL19:
+ 264:main.c        **** }
+ 1411              		.loc 1 264 1
+ 1412 0014 0000A0E1 		nop
+ 1413 0018 04D04BE2 		sub	sp, fp, #4
+ 1414              		.cfi_def_cfa 13, 8
+ 1415              		@ sp needed
+ 1416 001c 0048BDE8 		pop	{fp, lr}
+ 1417              		.cfi_restore 14
+ 1418              		.cfi_restore 11
+ 1419              		.cfi_def_cfa_offset 0
+ 1420 0020 1EFF2FE1 		bx	lr
+ 1421              	.L79:
+ 1422              		.align	2
+ 1423              	.L78:
+ 1424 0024 00000000 		.word	motor_process
+ 1425              		.cfi_endproc
+ 1426              	.LFE24:
+ 1428              		.section	.text.task_32ms,"ax",%progbits
+ 1429              		.align	2
+ 1430              		.global	task_32ms
+ 1431              		.syntax unified
+ 1432              		.arm
+ 1434              	task_32ms:
+ 1435              	.LFB25:
+ 265:main.c        **** 
+ 266:main.c        **** void task_32ms(void) 
+ 267:main.c        **** {
+ 1436              		.loc 1 267 1
+ 1437              		.cfi_startproc
+ 1438              		@ Function supports interworking.
+ 1439              		@ args = 0, pretend = 0, frame = 0
+ 1440              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1441              		@ link register save eliminated.
+ 1442 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1443              		.cfi_def_cfa_offset 4
+ 1444              		.cfi_offset 11, -4
+ 1445 0004 00B08DE2 		add	fp, sp, #0
+ 1446              		.cfi_def_cfa_register 11
+ 268:main.c        **** 	//Keine blockierende Aufrufe
+ 269:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 270:main.c        **** }
+ 1447              		.loc 1 270 1
+ 1448 0008 0000A0E1 		nop
+ 1449 000c 00D08BE2 		add	sp, fp, #0
+ 1450              		.cfi_def_cfa_register 13
+ 1451              		@ sp needed
+ 1452 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1453              		.cfi_restore 11
+ 1454              		.cfi_def_cfa_offset 0
+ 1455 0014 1EFF2FE1 		bx	lr
+ 1456              		.cfi_endproc
+ 1457              	.LFE25:
+ 1459              		.section	.text.task_64ms,"ax",%progbits
+ 1460              		.align	2
+ 1461              		.global	task_64ms
+ 1462              		.syntax unified
+ 1463              		.arm
+ 1465              	task_64ms:
+ 1466              	.LFB26:
+ 271:main.c        ****  
+ 272:main.c        **** void task_64ms(void) 
+ 273:main.c        **** {
+ 1467              		.loc 1 273 1
+ 1468              		.cfi_startproc
+ 1469              		@ Function supports interworking.
+ 1470              		@ args = 0, pretend = 0, frame = 0
+ 1471              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1472 0000 00482DE9 		push	{fp, lr}
+ 1473              		.cfi_def_cfa_offset 8
+ 1474              		.cfi_offset 11, -8
+ 1475              		.cfi_offset 14, -4
+ 1476 0004 04B08DE2 		add	fp, sp, #4
+ 1477              		.cfi_def_cfa 11, 4
+ 274:main.c        **** 	//Keine blockierende Aufrufe
+ 275:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 276:main.c        **** 	ui_process();
+ 1478              		.loc 1 276 2
+ 1479 0008 14309FE5 		ldr	r3, .L82
+ 1480 000c 0FE0A0E1 		mov	lr, pc
+ 1481 0010 13FF2FE1 		bx	r3
+ 1482              	.LVL20:
+ 277:main.c        **** }
+ 1483              		.loc 1 277 1
+ 1484 0014 0000A0E1 		nop
+ 1485 0018 04D04BE2 		sub	sp, fp, #4
+ 1486              		.cfi_def_cfa 13, 8
+ 1487              		@ sp needed
+ 1488 001c 0048BDE8 		pop	{fp, lr}
+ 1489              		.cfi_restore 14
+ 1490              		.cfi_restore 11
+ 1491              		.cfi_def_cfa_offset 0
+ 1492 0020 1EFF2FE1 		bx	lr
+ 1493              	.L83:
+ 1494              		.align	2
+ 1495              	.L82:
+ 1496 0024 00000000 		.word	ui_process
+ 1497              		.cfi_endproc
+ 1498              	.LFE26:
+ 1500              		.section	.text.task_128ms,"ax",%progbits
+ 1501              		.align	2
+ 1502              		.global	task_128ms
+ 1503              		.syntax unified
+ 1504              		.arm
+ 1506              	task_128ms:
+ 1507              	.LFB27:
+ 278:main.c        **** 
+ 279:main.c        **** void task_128ms(void) 
+ 280:main.c        **** {
+ 1508              		.loc 1 280 1
+ 1509              		.cfi_startproc
+ 1510              		@ Function supports interworking.
+ 1511              		@ args = 0, pretend = 0, frame = 0
+ 1512              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1513              		@ link register save eliminated.
+ 1514 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1515              		.cfi_def_cfa_offset 4
+ 1516              		.cfi_offset 11, -4
+ 1517 0004 00B08DE2 		add	fp, sp, #0
+ 1518              		.cfi_def_cfa_register 11
+ 281:main.c        **** 	//Keine blockierende Aufrufe
+ 282:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 283:main.c        **** }
+ 1519              		.loc 1 283 1
+ 1520 0008 0000A0E1 		nop
+ 1521 000c 00D08BE2 		add	sp, fp, #0
+ 1522              		.cfi_def_cfa_register 13
+ 1523              		@ sp needed
+ 1524 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1525              		.cfi_restore 11
+ 1526              		.cfi_def_cfa_offset 0
+ 1527 0014 1EFF2FE1 		bx	lr
+ 1528              		.cfi_endproc
+ 1529              	.LFE27:
+ 1531              		.section	.text.task_256ms,"ax",%progbits
+ 1532              		.align	2
+ 1533              		.global	task_256ms
+ 1534              		.syntax unified
+ 1535              		.arm
+ 1537              	task_256ms:
+ 1538              	.LFB28:
+ 284:main.c        **** 
+ 285:main.c        **** void task_256ms(void) 
+ 286:main.c        **** {
+ 1539              		.loc 1 286 1
+ 1540              		.cfi_startproc
+ 1541              		@ Function supports interworking.
+ 1542              		@ args = 0, pretend = 0, frame = 0
+ 1543              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1544              		@ link register save eliminated.
+ 1545 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1546              		.cfi_def_cfa_offset 4
+ 1547              		.cfi_offset 11, -4
+ 1548 0004 00B08DE2 		add	fp, sp, #0
+ 1549              		.cfi_def_cfa_register 11
+ 287:main.c        **** 	//Keine blockierende Aufrufe
+ 288:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 289:main.c        **** }
+ 1550              		.loc 1 289 1
+ 1551 0008 0000A0E1 		nop
+ 1552 000c 00D08BE2 		add	sp, fp, #0
+ 1553              		.cfi_def_cfa_register 13
+ 1554              		@ sp needed
+ 1555 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1556              		.cfi_restore 11
+ 1557              		.cfi_def_cfa_offset 0
+ 1558 0014 1EFF2FE1 		bx	lr
+ 1559              		.cfi_endproc
+ 1560              	.LFE28:
+ 1562              		.section	.text.task_512ms,"ax",%progbits
+ 1563              		.align	2
+ 1564              		.global	task_512ms
+ 1565              		.syntax unified
+ 1566              		.arm
+ 1568              	task_512ms:
+ 1569              	.LFB29:
+ 290:main.c        **** 
+ 291:main.c        **** void task_512ms(void)
+ 292:main.c        **** {
+ 1570              		.loc 1 292 1
+ 1571              		.cfi_startproc
+ 1572              		@ Function supports interworking.
+ 1573              		@ args = 0, pretend = 0, frame = 0
+ 1574              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1575              		@ link register save eliminated.
+ 1576 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1577              		.cfi_def_cfa_offset 4
+ 1578              		.cfi_offset 11, -4
+ 1579 0004 00B08DE2 		add	fp, sp, #0
+ 1580              		.cfi_def_cfa_register 11
+ 293:main.c        **** 	//Keine blockierende Aufrufe
+ 294:main.c        **** 	//Max. Bearbeitungsdauer: ZYKLUS_MS
+ 295:main.c        **** }
+ 1581              		.loc 1 295 1
+ 1582 0008 0000A0E1 		nop
+ 1583 000c 00D08BE2 		add	sp, fp, #0
+ 1584              		.cfi_def_cfa_register 13
+ 1585              		@ sp needed
+ 1586 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1587              		.cfi_restore 11
+ 1588              		.cfi_def_cfa_offset 0
+ 1589 0014 1EFF2FE1 		bx	lr
+ 1590              		.cfi_endproc
+ 1591              	.LFE29:
+ 1593              		.section	.text.task_idle,"ax",%progbits
+ 1594              		.align	2
+ 1595              		.global	task_idle
+ 1596              		.syntax unified
+ 1597              		.arm
+ 1599              	task_idle:
+ 1600              	.LFB30:
+ 296:main.c        **** 	
+ 297:main.c        **** 
+ 298:main.c        **** void task_idle(void) 
+ 299:main.c        **** {
+ 1601              		.loc 1 299 1
+ 1602              		.cfi_startproc
+ 1603              		@ Function supports interworking.
+ 1604              		@ args = 0, pretend = 0, frame = 0
+ 1605              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1606              		@ link register save eliminated.
+ 1607 0000 04B02DE5 		str	fp, [sp, #-4]!
+ 1608              		.cfi_def_cfa_offset 4
+ 1609              		.cfi_offset 11, -4
+ 1610 0004 00B08DE2 		add	fp, sp, #0
+ 1611              		.cfi_def_cfa_register 11
+ 300:main.c        **** 	//Keine blockierende Aufrufe
+ 301:main.c        **** 	//Max. Bearbeitungsdauer: IDLE_MS
+ 302:main.c        **** 	
+ 303:main.c        **** }
+ 1612              		.loc 1 303 1
+ 1613 0008 0000A0E1 		nop
+ 1614 000c 00D08BE2 		add	sp, fp, #0
+ 1615              		.cfi_def_cfa_register 13
+ 1616              		@ sp needed
+ 1617 0010 04B09DE4 		ldr	fp, [sp], #4
+ 1618              		.cfi_restore 11
+ 1619              		.cfi_def_cfa_offset 0
+ 1620 0014 1EFF2FE1 		bx	lr
+ 1621              		.cfi_endproc
+ 1622              	.LFE30:
+ 1624              		.section	.text.premain_init,"ax",%progbits
+ 1625              		.align	2
+ 1626              		.global	premain_init
+ 1627              		.syntax unified
+ 1628              		.arm
+ 1630              	premain_init:
+ 1631              	.LFB31:
+ 304:main.c        **** 
+ 305:main.c        **** /*****************************************************************************/
+ 306:main.c        **** /*    Pre-Main-Funktion                                                      */
+ 307:main.c        **** /*****************************************************************************/
+ 308:main.c        **** //Zur Vermeidung von malloc(1024) bei der ersten Ausgabe über stdout!
+ 309:main.c        **** //__attribute__(constructor) stellt sicher, dass premain_init() direkt nach __sinit()
+ 310:main.c        **** //aufgerufen wird (beides innerhalb von __libc_init_array())
+ 311:main.c        **** void __attribute__((constructor)) premain_init(void)
+ 312:main.c        **** {
+ 1632              		.loc 1 312 1
+ 1633              		.cfi_startproc
+ 1634              		@ Function supports interworking.
+ 1635              		@ args = 0, pretend = 0, frame = 0
+ 1636              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1637 0000 30482DE9 		push	{r4, r5, fp, lr}
+ 1638              		.cfi_def_cfa_offset 16
+ 1639              		.cfi_offset 4, -16
+ 1640              		.cfi_offset 5, -12
+ 1641              		.cfi_offset 11, -8
+ 1642              		.cfi_offset 14, -4
+ 1643 0004 0CB08DE2 		add	fp, sp, #12
+ 1644              		.cfi_def_cfa 11, 4
+ 313:main.c        **** #if 0
+ 314:main.c        **** 	//No linebuffering, call stdio_write() immediately
+ 315:main.c        **** 	//-> Langsam, da mit jedem Zeichen __sflush_r()/_write()/stdio_write() aufgerufen wird 
+ 316:main.c        **** 	setvbuf(stdout,NULL,_IONBF,0);
+ 317:main.c        **** #else	
+ 318:main.c        **** 	static char linebuf[10];
+ 319:main.c        **** 	//LineBuffering into global Varialbe (guter Kompromiss)
+ 320:main.c        **** 	setvbuf(stdout,linebuf,_IOLBF,sizeof(linebuf)); //Linebuffering in 
+ 1645              		.loc 1 320 10
+ 1646 0008 2C309FE5 		ldr	r3, .L89
+ 1647 000c 003093E5 		ldr	r3, [r3]
+ 1648 0010 080093E5 		ldr	r0, [r3, #8]
+ 1649              		.loc 1 320 2
+ 1650 0014 0A30A0E3 		mov	r3, #10
+ 1651 0018 0120A0E3 		mov	r2, #1
+ 1652 001c 1C109FE5 		ldr	r1, .L89+4
+ 1653 0020 1C409FE5 		ldr	r4, .L89+8
+ 1654 0024 0FE0A0E1 		mov	lr, pc
+ 1655 0028 14FF2FE1 		bx	r4
+ 1656              	.LVL21:
+ 321:main.c        **** #endif	
+ 322:main.c        **** }
+ 1657              		.loc 1 322 1
+ 1658 002c 0000A0E1 		nop
+ 1659 0030 0CD04BE2 		sub	sp, fp, #12
+ 1660              		.cfi_def_cfa 13, 16
+ 1661              		@ sp needed
+ 1662 0034 3048BDE8 		pop	{r4, r5, fp, lr}
+ 1663              		.cfi_restore 14
+ 1664              		.cfi_restore 11
+ 1665              		.cfi_restore 5
+ 1666              		.cfi_restore 4
+ 1667              		.cfi_def_cfa_offset 0
+ 1668 0038 1EFF2FE1 		bx	lr
+ 1669              	.L90:
+ 1670              		.align	2
+ 1671              	.L89:
+ 1672 003c 00000000 		.word	_impure_ptr
+ 1673 0040 DC040000 		.word	linebuf.1
+ 1674 0044 00000000 		.word	setvbuf
+ 1675              		.cfi_endproc
+ 1676              	.LFE31:
+ 1678              		.section	.init_array,"aw",%init_array
+ 1679              		.align	2
+ 1680 0000 00000000 		.word	premain_init(target1)
+ 1681              		.section	.rodata
+ 1682 0057 00       		.align	2
+ 1683              	.LC5:
+ 1684 0058 68616C6C 		.ascii	"hallo\012\015\000"
+ 1684      6F0A0D00 
+ 1685              		.align	2
+ 1686              	.LC6:
+ 1687 0060 1B5B324A 		.ascii	"\033[2J\033[H\033[0m\000"
+ 1687      1B5B481B 
+ 1687      5B306D00 
+ 1688              		.align	2
+ 1689              	.LC7:
+ 1690 006c 50726F67 		.ascii	"Prog: demo\012\015Version von: Nov  5 2025 11:16:45"
+ 1690      3A206465 
+ 1690      6D6F0A0D 
+ 1690      56657273 
+ 1690      696F6E20 
+ 1691 0099 0A0D00   		.ascii	"\012\015\000"
+ 1692              		.align	2
+ 1693              	.LC8:
+ 1694 009c 27762E76 		.ascii	"'v.view %e schrittmotor_data' zur Variablendarstell"
+ 1694      69657720 
+ 1694      25652073 
+ 1694      63687269 
+ 1694      74746D6F 
+ 1695 00cf 756E670A 		.ascii	"ung\012\015\000"
+ 1695      0D00
+ 1696 00d5 000000   		.align	2
+ 1697              	.LC9:
+ 1698 00d8 5669656C 		.ascii	"Viel Erfolg!\012\015\000"
+ 1698      20457266 
+ 1698      6F6C6721 
+ 1698      0A0D00
+ 1699 00e7 00       		.align	2
+ 1700              	.LC10:
+ 1701 00e8 00       		.ascii	"\000"
+ 1702 00e9 000000   		.align	2
+ 1703              	.LC11:
+ 1704 00ec 346D7300 		.ascii	"4ms\000"
+ 1705              		.align	2
+ 1706              	.LC12:
+ 1707 00f0 386D7300 		.ascii	"8ms\000"
+ 1708              		.align	2
+ 1709              	.LC13:
+ 1710 00f4 31366D73 		.ascii	"16ms\000"
+ 1710      00
+ 1711 00f9 000000   		.align	2
+ 1712              	.LC14:
+ 1713 00fc 33326D73 		.ascii	"32ms\000"
+ 1713      00
+ 1714 0101 000000   		.align	2
+ 1715              	.LC15:
+ 1716 0104 36346D73 		.ascii	"64ms\000"
+ 1716      00
+ 1717 0109 000000   		.align	2
+ 1718              	.LC16:
+ 1719 010c 3132386D 		.ascii	"128ms\000"
+ 1719      7300
+ 1720 0112 0000     		.align	2
+ 1721              	.LC17:
+ 1722 0114 3235366D 		.ascii	"256ms\000"
+ 1722      7300
+ 1723 011a 0000     		.align	2
+ 1724              	.LC18:
+ 1725 011c 3531326D 		.ascii	"512ms\000"
+ 1725      7300
+ 1726 0122 0000     		.align	2
+ 1727              	.LC19:
+ 1728 0124 49646C65 		.ascii	"Idle\000"
+ 1728      00
+ 1729 0129 000000   		.align	2
+ 1730              	.LC20:
+ 1731 012c 1B5B3331 		.ascii	"\033[31mTiming durch '\000"
+ 1731      6D54696D 
+ 1731      696E6720 
+ 1731      64757263 
+ 1731      68202700 
+ 1732              		.align	2
+ 1733              	.LC21:
+ 1734 0140 27207665 		.ascii	"' verletzt\012\015\033[39m\000"
+ 1734      726C6574 
+ 1734      7A740A0D 
+ 1734      1B5B3339 
+ 1734      6D00
+ 1735 0152 0000     		.align	2
+ 1736              	.LC22:
+ 1737 0154 1B5B3331 		.ascii	"\033[31mStack overflow durch '\000"
+ 1737      6D537461 
+ 1737      636B206F 
+ 1737      76657266 
+ 1737      6C6F7720 
+ 1738              		.align	2
+ 1739              	.LC23:
+ 1740 0170 270A0D1B 		.ascii	"'\012\015\033[39m\000"
+ 1740      5B33396D 
+ 1740      00
+ 1741 0179 000000   		.align	2
+ 1742              	.LC24:
+ 1743 017c 1B5B3331 		.ascii	"\033[31m\012\015Low Battery\012\015\033[39m\000"
+ 1743      6D0A0D4C 
+ 1743      6F772042 
+ 1743      61747465 
+ 1743      72790A0D 
+ 1744 0196 0000     		.align	2
+ 1745              	.LC25:
+ 1746 0198 1B5B3331 		.ascii	"\033[31m\012\015Terminal Overflow\012\015\033[39m\000"
+ 1746      6D0A0D54 
+ 1746      65726D69 
+ 1746      6E616C20 
+ 1746      4F766572 
+ 1747              		.section	.text.main,"ax",%progbits
+ 1748              		.align	2
+ 1749              		.global	main
+ 1750              		.syntax unified
+ 1751              		.arm
+ 1753              	main:
+ 1754              	.LFB32:
+ 323:main.c        **** /*****************************************************************************/
+ 324:main.c        **** /*    Main-Funktion                                                          */
+ 325:main.c        **** /*****************************************************************************/
+ 326:main.c        **** #if 0
+ 327:main.c        **** //Variante 1: Deklaration der main() Funktion
+ 328:main.c        **** //da es keine CLI gibt, über welcher die Anwendung getartet wird
+ 329:main.c        **** //sondern der start über startup.s erfolgt, macht dies kein Sinn
+ 330:main.c        **** //und belegt unnötige Speicherplatz auf den Stack
+ 331:main.c        **** int main(int argc, char *argv[]) 
+ 332:main.c        **** {
+ 333:main.c        **** 	(void) argc;
+ 334:main.c        **** 	(void) argv;
+ 335:main.c        **** #else
+ 336:main.c        **** //Variante 2: Deklaration der main() funktion
+ 337:main.c        **** int main(void) 
+ 338:main.c        **** {
+ 1755              		.loc 1 338 1
+ 1756              		.cfi_startproc
+ 1757              		@ Function supports interworking.
+ 1758              		@ args = 0, pretend = 0, frame = 24
+ 1759              		@ frame_needed = 1, uses_anonymous_args = 0
+ 1760 0000 00482DE9 		push	{fp, lr}
+ 1761              		.cfi_def_cfa_offset 8
+ 1762              		.cfi_offset 11, -8
+ 1763              		.cfi_offset 14, -4
+ 1764 0004 04B08DE2 		add	fp, sp, #4
+ 1765              		.cfi_def_cfa 11, 4
+ 1766 0008 18D04DE2 		sub	sp, sp, #24
+ 339:main.c        **** #endif
+ 340:main.c        **** 	/* Interrupts zu diesem Zeitpunkt disabled !!!! */
+ 341:main.c        **** 	
+ 342:main.c        **** 	/* 'Pflicht' Initialisierung, können nicht ausgelassen werden */
+ 343:main.c        **** 	aic_init();				//Interrupt-Controller initialisieren
+ 1767              		.loc 1 343 2
+ 1768 000c CC359FE5 		ldr	r3, .L120
+ 1769 0010 0FE0A0E1 		mov	lr, pc
+ 1770 0014 13FF2FE1 		bx	r3
+ 1771              	.LVL22:
+ 344:main.c        **** 	systick_init();			//System-Timer initialisieren
+ 1772              		.loc 1 344 2
+ 1773 0018 C4359FE5 		ldr	r3, .L120+4
+ 1774 001c 0FE0A0E1 		mov	lr, pc
+ 1775 0020 13FF2FE1 		bx	r3
+ 1776              	.LVL23:
+ 345:main.c        **** 	interrupts_enable();    //Ohne Worte
+ 1777              		.loc 1 345 2
+ 1778 0024 BC359FE5 		ldr	r3, .L120+8
+ 1779 0028 0FE0A0E1 		mov	lr, pc
+ 1780 002c 13FF2FE1 		bx	r3
+ 1781              	.LVL24:
+ 346:main.c        **** 	nxt_avr_init(8);
+ 1782              		.loc 1 346 2
+ 1783 0030 0800A0E3 		mov	r0, #8
+ 1784 0034 B0359FE5 		ldr	r3, .L120+12
+ 1785 0038 0FE0A0E1 		mov	lr, pc
+ 1786 003c 13FF2FE1 		bx	r3
+ 1787              	.LVL25:
+ 347:main.c        **** #if defined(MODE_RAM) || defined(MODE_SIM)
+ 348:main.c        **** 	udmon3_init();          //Speicherzugriff durch den Debugger
+ 1788              		.loc 1 348 2
+ 1789 0040 A8359FE5 		ldr	r3, .L120+16
+ 1790 0044 0FE0A0E1 		mov	lr, pc
+ 1791 0048 13FF2FE1 		bx	r3
+ 1792              	.LVL26:
+ 349:main.c        **** 	                        //zur Programmlaufzeit mittels der
+ 350:main.c        **** 							//DCC Schnittstelle ermöglichen
+ 351:main.c        **** #endif		
+ 352:main.c        **** 		
+ 353:main.c        **** 	/* 'Wahl' Initialisierung, hängt von den benötigten Komponenten ab */
+ 354:main.c        **** 	term_init();
+ 1793              		.loc 1 354 2
+ 1794 004c A0359FE5 		ldr	r3, .L120+20
+ 1795 0050 0FE0A0E1 		mov	lr, pc
+ 1796 0054 13FF2FE1 		bx	r3
+ 1797              	.LVL27:
+ 355:main.c        **** 	display_init();
+ 1798              		.loc 1 355 2
+ 1799 0058 98359FE5 		ldr	r3, .L120+24
+ 1800 005c 0FE0A0E1 		mov	lr, pc
+ 1801 0060 13FF2FE1 		bx	r3
+ 1802              	.LVL28:
+ 356:main.c        **** 
+ 357:main.c        **** 	motor_init();
+ 1803              		.loc 1 357 2
+ 1804 0064 90359FE5 		ldr	r3, .L120+28
+ 1805 0068 0FE0A0E1 		mov	lr, pc
+ 1806 006c 13FF2FE1 		bx	r3
+ 1807              	.LVL29:
+ 358:main.c        **** 
+ 359:main.c        **** 	display_clear(0);
+ 1808              		.loc 1 359 2
+ 1809 0070 0000A0E3 		mov	r0, #0
+ 1810 0074 84359FE5 		ldr	r3, .L120+32
+ 1811 0078 0FE0A0E1 		mov	lr, pc
+ 1812 007c 13FF2FE1 		bx	r3
+ 1813              	.LVL30:
+ 360:main.c        **** 	display_update();
+ 1814              		.loc 1 360 2
+ 1815 0080 7C359FE5 		ldr	r3, .L120+36
+ 1816 0084 0FE0A0E1 		mov	lr, pc
+ 1817 0088 13FF2FE1 		bx	r3
+ 1818              	.LVL31:
+ 361:main.c        **** 	
+ 362:main.c        **** 	//ANSI Escape sequences - VT100 / VT52 (see main.h)
+ 363:main.c        **** 	(void)term_string("hallo\n\r",ASYNCSYNC_BLOCK);
+ 1819              		.loc 1 363 8
+ 1820 008c 0110A0E3 		mov	r1, #1
+ 1821 0090 70059FE5 		ldr	r0, .L120+40
+ 1822 0094 70359FE5 		ldr	r3, .L120+44
+ 1823 0098 0FE0A0E1 		mov	lr, pc
+ 1824 009c 13FF2FE1 		bx	r3
+ 1825              	.LVL32:
+ 364:main.c        **** 	(void)term_string("\033[2J"
+ 1826              		.loc 1 364 8
+ 1827 00a0 0110A0E3 		mov	r1, #1
+ 1828 00a4 64059FE5 		ldr	r0, .L120+48
+ 1829 00a8 5C359FE5 		ldr	r3, .L120+44
+ 1830 00ac 0FE0A0E1 		mov	lr, pc
+ 1831 00b0 13FF2FE1 		bx	r3
+ 1832              	.LVL33:
+ 365:main.c        **** 	                  VT100_CURSORHOME    //Move Cursor to home position (0,0)
+ 366:main.c        **** 					  VT100_DEFAULT
+ 367:main.c        **** 					  ,ASYNCSYNC_BLOCK);   
+ 368:main.c        **** 	(void)term_string("Prog: " APP_NAME "\n\rVersion von: "__DATE__ " "__TIME__"\n\r",ASYNCSYNC_BLOCK)
+ 1833              		.loc 1 368 8
+ 1834 00b4 0110A0E3 		mov	r1, #1
+ 1835 00b8 54059FE5 		ldr	r0, .L120+52
+ 1836 00bc 48359FE5 		ldr	r3, .L120+44
+ 1837 00c0 0FE0A0E1 		mov	lr, pc
+ 1838 00c4 13FF2FE1 		bx	r3
+ 1839              	.LVL34:
+ 369:main.c        **** 	(void)term_string("'v.view %e schrittmotor_data' zur Variablendarstellung\n\r",ASYNCSYNC_BLOCK);
+ 1840              		.loc 1 369 8
+ 1841 00c8 0110A0E3 		mov	r1, #1
+ 1842 00cc 44059FE5 		ldr	r0, .L120+56
+ 1843 00d0 34359FE5 		ldr	r3, .L120+44
+ 1844 00d4 0FE0A0E1 		mov	lr, pc
+ 1845 00d8 13FF2FE1 		bx	r3
+ 1846              	.LVL35:
+ 370:main.c        **** 	(void)term_string("Viel Erfolg!\n\r",ASYNCSYNC_BLOCK);
+ 1847              		.loc 1 370 8
+ 1848 00dc 0110A0E3 		mov	r1, #1
+ 1849 00e0 34059FE5 		ldr	r0, .L120+60
+ 1850 00e4 20359FE5 		ldr	r3, .L120+44
+ 1851 00e8 0FE0A0E1 		mov	lr, pc
+ 1852 00ec 13FF2FE1 		bx	r3
+ 1853              	.LVL36:
+ 371:main.c        **** 
+ 372:main.c        **** 	//Alternativ zu term_xxx() kann auch printf() oder noch besser iprintf genutzt werden
+ 373:main.c        **** 	//beide bedingen jedoch einen großen Speicherbedarf!
+ 374:main.c        **** 	//Alternativ zu term_read() kann auch scanf() genutzt werden. Auch diese Funktion 
+ 375:main.c        **** 	// bedingt einen großen Speicherbedarf
+ 376:main.c        **** 
+ 377:main.c        **** #ifndef MODE_ROM
+ 378:main.c        **** 	/* Watchdog Disable */
+ 379:main.c        **** 	/* Mode-Register kann nur einmal beschrieben werden */
+ 380:main.c        **** 	AT91C_BASE_WDTC->WDTC_WDMR= 0xFFF | 
+ 1854              		.loc 1 380 17
+ 1855 00f0 28359FE5 		ldr	r3, .L120+64
+ 1856              		.loc 1 380 28
+ 1857 00f4 28259FE5 		ldr	r2, .L120+68
+ 1858 00f8 042083E5 		str	r2, [r3, #4]
+ 1859              	.LBB10:
+ 1860              	.LBB11:
+ 1861              		.file 4 "main.h"
+   1:main.h        **** #ifndef main_h
+   2:main.h        **** #define main_h
+   3:main.h        **** #include <stdint.h>
+   4:main.h        **** 
+   5:main.h        **** //ASCII-Zeichen
+   6:main.h        **** //\a The “alert” character, Ctrl-g, ASCII code 7 (BEL). (This usually makes some sort of audibl
+   7:main.h        **** //\b Backspace, Ctrl-h, ASCII code 8 (BS).
+   8:main.h        **** //\f Formfeed, Ctrl-l, ASCII code 12 (FF).
+   9:main.h        **** //\n Newline, Ctrl-j, ASCII code 10 (LF).
+  10:main.h        **** //\r Carriage return, Ctrl-m, ASCII code 13 (CR).
+  11:main.h        **** //\t Horizontal TAB, Ctrl-i, ASCII code 9 (HT).
+  12:main.h        **** //\v Vertical tab, Ctrl-k, ASCII code 11 (VT).
+  13:main.h        **** //\nnn The octal value nnn, where nnn stands for 1 to 3 digits between ‘0’ and ‘7’. For exa
+  14:main.h        **** //\xhh...The hexadecimal value hh, where hh stands for a sequence of hexadecimal digits (‘0’–
+  15:main.h        **** //       Like the same construct in ISO C, the escape sequence continues until 
+  16:main.h        **** //       the first nonhexadecimal digit is seen. (c.e.) However, using more 
+  17:main.h        **** //       than two hexadecimal digits produces undefined results. 
+  18:main.h        **** //       (The ‘\x’ escape sequence is not allowed in POSIX awk.)
+  19:main.h        **** //\/ A literal slash (necessary for regexp constants only). This sequence 
+  20:main.h        **** //       is used when you want to write a regexp constant that contains a 
+  21:main.h        **** //       slash. Because the regexp is delimited by slashes, you need to 
+  22:main.h        **** //       escape the slash that is part of the pattern, in order to tell 
+  23:main.h        **** //       awk to keep processing the rest of the regexp.
+  24:main.h        **** //\"  A literal double quote (necessary for string constants only). 
+  25:main.h        **** //       This sequence is used when you want to write a string constant 
+  26:main.h        **** //       that contains a double quote. Because the string is delimited by 
+  27:main.h        **** //       double quotes, you need to escape the quote that is part of 
+  28:main.h        **** //       the string, in order to tell awk to keep processing the rest
+  29:main.h        **** //       of the string.#define ANSI_BLACK   30
+  30:main.h        **** 
+  31:main.h        **** //https://www-user.tu-chemnitz.de/~heha/hsn/terminal/terminal.htm
+  32:main.h        **** //https://gist.github.com/ConnerWill/d4b6c776b509add763e17f9f113fd25b
+  33:main.h        **** //Cursor Control
+  34:main.h        **** #define VT100_CURSORHOME      "\e[H"
+  35:main.h        **** #define VT100_CLEARSCREEN     "\e[2J"
+  36:main.h        **** #define VT100_GOTOYX          "\e[%d;%dH"
+  37:main.h        **** #define VT100_SAVEPOS         "\e7"
+  38:main.h        **** #define VT100_RESTOREPOS      "\e8"
+  39:main.h        **** #define VT100_ROLLY1Y2        "\e[%d;%dr"
+  40:main.h        **** #define VT100_ROLLOFF         "\e[r"
+  41:main.h        **** //Erase Functions
+  42:main.h        **** #define VT100_ERASEFROMCURSOR "\e[0J"
+  43:main.h        **** #define VT100_ERASETOCURSOR   "\e[1J"
+  44:main.h        **** #define VT100_ERASESCREEN     "\e[2J"
+  45:main.h        **** #define VT100_DEL_UNTILEOL    "\e[K"
+  46:main.h        **** #define VT100_DEL_TOCUR       "\e[1K"
+  47:main.h        **** #define VT100_DEL_LINE        "\e[2K"
+  48:main.h        **** //Color/Graphics Mode
+  49:main.h        **** #define VT100_DEFAULT         "\e[0m"  //stellt hellgraue Schrift auf schwarzem Grund ein
+  50:main.h        **** #define VT100_FETT              "\e[1m"
+  51:main.h        **** #define VT100_FETT_AUS          "\e[22m"
+  52:main.h        **** #define VT100_UNTERSTRICHEN     "\e[4m"
+  53:main.h        **** #define VT100_UNTERSTRICHEN_AUS "\e[24m"
+  54:main.h        **** #define VT100_BLINKEN           "\e[5m"
+  55:main.h        **** #define VT100_BLINKEN_AUS       "\e[25m"
+  56:main.h        **** #define VT100_INVERS            "\e[7m"
+  57:main.h        **** #define VT100_INVERS_AUS        "\e[27m"
+  58:main.h        **** #define VT100_UNSICHTBAR        "\e[8m"
+  59:main.h        **** #define VT100_SICHTBAR          "\e[28m"
+  60:main.h        **** #define VT100_VORDERGRUND_SCHWARZ "\e[30m"
+  61:main.h        **** #define VT100_VORDERGRUND_ROT     "\e[31m"
+  62:main.h        **** #define VT100_VORDERGRUND_GRUEN   "\e[32m"
+  63:main.h        **** #define VT100_VORDERGRUND_BRAUN   "\e[33m"
+  64:main.h        **** #define VT100_VORDERGRUND_BLAU    "\e[34m"
+  65:main.h        **** #define VT100_VORDERGRUND_BLAUROT "\e[35m"
+  66:main.h        **** #define VT100_VORDERGRUND_ZYAN    "\e[36m"
+  67:main.h        **** #define VT100_VORDERGRUND_WEISS   "\e[37m"  //Default
+  68:main.h        **** #define VT100_VORDERGRUND_DEFAULT "\e[39m"  //Nicht VT100
+  69:main.h        **** #define VT100_HINTERGRUND_SCHWARZ "\e[40m"  //Default
+  70:main.h        **** #define VT100_HINTERGRUND_ROT     "\e[41m"  
+  71:main.h        **** #define VT100_HINTERGRUND_GRUEN   "\e[42m"  
+  72:main.h        **** #define VT100_HINTERGRUND_BRAUN   "\e[43m"  
+  73:main.h        **** #define VT100_HINTERGRUND_BLAU    "\e[44m"  
+  74:main.h        **** #define VT100_HINTERGRUND_BLAUROT "\e[45m"  
+  75:main.h        **** #define VT100_HINTERGRUND_ZYAN    "\e[46m"  
+  76:main.h        **** #define VT100_HINTERGRUND_WEISS   "\e[47m"  
+  77:main.h        **** #define VT100_HINTERGRUND_DEFAULT "\e[49m"
+  78:main.h        **** 
+  79:main.h        ****                                                          /* Main Clock [Hz] */
+  80:main.h        **** #define MAINCK            18432000
+  81:main.h        ****                                      /* Maseter Clock (PLLRC div by 2) [Hz] */
+  82:main.h        **** #define MCK               47923200
+  83:main.h        ****                                              /* System clock tick rate [Hz] */
+  84:main.h        **** #define BSP_TICKS_PER_SEC 1000
+  85:main.h        **** 
+  86:main.h        **** //#define NODISCARD __attribute__((warn_unused_result))  
+  87:main.h        **** #define NODISCARD  [[nodiscard]]
+  88:main.h        **** 
+  89:main.h        **** typedef enum __attribute__((packed)) {ASYNCSYNC_NONBLOCK,ASYNCSYNC_BLOCK,ASYNCSYNC_ASYNCGET} asyncs
+  90:main.h        **** 
+  91:main.h        **** typedef enum {SENSOR_1,SENSOR_2,SENSOR_3,SENSOR_4,SENSOR_MAX} sensor_t;
+  92:main.h        **** 
+  93:main.h        **** typedef enum {MOTOR_A,MOTOR_B,MOTOR_C} motor_t;
+  94:main.h        **** 
+  95:main.h        **** typedef enum {MOTOR_BREAK, MOTOR_FLOAT} motor_zustand_t;
+  96:main.h        **** 
+  97:main.h        **** typedef enum {SENSOR_OFF=0x00, SENSOR_9V_PULSED=0x01, SENSOR_9V=0x10 } sensor_power_t;
+  98:main.h        **** 
+  99:main.h        **** typedef enum {BATTERY_AA, BATTERY_ACCU} battery_t;
+ 100:main.h        **** 
+ 101:main.h        **** typedef struct {
+ 102:main.h        **** 	uint8_t orange : 1;
+ 103:main.h        **** 	uint8_t left : 1;
+ 104:main.h        **** 	uint8_t right : 1;
+ 105:main.h        **** 	uint8_t grey : 1;
+ 106:main.h        **** 	uint8_t reserved : 4;
+ 107:main.h        **** } button_t;
+ 108:main.h        **** 
+ 109:main.h        **** #define I2C_BAUDRATE 10000  //Orignal 9600
+ 110:main.h        **** 
+ 111:main.h        **** extern uint32_t __stack_start__[];   //Definiert in link.ld
+ 112:main.h        **** extern uint32_t __stack_end__;       //Definiert in link.ld
+ 113:main.h        **** #define STACK_FILL 0x11111111
+ 114:main.h        **** 
+ 115:main.h        **** static __inline__ void stack_fill(void) __attribute__((always_inline));
+ 116:main.h        **** static __inline__ void stack_fill(void)
+ 117:main.h        **** {
+ 118:main.h        **** 	         uint32_t *ptr;
+ 119:main.h        **** 	register uint32_t *sp asm("r13");
+ 120:main.h        **** 	for(ptr=&__stack_start__[0];ptr<sp;ptr++)
+ 1862              		.loc 4 120 9
+ 1863 00fc 24359FE5 		ldr	r3, .L120+72
+ 1864 0100 14300BE5 		str	r3, [fp, #-20]
+ 1865              		.loc 4 120 2
+ 1866 0104 050000EA 		b	.L92
+ 1867              	.L93:
+ 121:main.h        **** 		*ptr=STACK_FILL;
+ 1868              		.loc 4 121 7
+ 1869 0108 14301BE5 		ldr	r3, [fp, #-20]
+ 1870 010c 18259FE5 		ldr	r2, .L120+76
+ 1871 0110 002083E5 		str	r2, [r3]
+ 120:main.h        **** 		*ptr=STACK_FILL;
+ 1872              		.loc 4 120 40 discriminator 3
+ 1873 0114 14301BE5 		ldr	r3, [fp, #-20]
+ 1874 0118 043083E2 		add	r3, r3, #4
+ 1875 011c 14300BE5 		str	r3, [fp, #-20]
+ 1876              	.L92:
+ 120:main.h        **** 		*ptr=STACK_FILL;
+ 1877              		.loc 4 120 33 discriminator 1
+ 1878 0120 0D20A0E1 		mov	r2, sp
+ 1879 0124 14301BE5 		ldr	r3, [fp, #-20]
+ 1880 0128 020053E1 		cmp	r3, r2
+ 1881 012c F5FFFF3A 		bcc	.L93
+ 122:main.h        **** }
+ 1882              		.loc 4 122 1
+ 1883 0130 0000A0E1 		nop
+ 1884              	.L94:
+ 1885              	.LBE11:
+ 1886              	.LBE10:
+ 381:main.c        **** 							    AT91C_WDTC_WDDIS |    /*WD Disable */
+ 382:main.c        **** 	                            AT91C_WDTC_WDDBGHLT | /*Debug Halt */
+ 383:main.c        **** 								AT91C_WDTC_WDIDLEHLT; /*Idle Halt  */
+ 384:main.c        **** #else
+ 385:main.c        **** 	#if 0
+ 386:main.c        **** 	/* Watchdog Enable */
+ 387:main.c        **** 	/* Da in dieser Version kein zyklischer Reset des Watchdogs */
+ 388:main.c        **** 	/* vorhanden ist, wird von einem Watchdog Enable abgesehen  */
+ 389:main.c        **** 	/* Mit Reset wird der Wachdog aktiviert!                    */
+ 390:main.c        **** 	#else
+ 391:main.c        **** 	/* Watchdog Disable */
+ 392:main.c        **** 	/* Mode-Register kann nur einmal beschrieben werden */
+ 393:main.c        **** 	AT91C_BASE_WDTC->WDTC_WDMR= 0xFFF | 
+ 394:main.c        **** 							    AT91C_WDTC_WDDIS |    /*WD Disable */
+ 395:main.c        **** 	                            AT91C_WDTC_WDDBGHLT | /*Debug Halt */
+ 396:main.c        **** 								AT91C_WDTC_WDIDLEHLT; /*Idle Halt  */
+ 397:main.c        **** 	#endif
+ 398:main.c        **** #endif
+ 399:main.c        **** 	//Vorangegangenen Stackaufbau 'löschen'
+ 400:main.c        **** 	stack_fill();
+ 401:main.c        **** 	//Label, so das mit 'go start' hierin gesprungen werden kann
+ 402:main.c        **** start: __attribute__((unused));
+ 403:main.c        **** 	uint32_t start_tick=systick_get_ms();
+ 1887              		.loc 1 403 22
+ 1888 0134 F4349FE5 		ldr	r3, .L120+80
+ 1889 0138 0FE0A0E1 		mov	lr, pc
+ 1890 013c 13FF2FE1 		bx	r3
+ 1891              	.LVL37:
+ 1892 0140 08000BE5 		str	r0, [fp, #-8]
+ 404:main.c        **** 	uint32_t zeitscheibe=0;
+ 1893              		.loc 1 404 11
+ 1894 0144 0030A0E3 		mov	r3, #0
+ 1895 0148 0C300BE5 		str	r3, [fp, #-12]
+ 405:main.c        **** 	char    *task_aktiv="";
+ 1896              		.loc 1 405 11
+ 1897 014c E0349FE5 		ldr	r3, .L120+84
+ 1898 0150 10300BE5 		str	r3, [fp, #-16]
+ 1899              	.L119:
+ 406:main.c        **** 	while(1) {
+ 407:main.c        **** 		//Warten bis zum nächsten TimeSlot
+ 408:main.c        **** 		while((int)(start_tick-systick_get_ms())>0);
+ 1900              		.loc 1 408 8
+ 1901 0154 0000A0E1 		nop
+ 1902              	.L95:
+ 1903              		.loc 1 408 26 discriminator 1
+ 1904 0158 D0349FE5 		ldr	r3, .L120+80
+ 1905 015c 0FE0A0E1 		mov	lr, pc
+ 1906 0160 13FF2FE1 		bx	r3
+ 1907              	.LVL38:
+ 1908 0164 0020A0E1 		mov	r2, r0
+ 1909              		.loc 1 408 25 discriminator 1
+ 1910 0168 08301BE5 		ldr	r3, [fp, #-8]
+ 1911 016c 023043E0 		sub	r3, r3, r2
+ 1912              		.loc 1 408 43 discriminator 1
+ 1913 0170 000053E3 		cmp	r3, #0
+ 1914 0174 F7FFFFCA 		bgt	.L95
+ 409:main.c        **** 		start_tick+=ZYKLUS_MS;
+ 1915              		.loc 1 409 13
+ 1916 0178 08301BE5 		ldr	r3, [fp, #-8]
+ 1917 017c 023083E2 		add	r3, r3, #2
+ 1918 0180 08300BE5 		str	r3, [fp, #-8]
+ 1919              	.L96:
+ 410:main.c        **** 		//Label, so das mit 'go zyklus' hierhin gesprungen werden kann
+ 411:main.c        **** zyklus:  __attribute__((unused))
+ 412:main.c        **** 		if     ((zeitscheibe & 0b000000001) == 0b000000001) {
+ 1920              		.loc 1 412 24
+ 1921 0184 0C301BE5 		ldr	r3, [fp, #-12]
+ 1922 0188 013003E2 		and	r3, r3, #1
+ 1923              		.loc 1 412 10
+ 1924 018c 000053E3 		cmp	r3, #0
+ 1925 0190 0500000A 		beq	.L97
+ 413:main.c        **** 			task_aktiv="4ms";
+ 1926              		.loc 1 413 14
+ 1927 0194 9C349FE5 		ldr	r3, .L120+88
+ 1928 0198 10300BE5 		str	r3, [fp, #-16]
+ 414:main.c        **** 			task_4ms();
+ 1929              		.loc 1 414 4
+ 1930 019c 98349FE5 		ldr	r3, .L120+92
+ 1931 01a0 0FE0A0E1 		mov	lr, pc
+ 1932 01a4 13FF2FE1 		bx	r3
+ 1933              	.LVL39:
+ 1934 01a8 440000EA 		b	.L98
+ 1935              	.L97:
+ 415:main.c        **** 		}
+ 416:main.c        **** 		else if((zeitscheibe & 0b000000011) == 0b000000010) {
+ 1936              		.loc 1 416 24
+ 1937 01ac 0C301BE5 		ldr	r3, [fp, #-12]
+ 1938 01b0 033003E2 		and	r3, r3, #3
+ 1939              		.loc 1 416 10
+ 1940 01b4 020053E3 		cmp	r3, #2
+ 1941 01b8 0500001A 		bne	.L99
+ 417:main.c        **** 			task_aktiv="8ms";
+ 1942              		.loc 1 417 14
+ 1943 01bc 7C349FE5 		ldr	r3, .L120+96
+ 1944 01c0 10300BE5 		str	r3, [fp, #-16]
+ 418:main.c        **** 			task_8ms();
+ 1945              		.loc 1 418 4
+ 1946 01c4 78349FE5 		ldr	r3, .L120+100
+ 1947 01c8 0FE0A0E1 		mov	lr, pc
+ 1948 01cc 13FF2FE1 		bx	r3
+ 1949              	.LVL40:
+ 1950 01d0 3A0000EA 		b	.L98
+ 1951              	.L99:
+ 419:main.c        **** 		}
+ 420:main.c        **** 		else if((zeitscheibe & 0b000000111) == 0b000000100) {
+ 1952              		.loc 1 420 24
+ 1953 01d4 0C301BE5 		ldr	r3, [fp, #-12]
+ 1954 01d8 073003E2 		and	r3, r3, #7
+ 1955              		.loc 1 420 10
+ 1956 01dc 040053E3 		cmp	r3, #4
+ 1957 01e0 0500001A 		bne	.L100
+ 421:main.c        **** 			task_aktiv="16ms";
+ 1958              		.loc 1 421 14
+ 1959 01e4 5C349FE5 		ldr	r3, .L120+104
+ 1960 01e8 10300BE5 		str	r3, [fp, #-16]
+ 422:main.c        **** 			task_16ms();
+ 1961              		.loc 1 422 4
+ 1962 01ec 58349FE5 		ldr	r3, .L120+108
+ 1963 01f0 0FE0A0E1 		mov	lr, pc
+ 1964 01f4 13FF2FE1 		bx	r3
+ 1965              	.LVL41:
+ 1966 01f8 300000EA 		b	.L98
+ 1967              	.L100:
+ 423:main.c        **** 		}
+ 424:main.c        **** 		else if((zeitscheibe & 0b000001111) == 0b000001000) {
+ 1968              		.loc 1 424 24
+ 1969 01fc 0C301BE5 		ldr	r3, [fp, #-12]
+ 1970 0200 0F3003E2 		and	r3, r3, #15
+ 1971              		.loc 1 424 10
+ 1972 0204 080053E3 		cmp	r3, #8
+ 1973 0208 0500001A 		bne	.L101
+ 425:main.c        **** 			task_aktiv="32ms";
+ 1974              		.loc 1 425 14
+ 1975 020c 3C349FE5 		ldr	r3, .L120+112
+ 1976 0210 10300BE5 		str	r3, [fp, #-16]
+ 426:main.c        **** 			task_32ms();
+ 1977              		.loc 1 426 4
+ 1978 0214 38349FE5 		ldr	r3, .L120+116
+ 1979 0218 0FE0A0E1 		mov	lr, pc
+ 1980 021c 13FF2FE1 		bx	r3
+ 1981              	.LVL42:
+ 1982 0220 260000EA 		b	.L98
+ 1983              	.L101:
+ 427:main.c        **** 		}
+ 428:main.c        **** 		else if((zeitscheibe & 0b000011111) == 0b000010000) {
+ 1984              		.loc 1 428 24
+ 1985 0224 0C301BE5 		ldr	r3, [fp, #-12]
+ 1986 0228 1F3003E2 		and	r3, r3, #31
+ 1987              		.loc 1 428 10
+ 1988 022c 100053E3 		cmp	r3, #16
+ 1989 0230 0500001A 		bne	.L102
+ 429:main.c        **** 			task_aktiv="64ms";
+ 1990              		.loc 1 429 14
+ 1991 0234 1C349FE5 		ldr	r3, .L120+120
+ 1992 0238 10300BE5 		str	r3, [fp, #-16]
+ 430:main.c        **** 			task_64ms();
+ 1993              		.loc 1 430 4
+ 1994 023c 18349FE5 		ldr	r3, .L120+124
+ 1995 0240 0FE0A0E1 		mov	lr, pc
+ 1996 0244 13FF2FE1 		bx	r3
+ 1997              	.LVL43:
+ 1998 0248 1C0000EA 		b	.L98
+ 1999              	.L102:
+ 431:main.c        **** 		}
+ 432:main.c        **** 		else if((zeitscheibe & 0b000111111) == 0b000100000) {
+ 2000              		.loc 1 432 24
+ 2001 024c 0C301BE5 		ldr	r3, [fp, #-12]
+ 2002 0250 3F3003E2 		and	r3, r3, #63
+ 2003              		.loc 1 432 10
+ 2004 0254 200053E3 		cmp	r3, #32
+ 2005 0258 0500001A 		bne	.L103
+ 433:main.c        **** 			task_aktiv="128ms";
+ 2006              		.loc 1 433 14
+ 2007 025c FC339FE5 		ldr	r3, .L120+128
+ 2008 0260 10300BE5 		str	r3, [fp, #-16]
+ 434:main.c        **** 			task_128ms();
+ 2009              		.loc 1 434 4
+ 2010 0264 F8339FE5 		ldr	r3, .L120+132
+ 2011 0268 0FE0A0E1 		mov	lr, pc
+ 2012 026c 13FF2FE1 		bx	r3
+ 2013              	.LVL44:
+ 2014 0270 120000EA 		b	.L98
+ 2015              	.L103:
+ 435:main.c        **** 		}
+ 436:main.c        **** 		else if((zeitscheibe & 0b001111111) == 0b001000000) {
+ 2016              		.loc 1 436 24
+ 2017 0274 0C301BE5 		ldr	r3, [fp, #-12]
+ 2018 0278 7F3003E2 		and	r3, r3, #127
+ 2019              		.loc 1 436 10
+ 2020 027c 400053E3 		cmp	r3, #64
+ 2021 0280 0500001A 		bne	.L104
+ 437:main.c        **** 			task_aktiv="256ms";
+ 2022              		.loc 1 437 14
+ 2023 0284 DC339FE5 		ldr	r3, .L120+136
+ 2024 0288 10300BE5 		str	r3, [fp, #-16]
+ 438:main.c        **** 			task_256ms();
+ 2025              		.loc 1 438 4
+ 2026 028c D8339FE5 		ldr	r3, .L120+140
+ 2027 0290 0FE0A0E1 		mov	lr, pc
+ 2028 0294 13FF2FE1 		bx	r3
+ 2029              	.LVL45:
+ 2030 0298 080000EA 		b	.L98
+ 2031              	.L104:
+ 439:main.c        **** 		}
+ 440:main.c        **** 		else if((zeitscheibe & 0b011111111) == 0b010000000) {
+ 2032              		.loc 1 440 24
+ 2033 029c 0C301BE5 		ldr	r3, [fp, #-12]
+ 2034 02a0 FF3003E2 		and	r3, r3, #255
+ 2035              		.loc 1 440 10
+ 2036 02a4 800053E3 		cmp	r3, #128
+ 2037 02a8 0400001A 		bne	.L98
+ 441:main.c        **** 			task_aktiv="512ms";
+ 2038              		.loc 1 441 14
+ 2039 02ac BC339FE5 		ldr	r3, .L120+144
+ 2040 02b0 10300BE5 		str	r3, [fp, #-16]
+ 442:main.c        **** 			task_512ms();
+ 2041              		.loc 1 442 4
+ 2042 02b4 B8339FE5 		ldr	r3, .L120+148
+ 2043 02b8 0FE0A0E1 		mov	lr, pc
+ 2044 02bc 13FF2FE1 		bx	r3
+ 2045              	.LVL46:
+ 2046              	.L98:
+ 443:main.c        **** 		}
+ 444:main.c        **** 		//Zeit für IDLE-Task verfügbar
+ 445:main.c        **** 		if((int)(start_tick-systick_get_ms()) >= IDLE_MS) {
+ 2047              		.loc 1 445 23
+ 2048 02c0 68339FE5 		ldr	r3, .L120+80
+ 2049 02c4 0FE0A0E1 		mov	lr, pc
+ 2050 02c8 13FF2FE1 		bx	r3
+ 2051              	.LVL47:
+ 2052 02cc 0020A0E1 		mov	r2, r0
+ 2053              		.loc 1 445 22 discriminator 1
+ 2054 02d0 08301BE5 		ldr	r3, [fp, #-8]
+ 2055 02d4 023043E0 		sub	r3, r3, r2
+ 2056              		.loc 1 445 5 discriminator 1
+ 2057 02d8 000053E3 		cmp	r3, #0
+ 2058 02dc 040000DA 		ble	.L105
+ 446:main.c        **** 			task_aktiv="Idle";
+ 2059              		.loc 1 446 14
+ 2060 02e0 90339FE5 		ldr	r3, .L120+152
+ 2061 02e4 10300BE5 		str	r3, [fp, #-16]
+ 447:main.c        **** 			task_idle();
+ 2062              		.loc 1 447 4
+ 2063 02e8 8C339FE5 		ldr	r3, .L120+156
+ 2064 02ec 0FE0A0E1 		mov	lr, pc
+ 2065 02f0 13FF2FE1 		bx	r3
+ 2066              	.LVL48:
+ 2067              	.L105:
+ 448:main.c        **** 		} 
+ 449:main.c        **** 		//Max. Zeitdauer einer Zeitscheibe überschritten?
+ 450:main.c        **** 		if((int)(start_tick-systick_get_ms()) <= 0) {
+ 2068              		.loc 1 450 23
+ 2069 02f4 34339FE5 		ldr	r3, .L120+80
+ 2070 02f8 0FE0A0E1 		mov	lr, pc
+ 2071 02fc 13FF2FE1 		bx	r3
+ 2072              	.LVL49:
+ 2073 0300 0020A0E1 		mov	r2, r0
+ 2074              		.loc 1 450 22 discriminator 1
+ 2075 0304 08301BE5 		ldr	r3, [fp, #-8]
+ 2076 0308 023043E0 		sub	r3, r3, r2
+ 2077              		.loc 1 450 5 discriminator 1
+ 2078 030c 000053E3 		cmp	r3, #0
+ 2079 0310 2C0000CA 		bgt	.L106
+ 451:main.c        **** 			main_data.term_status|=term_string(VT100_VORDERGRUND_ROT
+ 2080              		.loc 1 451 27
+ 2081 0314 0010A0E3 		mov	r1, #0
+ 2082 0318 60039FE5 		ldr	r0, .L120+160
+ 2083 031c E8329FE5 		ldr	r3, .L120+44
+ 2084 0320 0FE0A0E1 		mov	lr, pc
+ 2085 0324 13FF2FE1 		bx	r3
+ 2086              	.LVL50:
+ 2087 0328 0030A0E1 		mov	r3, r0
+ 2088              		.loc 1 451 13 discriminator 1
+ 2089 032c 50239FE5 		ldr	r2, .L120+164
+ 2090 0330 D020D2E1 		ldrsb	r2, [r2]
+ 2091              		.loc 1 451 25 discriminator 1
+ 2092 0334 033CA0E1 		lsl	r3, r3, #24
+ 2093 0338 433CA0E1 		asr	r3, r3, #24
+ 2094 033c 033082E1 		orr	r3, r2, r3
+ 2095 0340 033CA0E1 		lsl	r3, r3, #24
+ 2096 0344 432CA0E1 		asr	r2, r3, #24
+ 2097 0348 34339FE5 		ldr	r3, .L120+164
+ 2098 034c 0020C3E5 		strb	r2, [r3]
+ 452:main.c        **** 			                                   "Timing durch '",ASYNCSYNC_NONBLOCK);
+ 453:main.c        **** 			main_data.term_status|=term_string(task_aktiv,ASYNCSYNC_NONBLOCK);
+ 2099              		.loc 1 453 27
+ 2100 0350 0010A0E3 		mov	r1, #0
+ 2101 0354 10001BE5 		ldr	r0, [fp, #-16]
+ 2102 0358 AC329FE5 		ldr	r3, .L120+44
+ 2103 035c 0FE0A0E1 		mov	lr, pc
+ 2104 0360 13FF2FE1 		bx	r3
+ 2105              	.LVL51:
+ 2106 0364 0030A0E1 		mov	r3, r0
+ 2107              		.loc 1 453 13 discriminator 1
+ 2108 0368 14239FE5 		ldr	r2, .L120+164
+ 2109 036c D020D2E1 		ldrsb	r2, [r2]
+ 2110              		.loc 1 453 25 discriminator 1
+ 2111 0370 033CA0E1 		lsl	r3, r3, #24
+ 2112 0374 433CA0E1 		asr	r3, r3, #24
+ 2113 0378 033082E1 		orr	r3, r2, r3
+ 2114 037c 033CA0E1 		lsl	r3, r3, #24
+ 2115 0380 432CA0E1 		asr	r2, r3, #24
+ 2116 0384 F8329FE5 		ldr	r3, .L120+164
+ 2117 0388 0020C3E5 		strb	r2, [r3]
+ 454:main.c        **** 			main_data.term_status|=term_string("' verletzt\n\r"
+ 2118              		.loc 1 454 27
+ 2119 038c 0010A0E3 		mov	r1, #0
+ 2120 0390 F0029FE5 		ldr	r0, .L120+168
+ 2121 0394 70329FE5 		ldr	r3, .L120+44
+ 2122 0398 0FE0A0E1 		mov	lr, pc
+ 2123 039c 13FF2FE1 		bx	r3
+ 2124              	.LVL52:
+ 2125 03a0 0030A0E1 		mov	r3, r0
+ 2126              		.loc 1 454 13 discriminator 1
+ 2127 03a4 D8229FE5 		ldr	r2, .L120+164
+ 2128 03a8 D020D2E1 		ldrsb	r2, [r2]
+ 2129              		.loc 1 454 25 discriminator 1
+ 2130 03ac 033CA0E1 		lsl	r3, r3, #24
+ 2131 03b0 433CA0E1 		asr	r3, r3, #24
+ 2132 03b4 033082E1 		orr	r3, r2, r3
+ 2133 03b8 033CA0E1 		lsl	r3, r3, #24
+ 2134 03bc 432CA0E1 		asr	r2, r3, #24
+ 2135 03c0 BC329FE5 		ldr	r3, .L120+164
+ 2136 03c4 0020C3E5 		strb	r2, [r3]
+ 2137              	.L106:
+ 455:main.c        **** 			                                   VT100_VORDERGRUND_DEFAULT,ASYNCSYNC_NONBLOCK);
+ 456:main.c        **** 		}
+ 457:main.c        **** 		//Zeitscheibe erhöhen
+ 458:main.c        **** 		zeitscheibe++;
+ 2138              		.loc 1 458 14
+ 2139 03c8 0C301BE5 		ldr	r3, [fp, #-12]
+ 2140 03cc 013083E2 		add	r3, r3, #1
+ 2141 03d0 0C300BE5 		str	r3, [fp, #-12]
+ 2142              	.LBB12:
+ 2143              	.LBB13:
+ 123:main.h        **** 
+ 124:main.h        **** static __inline__ int32_t stack_check(void) __attribute__((always_inline));
+ 125:main.h        **** static __inline__ int32_t stack_check(void)
+ 126:main.h        **** {
+ 127:main.h        **** 	         uint32_t *ptr;
+ 128:main.h        **** //	register uint32_t *sp asm("r13");
+ 129:main.h        **** 	for(ptr=&__stack_start__[0];*ptr==STACK_FILL;++ptr);
+ 2144              		.loc 4 129 9
+ 2145 03d4 4C329FE5 		ldr	r3, .L120+72
+ 2146 03d8 18300BE5 		str	r3, [fp, #-24]
+ 2147              		.loc 4 129 2
+ 2148 03dc 020000EA 		b	.L107
+ 2149              	.L108:
+ 2150              		.loc 4 129 47 discriminator 3
+ 2151 03e0 18301BE5 		ldr	r3, [fp, #-24]
+ 2152 03e4 043083E2 		add	r3, r3, #4
+ 2153 03e8 18300BE5 		str	r3, [fp, #-24]
+ 2154              	.L107:
+ 2155              		.loc 4 129 30 discriminator 1
+ 2156 03ec 18301BE5 		ldr	r3, [fp, #-24]
+ 2157 03f0 003093E5 		ldr	r3, [r3]
+ 2158              		.loc 4 129 34 discriminator 1
+ 2159 03f4 30229FE5 		ldr	r2, .L120+76
+ 2160 03f8 020053E1 		cmp	r3, r2
+ 2161 03fc F7FFFF0A 		beq	.L108
+ 130:main.h        **** 	return (int32_t)(ptr-&__stack_start__[0]);
+ 2162              		.loc 4 130 22
+ 2163 0400 18301BE5 		ldr	r3, [fp, #-24]
+ 2164 0404 1C229FE5 		ldr	r2, .L120+72
+ 2165 0408 023043E0 		sub	r3, r3, r2
+ 2166              		.loc 4 130 9
+ 2167 040c 4331A0E1 		asr	r3, r3, #2
+ 2168              	.LBE13:
+ 2169              	.LBE12:
+ 459:main.c        **** 		
+ 460:main.c        **** 		//Stack Testen
+ 461:main.c        **** 		if(stack_check()<(1*4)) {
+ 2170              		.loc 1 461 5 discriminator 1
+ 2171 0410 030053E3 		cmp	r3, #3
+ 2172 0414 350000CA 		bgt	.L110
+ 2173              	.LBB14:
+ 462:main.c        **** 			static uint8_t stack_cnt=0;
+ 463:main.c        **** 			if(stack_cnt==0) {
+ 2174              		.loc 1 463 16
+ 2175 0418 6C329FE5 		ldr	r3, .L120+172
+ 2176 041c 0030D3E5 		ldrb	r3, [r3]	@ zero_extendqisi2
+ 2177              		.loc 1 463 6
+ 2178 0420 000053E3 		cmp	r3, #0
+ 2179 0424 3100001A 		bne	.L110
+ 464:main.c        **** 				stack_cnt=1;
+ 2180              		.loc 1 464 14
+ 2181 0428 5C329FE5 		ldr	r3, .L120+172
+ 2182 042c 0120A0E3 		mov	r2, #1
+ 2183 0430 0020C3E5 		strb	r2, [r3]
+ 465:main.c        **** 				main_data.term_status|=term_string(VT100_VORDERGRUND_ROT
+ 2184              		.loc 1 465 28
+ 2185 0434 0010A0E3 		mov	r1, #0
+ 2186 0438 50029FE5 		ldr	r0, .L120+176
+ 2187 043c C8319FE5 		ldr	r3, .L120+44
+ 2188 0440 0FE0A0E1 		mov	lr, pc
+ 2189 0444 13FF2FE1 		bx	r3
+ 2190              	.LVL53:
+ 2191 0448 0030A0E1 		mov	r3, r0
+ 2192              		.loc 1 465 14 discriminator 1
+ 2193 044c 30229FE5 		ldr	r2, .L120+164
+ 2194 0450 D020D2E1 		ldrsb	r2, [r2]
+ 2195              		.loc 1 465 26 discriminator 1
+ 2196 0454 033CA0E1 		lsl	r3, r3, #24
+ 2197 0458 433CA0E1 		asr	r3, r3, #24
+ 2198 045c 033082E1 		orr	r3, r2, r3
+ 2199 0460 033CA0E1 		lsl	r3, r3, #24
+ 2200 0464 432CA0E1 		asr	r2, r3, #24
+ 2201 0468 14329FE5 		ldr	r3, .L120+164
+ 2202 046c 0020C3E5 		strb	r2, [r3]
+ 466:main.c        **** 				                                   "Stack overflow durch '",ASYNCSYNC_NONBLOCK);
+ 467:main.c        **** 				main_data.term_status|=term_string(task_aktiv,ASYNCSYNC_NONBLOCK);
+ 2203              		.loc 1 467 28
+ 2204 0470 0010A0E3 		mov	r1, #0
+ 2205 0474 10001BE5 		ldr	r0, [fp, #-16]
+ 2206 0478 8C319FE5 		ldr	r3, .L120+44
+ 2207 047c 0FE0A0E1 		mov	lr, pc
+ 2208 0480 13FF2FE1 		bx	r3
+ 2209              	.LVL54:
+ 2210 0484 0030A0E1 		mov	r3, r0
+ 2211              		.loc 1 467 14 discriminator 1
+ 2212 0488 F4219FE5 		ldr	r2, .L120+164
+ 2213 048c D020D2E1 		ldrsb	r2, [r2]
+ 2214              		.loc 1 467 26 discriminator 1
+ 2215 0490 033CA0E1 		lsl	r3, r3, #24
+ 2216 0494 433CA0E1 		asr	r3, r3, #24
+ 2217 0498 033082E1 		orr	r3, r2, r3
+ 2218 049c 033CA0E1 		lsl	r3, r3, #24
+ 2219 04a0 432CA0E1 		asr	r2, r3, #24
+ 2220 04a4 D8319FE5 		ldr	r3, .L120+164
+ 2221 04a8 0020C3E5 		strb	r2, [r3]
+ 468:main.c        **** 				main_data.term_status|=term_string("'\n\r"
+ 2222              		.loc 1 468 28
+ 2223 04ac 0010A0E3 		mov	r1, #0
+ 2224 04b0 DC019FE5 		ldr	r0, .L120+180
+ 2225 04b4 50319FE5 		ldr	r3, .L120+44
+ 2226 04b8 0FE0A0E1 		mov	lr, pc
+ 2227 04bc 13FF2FE1 		bx	r3
+ 2228              	.LVL55:
+ 2229 04c0 0030A0E1 		mov	r3, r0
+ 2230              		.loc 1 468 14 discriminator 1
+ 2231 04c4 B8219FE5 		ldr	r2, .L120+164
+ 2232 04c8 D020D2E1 		ldrsb	r2, [r2]
+ 2233              		.loc 1 468 26 discriminator 1
+ 2234 04cc 033CA0E1 		lsl	r3, r3, #24
+ 2235 04d0 433CA0E1 		asr	r3, r3, #24
+ 2236 04d4 033082E1 		orr	r3, r2, r3
+ 2237 04d8 033CA0E1 		lsl	r3, r3, #24
+ 2238 04dc 432CA0E1 		asr	r2, r3, #24
+ 2239 04e0 9C319FE5 		ldr	r3, .L120+164
+ 2240 04e4 0020C3E5 		strb	r2, [r3]
+ 2241              	.L111:
+ 469:main.c        **** 				                                   VT100_VORDERGRUND_DEFAULT,ASYNCSYNC_NONBLOCK);
+ 470:main.c        **** 				while(1);
+ 2242              		.loc 1 470 10
+ 2243 04e8 0000A0E1 		nop
+ 2244 04ec FDFFFFEA 		b	.L111
+ 2245              	.L110:
+ 2246              	.LBE14:
+ 471:main.c        **** 			}
+ 472:main.c        **** 		}
+ 473:main.c        **** 		
+ 474:main.c        **** 		//Batteriespannung überprüfen
+ 475:main.c        **** 		//Ggf. schlägt die Unterspannungsprüfung im Akku zuvor ein!		
+ 476:main.c        **** 		if(nxt_avr_get_battery_raw() < ((2*3000/*mV*/)<<10)/14180) {
+ 2247              		.loc 1 476 6
+ 2248 04f0 A0319FE5 		ldr	r3, .L120+184
+ 2249 04f4 0FE0A0E1 		mov	lr, pc
+ 2250 04f8 13FF2FE1 		bx	r3
+ 2251              	.LVL56:
+ 2252 04fc 0030A0E1 		mov	r3, r0
+ 2253              		.loc 1 476 5 discriminator 1
+ 2254 0500 1B0E53E3 		cmp	r3, #432
+ 2255 0504 1D00008A 		bhi	.L112
+ 477:main.c        **** 			if(main_data.lowbat_cnt++>100)
+ 2256              		.loc 1 477 16
+ 2257 0508 74319FE5 		ldr	r3, .L120+164
+ 2258 050c 0230D3E5 		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 2259              		.loc 1 477 27
+ 2260 0510 012083E2 		add	r2, r3, #1
+ 2261 0514 FF1002E2 		and	r1, r2, #255
+ 2262 0518 64219FE5 		ldr	r2, .L120+164
+ 2263 051c 0210C2E5 		strb	r1, [r2, #2]
+ 2264              		.loc 1 477 6
+ 2265 0520 640053E3 		cmp	r3, #100
+ 2266 0524 0100009A 		bls	.L113
+ 2267              	.L114:
+ 478:main.c        **** 				while(1);
+ 2268              		.loc 1 478 10
+ 2269 0528 0000A0E1 		nop
+ 2270 052c FDFFFFEA 		b	.L114
+ 2271              	.L113:
+ 479:main.c        **** 			else if(main_data.lowbat_cnt==10)
+ 2272              		.loc 1 479 21
+ 2273 0530 4C319FE5 		ldr	r3, .L120+164
+ 2274 0534 0230D3E5 		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 2275              		.loc 1 479 11
+ 2276 0538 0A0053E3 		cmp	r3, #10
+ 2277 053c 1200001A 		bne	.L115
+ 480:main.c        **** 				main_data.term_status|=term_string(VT100_VORDERGRUND_ROT
+ 2278              		.loc 1 480 28
+ 2279 0540 0010A0E3 		mov	r1, #0
+ 2280 0544 50019FE5 		ldr	r0, .L120+188
+ 2281 0548 BC309FE5 		ldr	r3, .L120+44
+ 2282 054c 0FE0A0E1 		mov	lr, pc
+ 2283 0550 13FF2FE1 		bx	r3
+ 2284              	.LVL57:
+ 2285 0554 0030A0E1 		mov	r3, r0
+ 2286              		.loc 1 480 14 discriminator 1
+ 2287 0558 24219FE5 		ldr	r2, .L120+164
+ 2288 055c D020D2E1 		ldrsb	r2, [r2]
+ 2289              		.loc 1 480 26 discriminator 1
+ 2290 0560 033CA0E1 		lsl	r3, r3, #24
+ 2291 0564 433CA0E1 		asr	r3, r3, #24
+ 2292 0568 033082E1 		orr	r3, r2, r3
+ 2293 056c 033CA0E1 		lsl	r3, r3, #24
+ 2294 0570 432CA0E1 		asr	r2, r3, #24
+ 2295 0574 08319FE5 		ldr	r3, .L120+164
+ 2296 0578 0020C3E5 		strb	r2, [r3]
+ 2297 057c 020000EA 		b	.L115
+ 2298              	.L112:
+ 481:main.c        **** 			                                       "\n\rLow Battery\n\r"
+ 482:main.c        **** 												   VT100_VORDERGRUND_DEFAULT,ASYNCSYNC_NONBLOCK);
+ 483:main.c        **** 		}
+ 484:main.c        **** 		else {
+ 485:main.c        **** 			main_data.lowbat_cnt=0;
+ 2299              		.loc 1 485 24
+ 2300 0580 FC309FE5 		ldr	r3, .L120+164
+ 2301 0584 0020A0E3 		mov	r2, #0
+ 2302 0588 0220C3E5 		strb	r2, [r3, #2]
+ 2303              	.L115:
+ 486:main.c        **** 		}
+ 487:main.c        **** 		
+ 488:main.c        **** 		//Termstatus ueberpruefen
+ 489:main.c        **** 		if(main_data.term_cnt==0 && main_data.term_status != 0) {
+ 2304              		.loc 1 489 15
+ 2305 058c F0309FE5 		ldr	r3, .L120+164
+ 2306 0590 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 2307              		.loc 1 489 5
+ 2308 0594 000053E3 		cmp	r3, #0
+ 2309 0598 EDFEFF1A 		bne	.L119
+ 2310              		.loc 1 489 40 discriminator 1
+ 2311 059c E0309FE5 		ldr	r3, .L120+164
+ 2312 05a0 D030D3E1 		ldrsb	r3, [r3]
+ 2313              		.loc 1 489 28 discriminator 1
+ 2314 05a4 000053E3 		cmp	r3, #0
+ 2315 05a8 E9FEFF0A 		beq	.L119
+ 490:main.c        **** 			main_data.term_cnt++;
+ 2316              		.loc 1 490 13
+ 2317 05ac D0309FE5 		ldr	r3, .L120+164
+ 2318 05b0 0130D3E5 		ldrb	r3, [r3, #1]	@ zero_extendqisi2
+ 2319              		.loc 1 490 22
+ 2320 05b4 013083E2 		add	r3, r3, #1
+ 2321 05b8 FF2003E2 		and	r2, r3, #255
+ 2322 05bc C0309FE5 		ldr	r3, .L120+164
+ 2323 05c0 0120C3E5 		strb	r2, [r3, #1]
+ 2324              	.L117:
+ 491:main.c        **** 	overflow: __attribute__((unused));
+ 492:main.c        **** 	
+ 493:main.c        **** 			(void)term_string(VT100_VORDERGRUND_ROT
+ 2325              		.loc 1 493 10
+ 2326 05c4 0110A0E3 		mov	r1, #1
+ 2327 05c8 D0009FE5 		ldr	r0, .L120+192
+ 2328 05cc 38309FE5 		ldr	r3, .L120+44
+ 2329 05d0 0FE0A0E1 		mov	lr, pc
+ 2330 05d4 13FF2FE1 		bx	r3
+ 2331              	.LVL58:
+ 2332              	.L118:
+ 494:main.c        **** 			                  "\n\rTerminal Overflow\n\r"
+ 495:main.c        **** 							  VT100_VORDERGRUND_DEFAULT,ASYNCSYNC_BLOCK);
+ 496:main.c        **** 			while(1);
+ 2333              		.loc 1 496 9
+ 2334 05d8 0000A0E1 		nop
+ 2335 05dc FDFFFFEA 		b	.L118
+ 2336              	.L121:
+ 2337              		.align	2
+ 2338              	.L120:
+ 2339 05e0 00000000 		.word	aic_init
+ 2340 05e4 00000000 		.word	systick_init
+ 2341 05e8 00000000 		.word	interrupts_enable
+ 2342 05ec 00000000 		.word	nxt_avr_init
+ 2343 05f0 00000000 		.word	udmon3_init
+ 2344 05f4 00000000 		.word	term_init
+ 2345 05f8 00000000 		.word	display_init
+ 2346 05fc 00000000 		.word	motor_init
+ 2347 0600 00000000 		.word	display_clear
+ 2348 0604 00000000 		.word	display_update
+ 2349 0608 58000000 		.word	.LC5
+ 2350 060c 00000000 		.word	term_string
+ 2351 0610 60000000 		.word	.LC6
+ 2352 0614 6C000000 		.word	.LC7
+ 2353 0618 9C000000 		.word	.LC8
+ 2354 061c D8000000 		.word	.LC9
+ 2355 0620 40FDFFFF 		.word	-704
+ 2356 0624 FF8F0030 		.word	805343231
+ 2357 0628 00000000 		.word	__stack_start__
+ 2358 062c 11111111 		.word	286331153
+ 2359 0630 00000000 		.word	systick_get_ms
+ 2360 0634 E8000000 		.word	.LC10
+ 2361 0638 EC000000 		.word	.LC11
+ 2362 063c 00000000 		.word	task_4ms
+ 2363 0640 F0000000 		.word	.LC12
+ 2364 0644 00000000 		.word	task_8ms
+ 2365 0648 F4000000 		.word	.LC13
+ 2366 064c 00000000 		.word	task_16ms
+ 2367 0650 FC000000 		.word	.LC14
+ 2368 0654 00000000 		.word	task_32ms
+ 2369 0658 04010000 		.word	.LC15
+ 2370 065c 00000000 		.word	task_64ms
+ 2371 0660 0C010000 		.word	.LC16
+ 2372 0664 00000000 		.word	task_128ms
+ 2373 0668 14010000 		.word	.LC17
+ 2374 066c 00000000 		.word	task_256ms
+ 2375 0670 1C010000 		.word	.LC18
+ 2376 0674 00000000 		.word	task_512ms
+ 2377 0678 24010000 		.word	.LC19
+ 2378 067c 00000000 		.word	task_idle
+ 2379 0680 2C010000 		.word	.LC20
+ 2380 0684 00000000 		.word	main_data
+ 2381 0688 40010000 		.word	.LC21
+ 2382 068c E6040000 		.word	stack_cnt.0
+ 2383 0690 54010000 		.word	.LC22
+ 2384 0694 70010000 		.word	.LC23
+ 2385 0698 00000000 		.word	nxt_avr_get_battery_raw
+ 2386 069c 7C010000 		.word	.LC24
+ 2387 06a0 98010000 		.word	.LC25
+ 2388              		.cfi_endproc
+ 2389              	.LFE32:
+ 2391              		.bss
+ 2392              		.align	2
+ 2393              	linebuf.1:
+ 2394 04dc 00000000 		.space	10
+ 2394      00000000 
+ 2394      0000
+ 2396              	stack_cnt.0:
+ 2397 04e6 00       		.space	1
+ 2399              		.text
+ 2400              	.Letext0:
+ 2401              		.file 5 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/machi
+ 2402              		.file 6 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/lib/gcc/arm-none-eabi/14.3.
+ 2403              		.file 7 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/_
+ 2404              		.file 8 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/r
+ 2405              		.file 9 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/l
+ 2406              		.file 10 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/stdi
+ 2407              		.file 11 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+ 2408              		.file 12 "AT91SAM7S64.h"
+ 2409              		.file 13 "lib/aic.h"
+ 2410              		.file 14 "lib/nxt_avr.h"
+ 2411              		.file 15 "lib/systick.h"
+ 2412              		.file 16 "lib/display.h"
+ 2413              		.file 17 "lib/term.h"
+ 2414              		.file 18 "trace32/udmon3.h"
+ 2415              		.file 19 "lib/isr.h"
+ 2416              		.file 20 "/usr/lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/arm-none-eabi/include/sys/
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+     /tmp/ccxG2ahS.s:19     .text.byte_fifo_put_possible:00000000 $a
+     /tmp/ccxG2ahS.s:23     .text.byte_fifo_put_possible:00000000 byte_fifo_put_possible
+     /tmp/ccxG2ahS.s:75     .text.byte_fifo_remain:00000000 $a
+     /tmp/ccxG2ahS.s:79     .text.byte_fifo_remain:00000000 byte_fifo_remain
+     /tmp/ccxG2ahS.s:133    .text.byte_fifo_used:00000000 $a
+     /tmp/ccxG2ahS.s:137    .text.byte_fifo_used:00000000 byte_fifo_used
+     /tmp/ccxG2ahS.s:188    .text.byte_fifo_put:00000000 $a
+     /tmp/ccxG2ahS.s:192    .text.byte_fifo_put:00000000 byte_fifo_put
+     /tmp/ccxG2ahS.s:277    .text.byte_fifo_get_possible:00000000 $a
+     /tmp/ccxG2ahS.s:281    .text.byte_fifo_get_possible:00000000 byte_fifo_get_possible
+     /tmp/ccxG2ahS.s:325    .text.byte_fifo_get:00000000 $a
+     /tmp/ccxG2ahS.s:329    .text.byte_fifo_get:00000000 byte_fifo_get
+     /tmp/ccxG2ahS.s:408    .text.byte_fifo_cb_put_possible:00000000 $a
+     /tmp/ccxG2ahS.s:412    .text.byte_fifo_cb_put_possible:00000000 byte_fifo_cb_put_possible
+     /tmp/ccxG2ahS.s:450    .text.byte_fifo_cb_put_possible:0000003c $d
+     /tmp/ccxG2ahS.s:455    .text.byte_fifo_cb_put:00000000 $a
+     /tmp/ccxG2ahS.s:459    .text.byte_fifo_cb_put:00000000 byte_fifo_cb_put
+     /tmp/ccxG2ahS.s:520    .text.byte_fifo_cb_put:0000007c $d
+     /tmp/ccxG2ahS.s:525    .text.byte_fifo_cb_get_possible:00000000 $a
+     /tmp/ccxG2ahS.s:529    .text.byte_fifo_cb_get_possible:00000000 byte_fifo_cb_get_possible
+     /tmp/ccxG2ahS.s:566    .text.byte_fifo_cb_get_possible:0000003c $d
+     /tmp/ccxG2ahS.s:571    .text.byte_fifo_cb_get:00000000 $a
+     /tmp/ccxG2ahS.s:575    .text.byte_fifo_cb_get:00000000 byte_fifo_cb_get
+     /tmp/ccxG2ahS.s:614    .text.byte_fifo_cb_get:00000044 $d
+     /tmp/ccxG2ahS.s:623    .bss:00000000 main_data
+     /tmp/ccxG2ahS.s:620    .bss:00000000 $d
+     /tmp/ccxG2ahS.s:626    .text._exit:00000000 $a
+     /tmp/ccxG2ahS.s:631    .text._exit:00000000 _exit
+     /tmp/ccxG2ahS.s:658    .bss:00000004 trace_buf0
+     /tmp/ccxG2ahS.s:664    .bss:00000194 trace_buf1
+     /tmp/ccxG2ahS.s:670    .bss:00000324 trace_buf2
+     /tmp/ccxG2ahS.s:673    .text.trace_scope:00000000 $a
+     /tmp/ccxG2ahS.s:678    .text.trace_scope:00000000 trace_scope
+     /tmp/ccxG2ahS.s:833    .text.trace_scope:00000174 $d
+     /tmp/ccxG2ahS.s:844    .bss:000004b4 motor_data
+     /tmp/ccxG2ahS.s:847    .text.gpio_isr_entry:00000000 $a
+     /tmp/ccxG2ahS.s:852    .text.gpio_isr_entry:00000000 gpio_isr_entry
+     /tmp/ccxG2ahS.s:888    .text.gpio_isr_entry:00000034 $d
+     /tmp/ccxG2ahS.s:894    .text.motor_init:00000000 $a
+     /tmp/ccxG2ahS.s:899    .text.motor_init:00000000 motor_init
+     /tmp/ccxG2ahS.s:959    .text.motor_init:0000007c $d
+     /tmp/ccxG2ahS.s:966    .text.motor_get:00000000 $a
+     /tmp/ccxG2ahS.s:971    .text.motor_get:00000000 motor_get
+     /tmp/ccxG2ahS.s:1058   .text.motor_get:000000d0 $d
+     /tmp/ccxG2ahS.s:1063   .text.motor_process:00000000 $a
+     /tmp/ccxG2ahS.s:1068   .text.motor_process:00000000 motor_process
+     /tmp/ccxG2ahS.s:1136   .text.motor_process:0000009c $d
+     /tmp/ccxG2ahS.s:1143   .rodata:00000000 $d
+     /tmp/ccxG2ahS.s:1159   .text.ui_process:00000000 $a
+     /tmp/ccxG2ahS.s:1164   .text.ui_process:00000000 ui_process
+     /tmp/ccxG2ahS.s:1314   .text.ui_process:0000017c $d
+     /tmp/ccxG2ahS.s:1326   .text.task_4ms:00000000 $a
+     /tmp/ccxG2ahS.s:1331   .text.task_4ms:00000000 task_4ms
+     /tmp/ccxG2ahS.s:1357   .text.task_8ms:00000000 $a
+     /tmp/ccxG2ahS.s:1362   .text.task_8ms:00000000 task_8ms
+     /tmp/ccxG2ahS.s:1388   .text.task_16ms:00000000 $a
+     /tmp/ccxG2ahS.s:1393   .text.task_16ms:00000000 task_16ms
+     /tmp/ccxG2ahS.s:1424   .text.task_16ms:00000024 $d
+     /tmp/ccxG2ahS.s:1429   .text.task_32ms:00000000 $a
+     /tmp/ccxG2ahS.s:1434   .text.task_32ms:00000000 task_32ms
+     /tmp/ccxG2ahS.s:1460   .text.task_64ms:00000000 $a
+     /tmp/ccxG2ahS.s:1465   .text.task_64ms:00000000 task_64ms
+     /tmp/ccxG2ahS.s:1496   .text.task_64ms:00000024 $d
+     /tmp/ccxG2ahS.s:1501   .text.task_128ms:00000000 $a
+     /tmp/ccxG2ahS.s:1506   .text.task_128ms:00000000 task_128ms
+     /tmp/ccxG2ahS.s:1532   .text.task_256ms:00000000 $a
+     /tmp/ccxG2ahS.s:1537   .text.task_256ms:00000000 task_256ms
+     /tmp/ccxG2ahS.s:1563   .text.task_512ms:00000000 $a
+     /tmp/ccxG2ahS.s:1568   .text.task_512ms:00000000 task_512ms
+     /tmp/ccxG2ahS.s:1594   .text.task_idle:00000000 $a
+     /tmp/ccxG2ahS.s:1599   .text.task_idle:00000000 task_idle
+     /tmp/ccxG2ahS.s:1625   .text.premain_init:00000000 $a
+     /tmp/ccxG2ahS.s:1630   .text.premain_init:00000000 premain_init
+     /tmp/ccxG2ahS.s:1672   .text.premain_init:0000003c $d
+     /tmp/ccxG2ahS.s:2393   .bss:000004dc linebuf.1
+     /tmp/ccxG2ahS.s:1679   .init_array:00000000 $d
+     /tmp/ccxG2ahS.s:1748   .text.main:00000000 $a
+     /tmp/ccxG2ahS.s:1753   .text.main:00000000 main
+     /tmp/ccxG2ahS.s:2339   .text.main:000005e0 $d
+     /tmp/ccxG2ahS.s:2396   .bss:000004e6 stack_cnt.0
+
+UNDEFINED SYMBOLS
+nxt_avr_set_motor
+aic_set_vector
+nxt_avr_get_buttons
+term_string
+_impure_ptr
+setvbuf
+aic_init
+systick_init
+interrupts_enable
+nxt_avr_init
+udmon3_init
+term_init
+display_init
+display_clear
+display_update
+__stack_start__
+systick_get_ms
+nxt_avr_get_battery_raw
