@@ -155,21 +155,21 @@ struct {
             .pos = 0,
             .dir = 0,
             .speed = 0,
-            .counter = 10,
+            .counter = 30,
         },
     .motor[1] =
         {
             .pos = 0,
             .dir = 0,
             .speed = 0,
-            .counter = 10,
+            .counter = 30,
         },
     .motor[2] =
         {
             .pos = 0,
             .dir = 0,
             .speed = 0,
-            .counter = 10,
+            .counter = 30,
         },
 
 };
@@ -197,9 +197,9 @@ int motor_init(void) {
   // bereits mittels nxt_avr_init()()ininitialisiert wurde
 
   // Motoren Stoppen und in Freilauf stzen
-  nxt_avr_set_motor(MOTOR_A, 10, MOTOR_FLOAT); // Motor A, PWM=0
-  nxt_avr_set_motor(MOTOR_B, 10, MOTOR_FLOAT); // Motor B, PWM=0
-  nxt_avr_set_motor(MOTOR_C, 10, MOTOR_FLOAT); // Motor C; PWM=0
+  nxt_avr_set_motor(MOTOR_A, 30, MOTOR_FLOAT); // Motor A, PWM=0
+  nxt_avr_set_motor(MOTOR_B, 30, MOTOR_FLOAT); // Motor B, PWM=0
+  nxt_avr_set_motor(MOTOR_C, 30, MOTOR_FLOAT); // Motor C; PWM=0
 
   // GPIO Clock einschalten (bereits erledigt)
   // AIC  Clock einschalten (bereits erledigt)
