@@ -176,18 +176,22 @@ struct {
 // Anzeigen über v.view %e %spotlight motor_data
 
 void gpio_isr_entry(void) {
-  //  uint32_t i_state = interrupts_get_and_disable();
+  uint32_t i_state = interrupts_get_and_disable();
 
   uint32_t pinChanges =
       *AT91C_PIOA_ISR; // IRQ-Quelle auslesen + IRQ zurücksetzen
-  uint32_t currentPins = *AT91C_PIOA_PDSR; // Read pins
-  nxt_avr_set_motor(MOTOR_A, motor_data.motor[0].counter,
-                    MOTOR_FLOAT); // Motor A, PWM=0
 
+  // If no changes are detected, return
+  if (!pinChanges)
+    return;
+
+  uint32_t currentPins = *AT91C_PIOA_PDSR; // Read pins
+  uint8_t dir = (currentPins >> MA0) & 1 ^ (currentPins >> MA1) & 1;
+  motor_data.motor[0].pos += dir ? 1 : -1;
   //...
 
-  //  if (i_state)
-  //    interrupts_enable();
+  if (i_state)
+    interrupts_enable();
 }
 
 int motor_init(void) {
