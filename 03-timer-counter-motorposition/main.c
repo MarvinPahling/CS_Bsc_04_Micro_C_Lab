@@ -146,6 +146,7 @@ struct {
     uint32_t pos;
     int8_t dir;
     int32_t speed;
+    int32_t counter;
   } motor[3];
 } motor_data = {
     .motor_aktiv = MOTOR_A,
@@ -154,19 +155,23 @@ struct {
             .pos = 0,
             .dir = 0,
             .speed = 0,
+            .counter = 10,
         },
     .motor[1] =
         {
             .pos = 0,
             .dir = 0,
             .speed = 0,
+            .counter = 10,
         },
     .motor[2] =
         {
             .pos = 0,
             .dir = 0,
             .speed = 0,
+            .counter = 10,
         },
+
 };
 // Anzeigen über v.view %e %spotlight motor_data
 
@@ -176,6 +181,8 @@ void gpio_isr_entry(void) {
   uint32_t pinChanges =
       *AT91C_PIOA_ISR; // IRQ-Quelle auslesen + IRQ zurücksetzen
   uint32_t currentPins = *AT91C_PIOA_PDSR; // Read pins
+  nxt_avr_set_motor(MOTOR_A, motor_data.motor[0].counter,
+                    MOTOR_FLOAT); // Motor A, PWM=0
 
   //...
 
@@ -190,9 +197,9 @@ int motor_init(void) {
   // bereits mittels nxt_avr_init()()ininitialisiert wurde
 
   // Motoren Stoppen und in Freilauf stzen
-  nxt_avr_set_motor(MOTOR_A, 100, MOTOR_FLOAT); // Motor A, PWM=0
-  nxt_avr_set_motor(MOTOR_B, 0, MOTOR_FLOAT);   // Motor B, PWM=0
-  nxt_avr_set_motor(MOTOR_C, 0, MOTOR_FLOAT);   // Motor C; PWM=0
+  nxt_avr_set_motor(MOTOR_A, 10, MOTOR_FLOAT); // Motor A, PWM=0
+  nxt_avr_set_motor(MOTOR_B, 10, MOTOR_FLOAT); // Motor B, PWM=0
+  nxt_avr_set_motor(MOTOR_C, 10, MOTOR_FLOAT); // Motor C; PWM=0
 
   // GPIO Clock einschalten (bereits erledigt)
   // AIC  Clock einschalten (bereits erledigt)
@@ -236,6 +243,10 @@ int motor_get(int8_t port, uint32_t *pos, int16_t *speed) {
 void motor_process(void) {
   uint32_t pos;
   int16_t speed;
+
+  // Unser Code kommt hier hin
+  if (AT91C_PIOA_PDSR[MA0] && AT91C_PIOA_ISR[MA0]) {
+  }
 
   // Aktuellen Motor aus UI lesen
   motor_get(motor_data.motor_aktiv, &pos, &speed);
@@ -373,6 +384,8 @@ int main(void) {
   display_init();
 
   motor_init();
+
+  // Cooler code
 
   display_clear(0);
   display_update();
