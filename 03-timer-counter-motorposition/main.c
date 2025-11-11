@@ -115,15 +115,12 @@ void trace_scope(int channel, int16_t value) {
 // PerA=CTS0  PerB=ADTrg   <-- Pos=Gpio-IRQ
 // //Encoder Input Motor 2?
 
-// Bitmask for all motor encoder pins (A and B signals)
-#define MOTOR_ENCODER_PINS                                                     \
-  ((1 << MA0) | (1 << MA1) | (1 << MB0) | (1 << MB1) | (1 << MC0) | (1 << MC1))
+#define PINBIT(x) (1 << (x))
+#define MASKA (PINBIT(MA0)|PINBIT(MA1))
+#define MASKB (PINBIT(MB0)|PINBIT(MB1))
+#define MASKC (PINBIT(MC0)|PINBIT(MC1))
+#define ENCODER_PINS ( MASKA | MASKB | MASKC )
 
-// Bitmask for B-signal pins only (used for GPIO interrupts)
-#define MOTOR_B_SIGNAL_PINS ((1 << MA1) | (1 << MB1) | (1 << MC1))
-
-// Bitmask for A-signal pins only (used for Timer/Counter)
-#define MOTOR_A_SIGNAL_PINS ((1 << MA0) | (1 << MB0) | (1 << MC0))
 
 typedef enum __attribute__((packed)) {
   TV_MANUELL,
@@ -143,10 +140,10 @@ struct {
   TV_MODE schritt_mode;
   POSITION_MODE position_mode;
   struct {
-    uint32_t pos;
-    int8_t dir;
-    int32_t speed;
-    int32_t counter;
+   volatile int32_t pos;
+   volatile int8_t dir;
+   volatile int32_t speed;
+   
   } motor[3];
 } motor_data = {
     .motor_aktiv = MOTOR_A,
@@ -155,43 +152,104 @@ struct {
             .pos = 0,
             .dir = 0,
             .speed = 0,
-            .counter = 30,
         },
     .motor[1] =
         {
             .pos = 0,
             .dir = 0,
             .speed = 0,
-            .counter = 30,
         },
     .motor[2] =
         {
             .pos = 0,
             .dir = 0,
             .speed = 0,
-            .counter = 30,
         },
-
 };
 // Anzeigen über v.view %e %spotlight motor_data
 
+
+
+
+void timer0_isr_entry(void) { // TC0 => Motor C 
+   
+}
+
+void timer1_isr_entry(void) { // TC1 => Motor A
+   
+}
+
+void timer2_isr_entry(void) { // TC2 => Motor B
+   
+}
+
+
+
 void gpio_isr_entry(void) {
-  uint32_t i_state = interrupts_get_and_disable();
+ // uint32_t i_state = interrupts_get_and_disable();
 
-  uint32_t pinChanges =
-      *AT91C_PIOA_ISR; // IRQ-Quelle auslesen + IRQ zurücksetzen
+    // Read & clear PIOA ISR 
+    uint32_t pinChanges = *AT91C_PIOA_ISR;
 
-  // If no changes are detected, return
-  if (!pinChanges)
+    //Wenn seit dem letzten Lesen keine Veränderung festgestellt wurde wird abgebrochen
+    if ((pinChanges & ENCODER_PINS) == 0) {
+        return;
+    }
+
+    uint32_t currentPins = *AT91C_PIOA_PDSR; // read current pin levels (alle Bits)
+
+    //aktiven Motor wählen
+    int a_pin = -1, b_pin = -1, motor_index = -1;
+
+    switch (motor_data.motor_aktiv) {
+        case MOTOR_A: a_pin = MA0; b_pin = MA1; motor_index = 0; break;
+        case MOTOR_B: a_pin = MB0; b_pin = MB1; motor_index = 1; break;
+        case MOTOR_C: a_pin = MC0; b_pin = MC1; motor_index = 2; break;
+        default: return; 
+    }
+
+    // keine Änderung an diesem Motor
+    uint32_t mask = ( (1u<<a_pin) | (1u<<b_pin) );
+    if ((pinChanges & mask) == 0) return; 
+
+    /* vorheriger 2-Bit-State (A<<1 | B) */
+    uint8_t prev = (uint8_t)(motor_data.motor[motor_index].dir & 0x3);
+
+    // aktuellen Pegel holen (A<<1 | B) 
+    uint8_t curr = (uint8_t)( ( ((currentPins >> a_pin) & 1) << 1 ) |
+                                ((currentPins >> b_pin) & 1) );
+
+    /* Einzelbits */
+    uint8_t prevA = (prev >> 1) & 1;
+    uint8_t prevB = prev & 1;
+    uint8_t currA = (curr >> 1) & 1;
+    uint8_t currB = curr & 1;
+
+    // Erkennung welche Pin-Flanke
+    uint8_t edgeA = (uint8_t)((pinChanges >> a_pin) & 1); // 1 == A hat gewechselt 
+    uint8_t edgeB = (uint8_t)((pinChanges >> b_pin) & 1); // 1 == B hat gewechselt 
+
+    if (edgeA && !edgeB) {
+        // A-edge: rising? -> eA 
+        uint8_t eA = currA & (uint8_t)(~prevA & 1); // 1 bei rising A 
+
+        // delta = +1 oder -1
+        int32_t delta = 1 - ( (int32_t)( (eA ^ currB) << 1 ) ); // z.B. 1 - 2*(eA^currB) 
+        motor_data.motor[motor_index].pos += delta;
+        motor_data.motor[motor_index].dir = curr;
+        return;
+    }
+
+    if (edgeB && !edgeA) {
+        uint8_t eB = currB & (uint8_t)(~prevB & 1); // 1 bei rising B
+        /* Für B-edges verwenden wir currA inverted (a^1) */
+        uint8_t a_inverted = currA ^ 1;
+        int32_t delta = 1 - ( (int32_t)( (eB ^ a_inverted) << 1 ) ); /* 1 - 2*(eB ^ ~currA) */
+        motor_data.motor[motor_index].pos += delta;
+        motor_data.motor[motor_index].dir = curr;
+        return;
+    }
     return;
-
-  uint32_t currentPins = *AT91C_PIOA_PDSR; // Read pins
-  uint8_t dir = (currentPins >> MA0) & 1 ^ (currentPins >> MA1) & 1;
-  motor_data.motor[0].pos += dir ? 1 : -1;
-  //...
-
-  if (i_state)
-    interrupts_enable();
 }
 
 int motor_init(void) {
@@ -201,12 +259,24 @@ int motor_init(void) {
   // bereits mittels nxt_avr_init()()ininitialisiert wurde
 
   // Motoren Stoppen und in Freilauf stzen
-  nxt_avr_set_motor(MOTOR_A, 30, MOTOR_FLOAT); // Motor A, PWM=0
-  nxt_avr_set_motor(MOTOR_B, 30, MOTOR_FLOAT); // Motor B, PWM=0
-  nxt_avr_set_motor(MOTOR_C, 30, MOTOR_FLOAT); // Motor C; PWM=0
+  nxt_avr_set_motor(MOTOR_A, 0, MOTOR_FLOAT); // Motor A, PWM=0
+  nxt_avr_set_motor(MOTOR_B, 0, MOTOR_FLOAT); // Motor B, PWM=0
+  nxt_avr_set_motor(MOTOR_C, 0, MOTOR_FLOAT); // Motor C; PWM=0
 
   // GPIO Clock einschalten (bereits erledigt)
   // AIC  Clock einschalten (bereits erledigt)
+
+  *AT91C_PIOA_PER = ENCODER_PINS;      
+
+  // Disable Pull up resistors
+  *AT91C_PIOA_PPUDR = ENCODER_PINS;
+  // Set Input Filter Enable Registe
+  *AT91C_PIOA_IFER = ENCODER_PINS;
+  // Read the  Interrupt Status Register
+  // This also triggers a reset
+  (void)*AT91C_PIOA_ISR;
+  // Set Interrupt Enable Register
+  *AT91C_PIOA_IER = ENCODER_PINS;
 
   // AIC Initialisieren
   aic_mask_off(AT91C_ID_PIOA);
@@ -216,15 +286,55 @@ int motor_init(void) {
                  gpio_isr_entry);                   // ISR
   aic_mask_on(AT91C_ID_PIOA);
 
-  // Disable Pull up resistors
-  *AT91C_PIOA_PPUDR = MOTOR_ENCODER_PINS;
-  // Set Input Filter Enable Registe
-  *AT91C_PIOA_IFER = MOTOR_ENCODER_PINS;
-  // Read the  Interrupt Status Register
-  // This also triggers a reset
-  (void)*AT91C_PIOA_ISR;
-  // Set Interrupt Enable Register
-  *AT91C_PIOA_IER = MOTOR_ENCODER_PINS;
+
+
+
+
+  // rising->rising auf TIOA: daher LDRB_RISING -> AT91C_TC_LDRA_RISING
+  // CLKS = AT91C_TC_CLKS_TIMER_DIV3_CLOCK Also wenn das  MCK/32 ist 
+
+  // ### Timer-Peripherie Clock aktivieren (PMC PCER)
+  *AT91C_PMC_PCER = (1 << AT91C_ID_TC0) | (1 << AT91C_ID_TC1) | (1 << AT91C_ID_TC2);
+
+
+  // TC0 (Motor C)
+  *AT91C_TC0_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_LDRA_RISING | AT91C_TC_ABETRG | AT91C_TC_ETRGEDG_RISING;
+  // Enable RB-load interrupt (LDRBS).
+  *AT91C_TC0_IER = AT91C_TC_COVFS;
+  // Start counter (CLKEN + SWTRG).
+  *AT91C_TC0_CCR = AT91C_TC_CLKEN | AT91C_TC_SWTRG;
+
+  // TC1 (Motor A)
+  *AT91C_TC1_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_LDRA_RISING | AT91C_TC_ABETRG | AT91C_TC_ETRGEDG_RISING;
+  *AT91C_TC1_IER = AT91C_TC_COVFS;
+  *AT91C_TC1_CCR = AT91C_TC_CLKEN | AT91C_TC_SWTRG;
+
+  // TC2 (Motor B)
+  *AT91C_TC2_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_LDRA_RISING | AT91C_TC_ABETRG | AT91C_TC_ETRGEDG_RISING;
+  *AT91C_TC2_IER = AT91C_TC_COVFS;
+  *AT91C_TC2_CCR = AT91C_TC_CLKEN | AT91C_TC_SWTRG;
+
+  // AIC aus Aufgabe
+aic_mask_off(AT91C_ID_TC0);
+aic_set_vector(AT91C_ID_TC0, AT91C_AIC_SRCTYPE_INT_HIGH_LEVEL | // Art 
+                              AIC_INT_LEVEL_ABOVE_NORMAL       , //Prio
+                              timer0_isr_entry);                 //ISR
+aic_mask_on(AT91C_ID_TC0);
+
+
+aic_mask_off(AT91C_ID_TC1);
+aic_set_vector(AT91C_ID_TC1, AT91C_AIC_SRCTYPE_INT_HIGH_LEVEL | // Art 
+                              AIC_INT_LEVEL_ABOVE_NORMAL       , //Prio
+                              timer1_isr_entry);                 //ISR
+aic_mask_on(AT91C_ID_TC1);
+
+
+aic_mask_off(AT91C_ID_TC2);
+aic_set_vector(AT91C_ID_TC2, AT91C_AIC_SRCTYPE_INT_HIGH_LEVEL | // Art 
+                              AIC_INT_LEVEL_ABOVE_NORMAL       , //Prio
+                              timer2_isr_entry);                 //ISR
+aic_mask_on(AT91C_ID_TC2);
+
 
   return 0;
 }
@@ -248,9 +358,6 @@ void motor_process(void) {
   uint32_t pos;
   int16_t speed;
 
-  // Unser Code kommt hier hin
-  if (AT91C_PIOA_PDSR[MA0] && AT91C_PIOA_ISR[MA0]) {
-  }
 
   // Aktuellen Motor aus UI lesen
   motor_get(motor_data.motor_aktiv, &pos, &speed);
