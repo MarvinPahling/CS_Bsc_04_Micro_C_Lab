@@ -11,10 +11,12 @@ ifndef MICRO_C_CONFIG_MARVIN
  GNU_ARM   := /lib/gcc/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-
  TRACE32_INSTALL_DIR := /mnt/c/Programme.Portable/T32MINI.202009
  TRACE32_OS := WINDOWS
+ SED       := sed 
 else
  GNU_ARM   := /Users/marvin/micro-c-lab/arm-gnu-compiler/bin/arm-none-eabi-
  TRACE32_INSTALL_DIR := /Users/marvin/micro-c-lab/t32
  TRACE32_OS := MACOS
+ SED       := LC_CTYPE=C LC_ALL=C LANG=C sed   #Alternativ zu sed könnte auch der C Preprozessor genutzt werden
 endif
 #Pfad + Prefix zum GCC Toolchain 
 #GNU_ARM  := ../devkitARM/bin/arm-none-eabi-
@@ -124,7 +126,6 @@ RM        := rm -rf
 MKDIR     := mkdir -p
 TOUCH     := touch
 MV        := mv
-SED       := sed    #Alternativ zu sed könnte auch der C Preprozessor genutzt werden
                     #gcc -p $< $@
 GREP      := grep
 BIN2SAMBA := ../bin2samba/bin2samba.exe
