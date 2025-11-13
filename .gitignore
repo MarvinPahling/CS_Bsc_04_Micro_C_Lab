@@ -2,3 +2,6 @@
 arm-gnu-compiler
 t32
 .DS_Store
+03-timer-counter-motorposition/bin
+03-timer-counter-motorposition/dep
+03-timer-counter-motorposition/load.cmm

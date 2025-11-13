@@ -1,2 +1,0 @@
-bin/helper.o: lib/helper.ct lib/helper.h
-lib/helper.h:

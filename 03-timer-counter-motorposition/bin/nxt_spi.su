@@ -1,6 +1,0 @@
-./lib/nxt_spi.c:36:13:spi_set_mode	24	static
-./lib/nxt_spi.c:58:1:spi_isr_C	8	static
-./lib/nxt_spi.c:97:1:nxt_spi_init	16	static
-./lib/nxt_spi.c:162:1:nxt_spi_write	32	static
-./lib/nxt_spi.c:181:1:nxt_spi_set_display	16	static
-./lib/nxt_spi.c:191:1:nxt_spi_refresh	4	static
