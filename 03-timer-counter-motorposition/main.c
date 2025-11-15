@@ -122,6 +122,12 @@ void trace_scope(int channel, int16_t value) {
 #define MASKC (PINBIT(MC0) | PINBIT(MC1))
 #define ENCODER_PINS (MASKA | MASKB | MASKC)
 
+#define LOG(msg) (void)term_string(msg, ASYNCSYNC_NONBLOCK)
+#define LOG_INT(msg) (void)term_int(msg, 1, ASYNCSYNC_NONBLOCK)
+
+#define CURRENT_MOTOR motor_data.motor[motor_data.motor_aktiv]
+#define MOTOR_INDEX motor_data.motor_aktiv
+
 typedef enum __attribute__((packed)) {
   TV_MANUELL,
   TV_VARIABEL,
@@ -144,8 +150,13 @@ struct {
     volatile int8_t dir;
     volatile int32_t speed;
     volatile int32_t counter;
-    volatile int32_t prev_couter;
-    volatile int32_t curr_counter;
+    volatile int32_t power;
+    volatile int32_t timer;
+    volatile int32_t prevTimer;
+    volatile uint8_t overflow_f;
+    volatile uint8_t edge_state;    // State counter: 0-3 for 4 edges
+    volatile int32_t edge_times[4]; // Timer values for each of 4 edges
+    volatile uint32_t pio_status;   // Current PIO pin status
 
   } motor[3];
 } motor_data = {
@@ -156,8 +167,13 @@ struct {
             .dir = 0,
             .speed = 0,
             .counter = 0,
-            .prev_couter = 0,
-            .curr_counter = 0,
+            .power = 0,
+            .timer = 0,
+            .prevTimer = 0,
+            .overflow_f = 0,
+            .edge_state = 0,
+            .edge_times = {0, 0, 0, 0},
+            .pio_status = 0,
         },
     .motor[1] =
         {
@@ -165,8 +181,13 @@ struct {
             .dir = 0,
             .speed = 0,
             .counter = 0,
-            .prev_couter = 0,
-            .curr_counter = 0,
+            .power = 0,
+            .timer = 0,
+            .prevTimer = 0,
+            .overflow_f = 0,
+            .edge_state = 0,
+            .edge_times = {0, 0, 0, 0},
+            .pio_status = 0,
         },
     .motor[2] =
         {
@@ -174,31 +195,58 @@ struct {
             .dir = 0,
             .speed = 0,
             .counter = 0,
-            .prev_couter = 0,
-            .curr_counter = 0,
+            .power = 0,
+            .timer = 0,
+            .prevTimer = 0,
+            .overflow_f = 0,
+            .edge_state = 0,
+            .edge_times = {0, 0, 0, 0},
+            .pio_status = 0,
         },
 };
+// Timer block and individual channel references
+//
+
+AT91PS_TCB timer = AT91C_BASE_TCB;
+AT91PS_TC timer_ch[3] = {
+    AT91C_BASE_TC0, // Channel 0 (Motor C)
+    AT91C_BASE_TC1, // Channel 1 (Motor A)
+    AT91C_BASE_TC2  // Channel 2 (Motor B)
+};
+
 // Anzeigen über v.view %e %spotlight motor_data
 
-void timer0_isr_entry(void) { // TC0 => Motor C
+void timer0_isr_entry(void) { // TC0 => Motor A
   // Only for timer overflow for motor speed == 0
   uint32_t pinChanges = *AT91C_TC0_SR;
   motor_data.motor[0].counter++;
   (void)pinChanges;
+  motor_data.motor[0].timer = 0;
+  motor_data.motor[0].prevTimer = 0;
+  motor_data.motor[0].overflow_f = 1;
+  motor_data.motor[0].edge_state = 0; // Reset state machine
 }
 
-void timer1_isr_entry(void) { // TC1 => Motor A
+void timer1_isr_entry(void) { // TC1 => Motor B
   // Only for timer overflow for motor speed == 0
   uint32_t pinChanges = *AT91C_TC1_SR;
   motor_data.motor[1].counter++;
   (void)pinChanges;
+  motor_data.motor[1].timer = 0;
+  motor_data.motor[1].prevTimer = 0;
+  motor_data.motor[1].overflow_f = 1;
+  motor_data.motor[1].edge_state = 0; // Reset state machine
 }
 
-void timer2_isr_entry(void) { // TC2 => Motor B
+void timer2_isr_entry(void) { // TC2 => Motor C
   // Only for timer overflow for motor speed == 0
   uint32_t pinChanges = *AT91C_TC2_SR;
   motor_data.motor[2].counter++;
   (void)pinChanges;
+  motor_data.motor[2].timer = 0;
+  motor_data.motor[2].prevTimer = 0;
+  motor_data.motor[2].overflow_f = 1;
+  motor_data.motor[2].edge_state = 0; // Reset state machine
 }
 
 void gpio_isr_entry(void) {
@@ -206,15 +254,51 @@ void gpio_isr_entry(void) {
 
   // Read & clear PIOA ISR
   uint32_t pinChanges = *AT91C_PIOA_ISR;
+  switch (motor_data.motor_aktiv) {
+  case 0:
+    if (pinChanges & MA1) {
+      // LOG("MA1\r\n");
+    }
+    break;
+  case 1:
+    if (pinChanges & MB1) {
+      // LOG("MB1\r\n");
+    }
+    break;
+  case 2:
+    if (pinChanges & MC1) {
+      // LOG("MC1\r\n");
+    }
+    break;
+  }
+  // Rest after overflow
+  if (CURRENT_MOTOR.overflow_f && CURRENT_MOTOR.edge_state == 0) {
+    CURRENT_MOTOR.overflow_f = 0;
+    CURRENT_MOTOR.edge_times[0] = 0;
+    CURRENT_MOTOR.edge_times[1] = 0;
+    CURRENT_MOTOR.edge_times[2] = 0;
+    CURRENT_MOTOR.edge_times[3] = 0;
+  }
+
+  // Read the current PIO pin status
+  uint32_t currentPins = *AT91C_PIOA_PDSR;
+  CURRENT_MOTOR.pio_status = currentPins;
+  // Read the Timer Counter for the selected channel (Only when not on overflow)
+  if (!CURRENT_MOTOR.overflow_f) {
+    int32_t timer_value = timer_ch[MOTOR_INDEX]->TC_CV;
+    CURRENT_MOTOR.edge_times[CURRENT_MOTOR.edge_state] = timer_value;
+  }
+  // Rolling Index for the state (011 <=> modulo 4)
+  CURRENT_MOTOR.edge_state = (CURRENT_MOTOR.edge_state + 1) & 0b011;
+
+  // Reset the timer counter
+  timer_ch[MOTOR_INDEX]->TC_CCR = AT91C_TC_SWTRG;
 
   // // Wenn seit dem letzten Lesen keine Veränderung festgestellt wurde wird
   // // abgebrochen
   // if ((pinChanges & ENCODER_PINS) == 0) {
   //   return;
   // }
-  //
-  uint32_t currentPins =
-      *AT91C_PIOA_PDSR; // read current pin levels (alle Bits)
 
   // aktiven Motor wählen
   int a_pin = -1, b_pin = -1, motor_index = -1;
@@ -224,11 +308,11 @@ void gpio_isr_entry(void) {
     // Wahrscheinlich falsch
     motor_data.motor[0].pos += MA0 ^ MB0;
 
-    AT91S_TC tc0 = (AT91S_TC) * (AT91C_BASE_TC0);
-    uint32_t counter = tc0.TC_RA;
+    // AT91S_TC tc0 = (AT91S_TC) * (AT91C_BASE_TC0);
+    // uint32_t counter = tc0.TC_RA;
 
     // LDRA lesen
-    *AT91C_TC_LDRAS
+    // *AT91C_TC_LDRAS
     // status++
   }
   switch (motor_data.motor_aktiv) {
@@ -272,8 +356,6 @@ void gpio_isr_entry(void) {
   // Erkennung welche Pin-Flanke
   uint8_t edgeA = (uint8_t)((pinChanges >> a_pin) & 1); // 1 == A hat gewechselt
   uint8_t edgeB = (uint8_t)((pinChanges >> b_pin) & 1); // 1 == B hat gewechselt
-  motor_data.motor[motor_index].pos_e += edgeA;
-  motor_data.motor[motor_index].fall_e += edgeB;
 
   if (edgeA && !edgeB) {
     // A-edge: rising? -> eA
@@ -306,9 +388,9 @@ int motor_init(void) {
   // bereits mittels nxt_avr_init()()ininitialisiert wurde
 
   // Motoren Stoppen und in Freilauf stzen
-  nxt_avr_set_motor(MOTOR_A, 0, MOTOR_FLOAT); // Motor A, PWM=0
-  nxt_avr_set_motor(MOTOR_B, 0, MOTOR_FLOAT); // Motor B, PWM=0
-  nxt_avr_set_motor(MOTOR_C, 0, MOTOR_FLOAT); // Motor C; PWM=0
+  nxt_avr_set_motor(MOTOR_A, 0, MOTOR_BREAK); // Motor A, PWM=0
+  nxt_avr_set_motor(MOTOR_B, 0, MOTOR_BREAK); // Motor B, PWM=0
+  nxt_avr_set_motor(MOTOR_C, 0, MOTOR_BREAK); // Motor C; PWM=0
 
   // GPIO Clock einschalten (bereits erledigt)
   // AIC  Clock einschalten (bereits erledigt)
@@ -419,24 +501,68 @@ void motor_process(void) {
 }
 
 // Funktion wird alle 64ms aufgerufen
+
+#define ORANGE_PRESSED (!motor_data.button_old.orange && button_new.orange)
+#define ORANGE_RELEASED (motor_data.button_old.orange && !button_new.orange)
+#define LEFT_RELEASED (motor_data.button_old.left && !button_new.left)
+#define RIGHT_RELEASED (motor_data.button_old.right && !button_new.right)
 void ui_process(void) {
   button_t button_new = nxt_avr_get_buttons();
 
   // Beispiel für Tastenauswertung
-  if (!motor_data.button_old.orange && button_new.orange) {
-    (void)term_string("Orange pressed\n\r", ASYNCSYNC_NONBLOCK);
+  // Orange Pressed
+  if (ORANGE_PRESSED) {
+    // (void)term_string("Orange pressed\n\r", ASYNCSYNC_NONBLOCK);
+    //
   }
-  if (motor_data.button_old.orange && !button_new.orange) {
-    (void)term_string("Orange released\n\r", ASYNCSYNC_NONBLOCK);
+  // Orange Released
+  if (ORANGE_RELEASED) {
+    MOTOR_INDEX = (MOTOR_INDEX + 1) % 3;
+
+    // Print
+    LOG("Motor: ");
+    LOG_INT(motor_data.motor_aktiv);
+    LOG("\n\r");
   }
-  if (motor_data.button_old.left && !button_new.left) {
-    (void)term_string("Left pressed\n\r", ASYNCSYNC_NONBLOCK);
+  if (RIGHT_RELEASED) {
+    CURRENT_MOTOR.power += 10;
+    if (CURRENT_MOTOR.power > 100) {
+      CURRENT_MOTOR.power = 100;
+    }
+    nxt_avr_set_motor(MOTOR_INDEX, CURRENT_MOTOR.power, MOTOR_BREAK);
+    LOG("Power: ");
+    LOG_INT(CURRENT_MOTOR.power);
+    LOG("\n\r");
   }
-  if (!motor_data.button_old.right && button_new.right) {
-    (void)term_string("Right pressed\n\r", ASYNCSYNC_NONBLOCK);
+  if (LEFT_RELEASED) {
+    CURRENT_MOTOR.power -= 10;
+    if (CURRENT_MOTOR.power < -100) {
+      CURRENT_MOTOR.power = -100;
+    }
+    nxt_avr_set_motor(MOTOR_INDEX, CURRENT_MOTOR.power, MOTOR_BREAK);
+    LOG("Power: ");
+    LOG_INT(CURRENT_MOTOR.power);
+    LOG("\n\r");
   }
+  // Grey Released
   if (!motor_data.button_old.grey && button_new.grey) {
-    (void)term_string("Grey pressed\n\r", ASYNCSYNC_BLOCK);
+    LOG("Counter: ");
+    LOG_INT(CURRENT_MOTOR.counter);
+    LOG("\n\r");
+
+    LOG("State: ");
+    LOG_INT(CURRENT_MOTOR.edge_state);
+    LOG("\n\r");
+
+    LOG("T: ");
+    LOG_INT(CURRENT_MOTOR.edge_times[0]);
+    LOG(", ");
+    LOG_INT(CURRENT_MOTOR.edge_times[1]);
+    LOG(", ");
+    LOG_INT(CURRENT_MOTOR.edge_times[2]);
+    LOG(", ");
+    LOG_INT(CURRENT_MOTOR.edge_times[3]);
+    LOG("\n\r");
   }
 
   motor_data.button_old = button_new;
