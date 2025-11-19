@@ -99,20 +99,26 @@ void trace_scope(int channel, int16_t value) {
 
 // GPIO-Portzuweisung
 #define MA0 15
+#define MA0_MASK (1 << MA0)
 // PerA=TF    PerB=TioA1   <-- Pos=Timer-IRQ  Geschwindigkeit=Timer1
 #define MA1 1
+#define MA1_MASK (1 << MA1)
 // PerA=PWM1  PerB=TioB0   <-- Pos=Gpio-IRQ
 // //Encoder Input Motor 0?
 
 #define MB0 26
+#define MB0_MASK (1 << MB0)
 // PerA=DCD1  PerB=TioA2   <-- Pos=Timer-IRQ  Geschwindigkeit=Timer2
 #define MB1 9
+#define MB1_MASK (1 << MB1)
 // PerA=DRxD  PerB=NPCs1   <-- Pos=Gpio-IRQ
 // //Encoder Input Motor 1?
 
 #define MC0 0
+#define MC0_MASK (1 << MC0)
 // PerA=PWM0  PerB=TioA0   <-- Pos=Timer-IRQ  Geschwindigkeit=Timer0
 #define MC1 8
+#define MC1_MASK (1 << MC1)
 // PerA=CTS0  PerB=ADTrg   <-- Pos=Gpio-IRQ
 // //Encoder Input Motor 2?
 
@@ -124,9 +130,16 @@ void trace_scope(int channel, int16_t value) {
 
 #define LOG(msg) (void)term_string(msg, ASYNCSYNC_NONBLOCK)
 #define LOG_INT(msg) (void)term_int(msg, 1, ASYNCSYNC_NONBLOCK)
+#define LOG_BIN(msg) (void)term_string(msg, 1, ASYNCSYNC_NONBLOCK)
 
-#define CURRENT_MOTOR motor_data.motor[motor_data.motor_aktiv]
+// Macro to extract a single bit from a register
+#define GET_BIT(reg, bit) (((reg) >> (bit)) & 1)
+
 #define MOTOR_INDEX motor_data.motor_aktiv
+#define CURRENT_MOTOR motor_data.motor[MOTOR_INDEX]
+#define MA motor_data.motor[0]
+#define MB motor_data.motor[1]
+#define MC motor_data.motor[2]
 
 typedef enum __attribute__((packed)) {
   TV_MANUELL,
@@ -145,9 +158,15 @@ struct {
   motor_t motor_aktiv;
   TV_MODE schritt_mode;
   POSITION_MODE position_mode;
+  volatile uint32_t pin_status;
   struct {
     volatile int32_t pos;
     volatile int8_t dir;
+    volatile uint8_t ch0;
+    volatile uint8_t ch1;
+    volatile uint8_t ch0_prev;
+    volatile uint8_t ch1_prev;
+    volatile uint32_t pin_status;
     volatile int32_t speed;
     volatile int32_t counter;
     volatile int32_t power;
@@ -157,6 +176,7 @@ struct {
     volatile uint8_t edge_state;    // State counter: 0-3 for 4 edges
     volatile int32_t edge_times[4]; // Timer values for each of 4 edges
     volatile uint32_t pio_status;   // Current PIO pin status
+    volatile uint32_t isr;
 
   } motor[3];
 } motor_data = {
@@ -165,6 +185,11 @@ struct {
         {
             .pos = 0,
             .dir = 0,
+            .ch0 = 0,
+            .ch1 = 0,
+            .ch0_prev = 0,
+            .ch1_prev = 0,
+            .pin_status = 0,
             .speed = 0,
             .counter = 0,
             .power = 0,
@@ -174,11 +199,17 @@ struct {
             .edge_state = 0,
             .edge_times = {0, 0, 0, 0},
             .pio_status = 0,
+            .isr = 0,
         },
     .motor[1] =
         {
             .pos = 0,
             .dir = 0,
+            .ch0 = 0,
+            .ch1 = 0,
+            .ch0_prev = 0,
+            .ch1_prev = 0,
+            .pin_status = 0,
             .speed = 0,
             .counter = 0,
             .power = 0,
@@ -188,11 +219,17 @@ struct {
             .edge_state = 0,
             .edge_times = {0, 0, 0, 0},
             .pio_status = 0,
+            .isr = 0,
         },
     .motor[2] =
         {
             .pos = 0,
             .dir = 0,
+            .ch0 = 0,
+            .ch1 = 0,
+            .ch0_prev = 0,
+            .ch1_prev = 0,
+            .pin_status = 0,
             .speed = 0,
             .counter = 0,
             .power = 0,
@@ -202,6 +239,7 @@ struct {
             .edge_state = 0,
             .edge_times = {0, 0, 0, 0},
             .pio_status = 0,
+            .isr = 0,
         },
 };
 // Timer block and individual channel references
@@ -218,6 +256,7 @@ AT91PS_TC timer_ch[3] = {
 
 void timer0_isr_entry(void) { // TC0 => Motor A
   // Only for timer overflow for motor speed == 0
+  MA.overflow_f = 1;
   uint32_t pinChanges = *AT91C_TC0_SR;
   motor_data.motor[0].counter++;
   (void)pinChanges;
@@ -229,6 +268,7 @@ void timer0_isr_entry(void) { // TC0 => Motor A
 
 void timer1_isr_entry(void) { // TC1 => Motor B
   // Only for timer overflow for motor speed == 0
+  MA.overflow_f = 1;
   uint32_t pinChanges = *AT91C_TC1_SR;
   motor_data.motor[1].counter++;
   (void)pinChanges;
@@ -240,6 +280,7 @@ void timer1_isr_entry(void) { // TC1 => Motor B
 
 void timer2_isr_entry(void) { // TC2 => Motor C
   // Only for timer overflow for motor speed == 0
+  MA.overflow_f = 1;
   uint32_t pinChanges = *AT91C_TC2_SR;
   motor_data.motor[2].counter++;
   (void)pinChanges;
@@ -253,41 +294,63 @@ void gpio_isr_entry(void) {
   // uint32_t i_state = interrupts_get_and_disable();
 
   // Read & clear PIOA ISR
-  uint32_t pinChanges = *AT91C_PIOA_ISR;
-  switch (motor_data.motor_aktiv) {
-  case 0:
-    if (pinChanges & MA1) {
-      // LOG("MA1\r\n");
-    }
-    break;
-  case 1:
-    if (pinChanges & MB1) {
-      // LOG("MB1\r\n");
-    }
-    break;
-  case 2:
-    if (pinChanges & MC1) {
-      // LOG("MC1\r\n");
-    }
-    break;
+  CURRENT_MOTOR.isr = *AT91C_PIOA_ISR;
+  motor_data.pin_status = *AT91C_PIOA_PDSR;
+
+  // MOTOR A
+  MA.ch0_prev = MA.ch0;
+  MA.ch1_prev = MA.ch1;
+  MA.ch0 = GET_BIT(motor_data.pin_status, MA0);
+  MA.ch1 = GET_BIT(motor_data.pin_status, MA1);
+
+  // Rising Edge on CH0
+  if ((!MA.ch0_prev) & MA.ch0) {
+    MA.dir = MA.ch0 ^ MA.ch1;
   }
+  MA.pos += MA.dir ? 1 : -1;
+  MA.overflow_f = 0;
+
+  // MOTOR B
+  MB.ch0_prev = MB.ch0;
+  MB.ch1_prev = MB.ch1;
+  MB.ch0 = GET_BIT(motor_data.pin_status, MB0);
+  MB.ch1 = GET_BIT(motor_data.pin_status, MB1);
+
+  // Rising Edge on CH0
+  if ((!MB.ch0_prev) & MB.ch0) {
+    MB.dir = MB.ch0 ^ MB.ch1;
+  }
+  MB.pos += MB.dir ? 1 : -1;
+
+  // MOTOR C
+  MC.ch0_prev = MC.ch0;
+  MC.ch1_prev = MC.ch1;
+  MC.ch0 = GET_BIT(motor_data.pin_status, MC0);
+  MC.ch1 = GET_BIT(motor_data.pin_status, MC1);
+
+  // Rising Edge on CH0
+  if ((!MC.ch0_prev) & MC.ch0) {
+    MC.dir = MC.ch0 ^ MC.ch1;
+  }
+  MC.pos += MC.dir ? 1 : -1;
+
   // Rest after overflow
-  if (CURRENT_MOTOR.overflow_f && CURRENT_MOTOR.edge_state == 0) {
-    CURRENT_MOTOR.overflow_f = 0;
-    CURRENT_MOTOR.edge_times[0] = 0;
-    CURRENT_MOTOR.edge_times[1] = 0;
-    CURRENT_MOTOR.edge_times[2] = 0;
-    CURRENT_MOTOR.edge_times[3] = 0;
-  }
+  // if (CURRENT_MOTOR.overflow_f && CURRENT_MOTOR.edge_state == 0) {
+  //   CURRENT_MOTOR.overflow_f = 0;
+  //   CURRENT_MOTOR.edge_times[0] = 0;
+  //   CURRENT_MOTOR.edge_times[1] = 0;
+  //   CURRENT_MOTOR.edge_times[2] = 0;
+  //   CURRENT_MOTOR.edge_times[3] = 0;
+  // }
 
   // Read the current PIO pin status
-  uint32_t currentPins = *AT91C_PIOA_PDSR;
-  CURRENT_MOTOR.pio_status = currentPins;
+  // uint32_t currentPins = *AT91C_PIOA_PDSR;
+  // CURRENT_MOTOR.pio_status = currentPins;
   // Read the Timer Counter for the selected channel (Only when not on overflow)
-  if (!CURRENT_MOTOR.overflow_f) {
-    int32_t timer_value = timer_ch[MOTOR_INDEX]->TC_CV;
-    CURRENT_MOTOR.edge_times[CURRENT_MOTOR.edge_state] = timer_value;
-  }
+  // if (!CURRENT_MOTOR.overflow_f) {
+  //   int32_t timer_value = timer_ch[MOTOR_INDEX]->TC_CV;
+  //   CURRENT_MOTOR.edge_times[CURRENT_MOTOR.edge_state] = timer_value;
+  // }
   // Rolling Index for the state (011 <=> modulo 4)
   CURRENT_MOTOR.edge_state = (CURRENT_MOTOR.edge_state + 1) & 0b011;
 
@@ -301,9 +364,9 @@ void gpio_isr_entry(void) {
   // }
 
   // aktiven Motor wählen
-  int a_pin = -1, b_pin = -1, motor_index = -1;
+  // int a_pin = -1, b_pin = -1, motor_index = -1;
 
-  if (pinChanges & (1 << MA0)) {
+  if (CURRENT_MOTOR.isr & (1 << MA0)) {
     // position+=   EXOR
     // Wahrscheinlich falsch
     motor_data.motor[0].pos += MA0 ^ MB0;
@@ -315,70 +378,72 @@ void gpio_isr_entry(void) {
     // *AT91C_TC_LDRAS
     // status++
   }
-  switch (motor_data.motor_aktiv) {
-  case MOTOR_A:
-    a_pin = MA0;
-    b_pin = MA1;
-    motor_index = 0;
-    break;
-  case MOTOR_B:
-    a_pin = MB0;
-    b_pin = MB1;
-    motor_index = 1;
-    break;
-  case MOTOR_C:
-    a_pin = MC0;
-    b_pin = MC1;
-    motor_index = 2;
-    break;
-  default:
-    return;
-  }
+  // switch (motor_data.motor_aktiv) {
+  // case MOTOR_A:
+  //   a_pin = MA0;
+  //   b_pin = MA1;
+  //   motor_index = 0;
+  //   break;
+  // case MOTOR_B:
+  //   a_pin = MB0;
+  //   b_pin = MB1;
+  //   motor_index = 1;
+  //   break;
+  // case MOTOR_C:
+  //   a_pin = MC0;
+  //   b_pin = MC1;
+  //   motor_index = 2;
+  //   break;
+  // default:
+  //   return;
+  // }
 
-  // keine Änderung an diesem Motor
-  uint32_t mask = ((1u << a_pin) | (1u << b_pin));
-  if ((pinChanges & mask) == 0)
-    return;
+  // // keine Änderung an diesem Motor
+  // uint32_t mask = ((1u << a_pin) | (1u << b_pin));
+  // if ((CURRENT_MOTOR.isr & mask) == 0)
+  //   return;
+  //
+  // /* vorheriger 2-Bit-State (A<<1 | B) */
+  // uint8_t prev = (uint8_t)(motor_data.motor[motor_index].dir & 0x3);
+  //
+  // // aktuellen Pegel holen (A<<1 | B)
+  // uint8_t curr = (uint8_t)((((currentPins >> a_pin) & 1) << 1) |
+  //                          ((currentPins >> b_pin) & 1));
 
-  /* vorheriger 2-Bit-State (A<<1 | B) */
-  uint8_t prev = (uint8_t)(motor_data.motor[motor_index].dir & 0x3);
+  // /* Einzelbits */
+  // uint8_t prevA = (prev >> 1) & 1;
+  // uint8_t prevB = prev & 1;
+  // uint8_t currA = (curr >> 1) & 1;
+  // uint8_t currB = curr & 1;
 
-  // aktuellen Pegel holen (A<<1 | B)
-  uint8_t curr = (uint8_t)((((currentPins >> a_pin) & 1) << 1) |
-                           ((currentPins >> b_pin) & 1));
-
-  /* Einzelbits */
-  uint8_t prevA = (prev >> 1) & 1;
-  uint8_t prevB = prev & 1;
-  uint8_t currA = (curr >> 1) & 1;
-  uint8_t currB = curr & 1;
-
-  // Erkennung welche Pin-Flanke
-  uint8_t edgeA = (uint8_t)((pinChanges >> a_pin) & 1); // 1 == A hat gewechselt
-  uint8_t edgeB = (uint8_t)((pinChanges >> b_pin) & 1); // 1 == B hat gewechselt
-
-  if (edgeA && !edgeB) {
-    // A-edge: rising? -> eA
-    uint8_t eA = currA & (uint8_t)(~prevA & 1); // 1 bei rising A
-
-    // delta = +1 oder -1
-    int32_t delta = 1 - ((int32_t)((eA ^ currB) << 1)); // z.B. 1 - 2*(eA^currB)
-    motor_data.motor[motor_index].pos += delta;
-    motor_data.motor[motor_index].dir = curr;
-    return;
-  }
-
-  if (edgeB && !edgeA) {
-    uint8_t eB = currB & (uint8_t)(~prevB & 1); // 1 bei rising B
-    /* Für B-edges verwenden wir currA inverted (a^1) */
-    uint8_t a_inverted = currA ^ 1;
-    int32_t delta =
-        1 - ((int32_t)((eB ^ a_inverted) << 1)); /* 1 - 2*(eB ^ ~currA) */
-    motor_data.motor[motor_index].pos += delta;
-    motor_data.motor[motor_index].dir = curr;
-    return;
-  }
-  return;
+  // // Erkennung welche Pin-Flanke
+  // uint8_t edgeA =
+  //     (uint8_t)((CURRENT_MOTOR.isr >> a_pin) & 1); // 1 == A hat gewechselt
+  // uint8_t edgeB =
+  //     (uint8_t)((CURRENT_MOTOR.isr >> b_pin) & 1); // 1 == B hat gewechselt
+  //
+  // if (edgeA && !edgeB) {
+  //   // A-edge: rising? -> eA
+  //   uint8_t eA = currA & (uint8_t)(~prevA & 1); // 1 bei rising A
+  //
+  //   // delta = +1 oder -1
+  //   int32_t delta = 1 - ((int32_t)((eA ^ currB) << 1)); // z.B. 1 -
+  //   2*(eA^currB) motor_data.motor[motor_index].pos += delta;
+  //   motor_data.motor[motor_index].dir = curr;
+  //   return;
+  // }
+  //
+  // if (edgeB && !edgeA) {
+  //   uint8_t eB = currB & (uint8_t)(~prevB & 1); // 1 bei rising B
+  //   /* Für B-edges verwenden wir currA inverted (a^1) */
+  //   uint8_t a_inverted = currA ^ 1;
+  //   int32_t delta =
+  //       1 - ((int32_t)((eB ^ a_inverted) << 1)); /* 1 - 2*(eB ^ ~currA) */
+  //   motor_data.motor[motor_index].pos += delta;
+  //   motor_data.motor[motor_index].dir = curr;
+  //   return;
+  // }
+  // return;
 }
 
 int motor_init(void) {
@@ -550,19 +615,23 @@ void ui_process(void) {
     LOG_INT(CURRENT_MOTOR.counter);
     LOG("\n\r");
 
-    LOG("State: ");
-    LOG_INT(CURRENT_MOTOR.edge_state);
+    // LOG("State: ");
+    // LOG_INT(CURRENT_MOTOR.edge_state);
+    // LOG("\n\r");
+
+    LOG("pos: ");
+    LOG_INT(CURRENT_MOTOR.pos % 720);
     LOG("\n\r");
 
-    LOG("T: ");
-    LOG_INT(CURRENT_MOTOR.edge_times[0]);
-    LOG(", ");
-    LOG_INT(CURRENT_MOTOR.edge_times[1]);
-    LOG(", ");
-    LOG_INT(CURRENT_MOTOR.edge_times[2]);
-    LOG(", ");
-    LOG_INT(CURRENT_MOTOR.edge_times[3]);
-    LOG("\n\r");
+    // LOG("T: ");
+    // LOG_INT(CURRENT_MOTOR.edge_times[0]);
+    // LOG(", ");
+    // LOG_INT(CURRENT_MOTOR.edge_times[1]);
+    // LOG(", ");
+    // LOG_INT(CURRENT_MOTOR.edge_times[2]);
+    // LOG(", ");
+    // LOG_INT(CURRENT_MOTOR.edge_times[3]);
+    // LOG("\n\r");
   }
 
   motor_data.button_old = button_new;
