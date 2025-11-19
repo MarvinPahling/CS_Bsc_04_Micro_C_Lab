@@ -166,6 +166,7 @@ struct {
     volatile uint8_t ch1;
     volatile uint8_t ch0_prev;
     volatile uint8_t ch1_prev;
+    volatile uint32_t duty;
     volatile uint32_t pin_status;
     volatile int32_t speed;
     volatile int32_t counter;
@@ -173,8 +174,9 @@ struct {
     volatile int32_t timer;
     volatile int32_t prevTimer;
     volatile uint8_t overflow_f;
-    volatile uint8_t edge_state;    // State counter: 0-3 for 4 edges
-    volatile int32_t edge_times[4]; // Timer values for each of 4 edges
+    volatile uint8_t
+        edge_state; // State counter: 0-2 for 3 edges (2 GPIO + 1 Timer)
+    volatile int32_t edge_times[3]; // Timer values for each of 4 edges
     volatile uint32_t pio_status;   // Current PIO pin status
     volatile uint32_t isr;
 
@@ -189,6 +191,7 @@ struct {
             .ch1 = 0,
             .ch0_prev = 0,
             .ch1_prev = 0,
+            .duty = 0,
             .pin_status = 0,
             .speed = 0,
             .counter = 0,
@@ -197,7 +200,7 @@ struct {
             .prevTimer = 0,
             .overflow_f = 0,
             .edge_state = 0,
-            .edge_times = {0, 0, 0, 0},
+            .edge_times = {0, 0, 0},
             .pio_status = 0,
             .isr = 0,
         },
@@ -209,6 +212,7 @@ struct {
             .ch1 = 0,
             .ch0_prev = 0,
             .ch1_prev = 0,
+            .duty = 0,
             .pin_status = 0,
             .speed = 0,
             .counter = 0,
@@ -217,7 +221,7 @@ struct {
             .prevTimer = 0,
             .overflow_f = 0,
             .edge_state = 0,
-            .edge_times = {0, 0, 0, 0},
+            .edge_times = {0, 0, 0},
             .pio_status = 0,
             .isr = 0,
         },
@@ -229,6 +233,7 @@ struct {
             .ch1 = 0,
             .ch0_prev = 0,
             .ch1_prev = 0,
+            .duty = 0,
             .pin_status = 0,
             .speed = 0,
             .counter = 0,
@@ -237,7 +242,7 @@ struct {
             .prevTimer = 0,
             .overflow_f = 0,
             .edge_state = 0,
-            .edge_times = {0, 0, 0, 0},
+            .edge_times = {0, 0, 0},
             .pio_status = 0,
             .isr = 0,
         },
@@ -246,11 +251,9 @@ struct {
 //
 
 AT91PS_TCB timer = AT91C_BASE_TCB;
-AT91PS_TC timer_ch[3] = {
-    AT91C_BASE_TC0, // Channel 0 (Motor C)
-    AT91C_BASE_TC1, // Channel 1 (Motor A)
-    AT91C_BASE_TC2  // Channel 2 (Motor B)
-};
+AT91PS_TC tc_a = AT91C_BASE_TC0;
+AT91PS_TC tc_b = AT91C_BASE_TC1;
+AT91PS_TC tc_c = AT91C_BASE_TC2;
 
 // Anzeigen über v.view %e %spotlight motor_data
 
@@ -308,7 +311,15 @@ void gpio_isr_entry(void) {
     MA.dir = MA.ch0 ^ MA.ch1;
   }
   MA.pos += MA.dir ? 1 : -1;
-  MA.overflow_f = 0;
+  MA.edge_state++;
+  if (MA.edge_state == 2) {
+    // Read timer
+    MA.duty = tc_a->TC_CV;
+    // Reset timer
+    tc_a->TC_CCR = AT91C_TC_SWTRG;
+    // Reset edge state
+    MA.edge_state = 0;
+  }
 
   // MOTOR B
   MB.ch0_prev = MB.ch0;
@@ -348,14 +359,14 @@ void gpio_isr_entry(void) {
   // CURRENT_MOTOR.pio_status = currentPins;
   // Read the Timer Counter for the selected channel (Only when not on overflow)
   // if (!CURRENT_MOTOR.overflow_f) {
-  //   int32_t timer_value = timer_ch[MOTOR_INDEX]->TC_CV;
+  //   // int32_t timer_value = timer_ch[MOTOR_INDEX]->TC_CV;
   //   CURRENT_MOTOR.edge_times[CURRENT_MOTOR.edge_state] = timer_value;
   // }
-  // Rolling Index for the state (011 <=> modulo 4)
-  CURRENT_MOTOR.edge_state = (CURRENT_MOTOR.edge_state + 1) & 0b011;
-
-  // Reset the timer counter
-  timer_ch[MOTOR_INDEX]->TC_CCR = AT91C_TC_SWTRG;
+  // // Rolling Index for the state (011 <=> modulo 4)
+  // CURRENT_MOTOR.edge_state = (CURRENT_MOTOR.edge_state + 1) & 0b011;
+  //
+  // // Reset the timer counter
+  // timer_ch[MOTOR_INDEX]->TC_CCR = AT91C_TC_SWTRG;
 
   // // Wenn seit dem letzten Lesen keine Veränderung festgestellt wurde wird
   // // abgebrochen
