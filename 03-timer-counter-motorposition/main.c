@@ -137,6 +137,15 @@ void trace_scope(int channel, int16_t value) {
 // Macro to detect rising edge: prev=0 and current=1
 #define RISING_EDGE(prev, curr) ((!(prev)) & (curr))
 
+// Bitwise optimization macros for state machine
+#define EDGE_STATE_CALC(prev, curr) (((prev) << 1) | (curr))
+#define NEXT_OVERFLOW_BIT(is_rising, overflow, recover)                        \
+  ((overflow) & ~((is_rising) & (recover)))
+#define NEXT_RECOVER_BIT(is_rising, overflow, recover)                         \
+  ((is_rising) & (overflow) & ~(recover))
+#define POS_DELTA(dir) (1 - ((dir) << 1))
+#define IS_NORMAL(state) ((state) == NORMAL)
+
 #define MOTOR_INDEX motor_data.motor_aktiv
 #define CURRENT_MOTOR motor_data.motor[MOTOR_INDEX]
 #define MA motor_data.motor[0]
@@ -171,9 +180,16 @@ typedef enum __attribute__((packed)) {
 } POSITION_MODE;
 
 typedef enum __attribute__((packed)) {
-  NORMAL = 0,
-  OVERFLOW_DETECTED = 1,
-  VALID_EDGE_DETECTED = 2
+  LOW = 0,     // 0b00: prev=0, curr=0
+  RISING = 1,  // 0b01: prev=0, curr=1
+  FALLING = 2, // 0b10: prev=1, curr=0
+  HIGH = 3     // 0b11: prev=1, curr=1
+} EDGE_STATE;
+
+typedef enum __attribute__((packed)) {
+  NORMAL = 0,             // 0b00: overflow=0, recover=0
+  OVERFLOW_DETECTED = 2,  // 0b10: overflow=1, recover=0
+  VALID_EDGE_DETECTED = 3 // 0b11: overflow=1, recover=1
 } MOTOR_STATE;
 
 typedef enum __attribute__((packed)) {
@@ -281,9 +297,6 @@ void gpio_isr_entry(void) {
   volatile uint32_t isr = *AT91C_PIOA_ISR;
   uint32_t pin_status = *AT91C_PIOA_PDSR;
 
-  if (!(isr & ENCODER_PINS))
-    return;
-
   // MOTOR A has changed
   if (isr & MASKA) {
     MA.ch0.prev = MA.ch0.curr;
@@ -291,23 +304,42 @@ void gpio_isr_entry(void) {
     MA.ch0.curr = GET_BIT(pin_status, MA0);
     MA.ch1.curr = GET_BIT(pin_status, MA1);
 
-    if (RISING_EDGE(MA.ch0.prev, MA.ch0.curr)) {
-      switch (MA.state) {
-      case NORMAL:
-        MA.period = tc_a->TC_CV;
-        MA.dir = MA.ch0.curr ^ MA.ch1.curr;
-        MA.pos += MA.dir ? -1 : 1;
-        break;
-      case OVERFLOW_DETECTED:
-        MA.state = VALID_EDGE_DETECTED;
-        break;
-      case VALID_EDGE_DETECTED:
-        MA.state = NORMAL;
-        break;
-      }
+    // Bitwise optimized state machine (no branches in critical path)
+    uint8_t is_rising = RISING_EDGE(MA.ch0.prev, MA.ch0.curr);
+    uint8_t old_state = MA.state;
+
+    // Extract state bits: bit[1]=overflow, bit[0]=recover
+    uint8_t overflow = (old_state >> 1) & 1;
+    uint8_t recover = old_state & 1;
+
+    // Calculate next state using pure bitwise operations
+    uint8_t next_overflow = NEXT_OVERFLOW_BIT(is_rising, overflow, recover);
+    uint8_t next_recover = NEXT_RECOVER_BIT(is_rising, overflow, recover);
+    MA.state = (next_overflow << 1) | next_recover;
+
+    // Check if we're in NORMAL state
+    uint8_t is_normal = IS_NORMAL(old_state);
+
+    // Update direction on rising edge in NORMAL state (branchless)
+    uint8_t should_update_dir = is_rising & is_normal;
+    uint8_t new_dir = MA.ch0.curr ^ MA.ch1.curr;
+    MA.dir = (MA.dir & ~should_update_dir) | (new_dir & should_update_dir);
+
+    // Update period on rising edge in NORMAL state (hardware access requires
+    // check)
+    if (is_rising & is_normal) {
+      MA.period = tc_a->TC_CV;
+    }
+
+    // Update position in NORMAL state (branchless using bit masking)
+    int32_t delta = POS_DELTA(MA.dir);
+    int32_t mask =
+        -(int32_t)is_normal; // is_normal=1 → 0xFFFFFFFF, =0 → 0x00000000
+    MA.pos += delta & mask;
+
+    // Reset timer on rising edge (hardware access requires check)
+    if (is_rising) {
       tc_a->TC_CCR = AT91C_TC_SWTRG;
-    } else if (MA.state == NORMAL) {
-      MA.pos += MA.dir ? -1 : 1;
     }
   }
 
@@ -318,23 +350,42 @@ void gpio_isr_entry(void) {
     MB.ch0.curr = GET_BIT(pin_status, MB0);
     MB.ch1.curr = GET_BIT(pin_status, MB1);
 
-    if (RISING_EDGE(MB.ch0.prev, MB.ch0.curr)) {
-      switch (MB.state) {
-      case NORMAL:
-        MB.period = tc_b->TC_CV;
-        MB.dir = MB.ch0.curr ^ MB.ch1.curr;
-        MB.pos += MB.dir ? -1 : 1;
-        break;
-      case OVERFLOW_DETECTED:
-        MB.state = VALID_EDGE_DETECTED;
-        break;
-      case VALID_EDGE_DETECTED:
-        MB.state = NORMAL;
-        break;
-      }
+    // Bitwise optimized state machine (no branches in critical path)
+    uint8_t is_rising = RISING_EDGE(MB.ch0.prev, MB.ch0.curr);
+    uint8_t old_state = MB.state;
+
+    // Extract state bits: bit[1]=overflow, bit[0]=recover
+    uint8_t overflow = (old_state >> 1) & 1;
+    uint8_t recover = old_state & 1;
+
+    // Calculate next state using pure bitwise operations
+    uint8_t next_overflow = NEXT_OVERFLOW_BIT(is_rising, overflow, recover);
+    uint8_t next_recover = NEXT_RECOVER_BIT(is_rising, overflow, recover);
+    MB.state = (next_overflow << 1) | next_recover;
+
+    // Check if we're in NORMAL state
+    uint8_t is_normal = IS_NORMAL(old_state);
+
+    // Update direction on rising edge in NORMAL state (branchless)
+    uint8_t should_update_dir = is_rising & is_normal;
+    uint8_t new_dir = MB.ch0.curr ^ MB.ch1.curr;
+    MB.dir = (MB.dir & ~should_update_dir) | (new_dir & should_update_dir);
+
+    // Update period on rising edge in NORMAL state (hardware access requires
+    // check)
+    if (is_rising & is_normal) {
+      MB.period = tc_b->TC_CV;
+    }
+
+    // Update position in NORMAL state (branchless using bit masking)
+    int32_t delta = POS_DELTA(MB.dir);
+    int32_t mask =
+        -(int32_t)is_normal; // is_normal=1 → 0xFFFFFFFF, =0 → 0x00000000
+    MB.pos += delta & mask;
+
+    // Reset timer on rising edge (hardware access requires check)
+    if (is_rising) {
       tc_b->TC_CCR = AT91C_TC_SWTRG;
-    } else if (MB.state == NORMAL) {
-      MB.pos += MB.dir ? -1 : 1;
     }
   }
 
@@ -345,23 +396,42 @@ void gpio_isr_entry(void) {
     MC.ch0.curr = GET_BIT(pin_status, MC0);
     MC.ch1.curr = GET_BIT(pin_status, MC1);
 
-    if (RISING_EDGE(MC.ch0.prev, MC.ch0.curr)) {
-      switch (MC.state) {
-      case NORMAL:
-        MC.period = tc_c->TC_CV;
-        MC.dir = MC.ch0.curr ^ MC.ch1.curr;
-        MC.pos += MC.dir ? -1 : 1;
-        break;
-      case OVERFLOW_DETECTED:
-        MC.state = VALID_EDGE_DETECTED;
-        break;
-      case VALID_EDGE_DETECTED:
-        MC.state = NORMAL;
-        break;
-      }
+    // Bitwise optimized state machine (no branches in critical path)
+    uint8_t is_rising = RISING_EDGE(MC.ch0.prev, MC.ch0.curr);
+    uint8_t old_state = MC.state;
+
+    // Extract state bits: bit[1]=overflow, bit[0]=recover
+    uint8_t overflow = (old_state >> 1) & 1;
+    uint8_t recover = old_state & 1;
+
+    // Calculate next state using pure bitwise operations
+    uint8_t next_overflow = NEXT_OVERFLOW_BIT(is_rising, overflow, recover);
+    uint8_t next_recover = NEXT_RECOVER_BIT(is_rising, overflow, recover);
+    MC.state = (next_overflow << 1) | next_recover;
+
+    // Check if we're in NORMAL state
+    uint8_t is_normal = IS_NORMAL(old_state);
+
+    // Update direction on rising edge in NORMAL state (branchless)
+    uint8_t should_update_dir = is_rising & is_normal;
+    uint8_t new_dir = MC.ch0.curr ^ MC.ch1.curr;
+    MC.dir = (MC.dir & ~should_update_dir) | (new_dir & should_update_dir);
+
+    // Update period on rising edge in NORMAL state (hardware access requires
+    // check)
+    if (is_rising & is_normal) {
+      MC.period = tc_c->TC_CV;
+    }
+
+    // Update position in NORMAL state (branchless using bit masking)
+    int32_t delta = POS_DELTA(MC.dir);
+    int32_t mask =
+        -(int32_t)is_normal; // is_normal=1 → 0xFFFFFFFF, =0 → 0x00000000
+    MC.pos += delta & mask;
+
+    // Reset timer on rising edge (hardware access requires check)
+    if (is_rising) {
       tc_c->TC_CCR = AT91C_TC_SWTRG;
-    } else if (MC.state == NORMAL) {
-      MC.pos += MC.dir ? -1 : 1;
     }
   }
 }
@@ -538,6 +608,7 @@ void motor_process(void) {
 #define LEFT_RELEASED (motor_data.button_old.left && !button_new.left)
 #define RIGHT_RELEASED (motor_data.button_old.right && !button_new.right)
 void ui_process(void) {
+
   button_t button_new = nxt_avr_get_buttons();
 
   // Beispiel für Tastenauswertung
