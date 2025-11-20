@@ -149,11 +149,20 @@ typedef enum __attribute__((packed)) {
   TV_END
 } TV_MODE;
 
+// Speed indices
 typedef enum __attribute__((packed)) {
   SLOW = 0,
   MEDIUM = 1,
   FAST = 2,
+  SPEED_COUNT = 3
 } SPEED;
+
+// Speed duration values in milliseconds
+static const uint16_t SPEED_DURATION_MS[] = {
+    [SLOW] = 16384,
+    [MEDIUM] = 8192,
+    [FAST] = 4096,
+};
 
 typedef enum __attribute__((packed)) {
   POSITION_MANUELL,
@@ -177,6 +186,8 @@ struct {
   motor_t motor_aktiv;
   TV_MODE schritt_mode;
   POSITION_MODE position_mode;
+  SPEED speed_level;
+  uint32_t cycle_progress;
   struct {
     volatile int32_t pos;
     volatile DIRECTION dir;
@@ -196,6 +207,8 @@ struct {
   } motor[3];
 } motor_data = {
     .motor_aktiv = MOTOR_A,
+    .speed_level = MEDIUM,
+    .cycle_progress = 0,
     .motor[0] =
         {
             .pos = 0,
@@ -481,19 +494,41 @@ void motor_process(void) {
   // Aktuellen Motor aus UI lesen
   motor_get(motor_data.motor_aktiv, &pos, &speed);
 
-  // Trace scope output:
-  // Channel 0: Power setting scaled by 40 (100% -> 4000)
-  // Channel 1: Speed in units of 1000 * rev/s
-  // Channel 2: Position in encoder counts
-  trace_scope(0, speed);
-  trace_scope(1, speed);
-  trace_scope(2, speed);
-  // trace_scope(0, (int16_t)(CURRENT_MOTOR.power * 40));
-  // trace_scope(1, speed);
-  // trace_scope(2, (int16_t)pos);
+  // Variable mode
+  if (motor_data.schritt_mode == TV_VARIABEL) {
+    uint32_t cycle_duration_ms;
+    cycle_duration_ms = SPEED_DURATION_MS[motor_data.speed_level];
 
-  // Geschwindigkeitsvorgabe aus UI umsetzen
-  // nxt_motor_set();
+    uint32_t total_steps = cycle_duration_ms >> 4;
+
+    motor_data.cycle_progress++;
+    if (motor_data.cycle_progress >= total_steps) {
+      motor_data.cycle_progress = 0;
+    }
+
+    // Triangle wave: ramp up in first half, ramp down in second half
+    int32_t power;
+    uint32_t half_steps = total_steps >> 1;
+    if (motor_data.cycle_progress < half_steps) {
+      power = -100 + (200 * motor_data.cycle_progress) / half_steps;
+    } else {
+      uint32_t progress_from_peak = motor_data.cycle_progress - half_steps;
+      power = 100 - (200 * progress_from_peak) / half_steps;
+    }
+
+    if (power > 100)
+      power = 100;
+    if (power < -100)
+      power = -100;
+
+    CURRENT_MOTOR.power = power;
+    nxt_avr_set_motor(MOTOR_INDEX, -CURRENT_MOTOR.power, MOTOR_BREAK);
+  }
+
+  // Trace Scope
+  trace_scope(0, (int16_t)(CURRENT_MOTOR.power * 40));
+  trace_scope(1, speed);
+  trace_scope(2, (int16_t)pos);
 }
 
 // Funktion wird alle 64ms aufgerufen
@@ -515,52 +550,55 @@ void ui_process(void) {
   if (ORANGE_RELEASED) {
     MOTOR_INDEX = (MOTOR_INDEX + 1) % 3;
 
-    // Print
     LOG("Motor: ");
     LOG_INT(motor_data.motor_aktiv);
     LOG("\n\r");
   }
   if (RIGHT_RELEASED) {
-    CURRENT_MOTOR.power += 10;
-    if (CURRENT_MOTOR.power > 100) {
-      CURRENT_MOTOR.power = 100;
+    if (motor_data.schritt_mode == TV_MANUELL) {
+      CURRENT_MOTOR.power += 10;
+      if (CURRENT_MOTOR.power > 100) {
+        CURRENT_MOTOR.power = 100;
+      }
+      nxt_avr_set_motor(MOTOR_INDEX, -CURRENT_MOTOR.power, MOTOR_BREAK);
+      LOG("Power: ");
+      LOG_INT(CURRENT_MOTOR.power);
+      LOG("\n\r");
+    } else {
+      if (motor_data.speed_level < SPEED_COUNT - 1) {
+        motor_data.speed_level++;
+      }
+      LOG("Speed level: ");
+      LOG_INT(motor_data.speed_level);
+      LOG("\n\r");
     }
-    nxt_avr_set_motor(MOTOR_INDEX, -CURRENT_MOTOR.power, MOTOR_BREAK);
-    LOG("Power: ");
-    LOG_INT(CURRENT_MOTOR.power);
-    LOG("\n\r");
   }
   if (LEFT_RELEASED) {
-    CURRENT_MOTOR.power -= 10;
-    if (CURRENT_MOTOR.power < -100) {
-      CURRENT_MOTOR.power = -100;
+    if (motor_data.schritt_mode == TV_MANUELL) {
+      CURRENT_MOTOR.power -= 10;
+      if (CURRENT_MOTOR.power < -100) {
+        CURRENT_MOTOR.power = -100;
+      }
+      nxt_avr_set_motor(MOTOR_INDEX, -CURRENT_MOTOR.power, MOTOR_BREAK);
+      LOG("Power: ");
+      LOG_INT(CURRENT_MOTOR.power);
+      LOG("\n\r");
+    } else {
+      if (motor_data.speed_level > 0) {
+        motor_data.speed_level--;
+      }
+      LOG("Speed level: ");
+      LOG_INT(motor_data.speed_level);
+      LOG("\n\r");
     }
-    nxt_avr_set_motor(MOTOR_INDEX, -CURRENT_MOTOR.power, MOTOR_BREAK);
-    LOG("Power: ");
-    LOG_INT(CURRENT_MOTOR.power);
-    LOG("\n\r");
   }
   // Grey Released
   if (!motor_data.button_old.grey && button_new.grey) {
     motor_data.schritt_mode =
         motor_data.schritt_mode ? TV_MANUELL : TV_VARIABEL;
-    LOG("pos: ");
-    LOG_INT(CURRENT_MOTOR.pos % 720);
-    LOG("\n\r");
-
-    LOG("period: ");
-    LOG_INT(CURRENT_MOTOR.period);
-    LOG("\n\r");
-
-    LOG("mode: ");
-    LOG_INT(motor_data.schritt_mode);
-    LOG("\n\r");
-
-    LOG("speed: ");
-    int16_t speed;
-    motor_get(motor_data.motor_aktiv, NULL, &speed);
-    LOG_INT(speed);
-    LOG("\n\r");
+    if (motor_data.schritt_mode == TV_VARIABEL) {
+      motor_data.cycle_progress = 0;
+    }
   }
 
   motor_data.button_old = button_new;
