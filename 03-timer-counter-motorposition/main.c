@@ -130,7 +130,6 @@ void trace_scope(int channel, int16_t value) {
 
 #define LOG(msg) (void)term_string(msg, ASYNCSYNC_NONBLOCK)
 #define LOG_INT(msg) (void)term_int(msg, 1, ASYNCSYNC_NONBLOCK)
-#define LOG_BIN(msg) (void)term_string(msg, 1, ASYNCSYNC_NONBLOCK)
 
 // Macro to extract a single bit from a register
 #define GET_BIT(reg, bit) (((reg) >> (bit)) & 1)
@@ -149,6 +148,12 @@ typedef enum __attribute__((packed)) {
   TV_VARIABEL,
   TV_END
 } TV_MODE;
+
+typedef enum __attribute__((packed)) {
+  SLOW = 0,
+  MEDIUM = 1,
+  FAST = 2,
+} SPEED;
 
 typedef enum __attribute__((packed)) {
   POSITION_MANUELL,
@@ -176,7 +181,7 @@ struct {
     volatile int32_t pos;
     volatile DIRECTION dir;
     volatile int32_t power;
-    volatile uint32_t duty;
+    volatile uint32_t period;
     volatile int32_t speed;
     volatile MOTOR_STATE state;
     struct {
@@ -196,7 +201,7 @@ struct {
             .pos = 0,
             .dir = FORWARDS,
             .power = 0,
-            .duty = 0,
+            .period = 0,
             .speed = 0,
             .state = NORMAL,
             .ch0 = {.curr = 0, .prev = 0},
@@ -207,7 +212,7 @@ struct {
             .pos = 0,
             .dir = FORWARDS,
             .power = 0,
-            .duty = 0,
+            .period = 0,
             .speed = 0,
             .state = NORMAL,
             .ch0 = {.curr = 0, .prev = 0},
@@ -218,7 +223,7 @@ struct {
             .pos = 0,
             .dir = FORWARDS,
             .power = 0,
-            .duty = 0,
+            .period = 0,
             .speed = 0,
             .state = NORMAL,
             .ch0 = {.curr = 0, .prev = 0},
@@ -226,8 +231,6 @@ struct {
         },
 };
 // Timer block and individual channel references
-//
-
 AT91PS_TCB timer = AT91C_BASE_TCB;
 AT91PS_TC tc_a = AT91C_BASE_TC0;
 AT91PS_TC tc_b = AT91C_BASE_TC1;
@@ -239,7 +242,7 @@ AT91PS_TC tc_c = AT91C_BASE_TC2;
 void timer0_isr_entry(void) {
   MA.state = OVERFLOW_DETECTED;
   uint32_t pinChanges = *AT91C_TC0_SR;
-  MA.duty = 0;
+  MA.period = 0;
   (void)pinChanges;
 }
 
@@ -247,7 +250,7 @@ void timer0_isr_entry(void) {
 void timer1_isr_entry(void) {
   MB.state = OVERFLOW_DETECTED;
   uint32_t pinChanges = *AT91C_TC1_SR;
-  MB.duty = 0;
+  MB.period = 0;
   (void)pinChanges;
 }
 
@@ -255,7 +258,7 @@ void timer1_isr_entry(void) {
 void timer2_isr_entry(void) {
   MC.state = OVERFLOW_DETECTED;
   uint32_t pinChanges = *AT91C_TC2_SR;
-  MC.duty = 0;
+  MC.period = 0;
   (void)pinChanges;
 }
 
@@ -278,7 +281,7 @@ void gpio_isr_entry(void) {
     if (RISING_EDGE(MA.ch0.prev, MA.ch0.curr)) {
       switch (MA.state) {
       case NORMAL:
-        MA.duty = tc_a->TC_CV;
+        MA.period = tc_a->TC_CV;
         MA.dir = MA.ch0.curr ^ MA.ch1.curr;
         MA.pos += MA.dir ? -1 : 1;
         break;
@@ -305,7 +308,7 @@ void gpio_isr_entry(void) {
     if (RISING_EDGE(MB.ch0.prev, MB.ch0.curr)) {
       switch (MB.state) {
       case NORMAL:
-        MB.duty = tc_b->TC_CV;
+        MB.period = tc_b->TC_CV;
         MB.dir = MB.ch0.curr ^ MB.ch1.curr;
         MB.pos += MB.dir ? -1 : 1;
         break;
@@ -332,7 +335,7 @@ void gpio_isr_entry(void) {
     if (RISING_EDGE(MC.ch0.prev, MC.ch0.curr)) {
       switch (MC.state) {
       case NORMAL:
-        MC.duty = tc_c->TC_CV;
+        MC.period = tc_c->TC_CV;
         MC.dir = MC.ch0.curr ^ MC.ch1.curr;
         MC.pos += MC.dir ? -1 : 1;
         break;
@@ -440,16 +443,32 @@ int motor_init(void) {
   return 0;
 }
 
-// Getter-Methode zur Abfrage der Position und Geschwindigkeit
-int motor_get(int8_t port, uint32_t *pos, int16_t *speed) {
-  if ((port < 0) || (port > 2))
-    return -1;
-  if ((pos == NULL) || (speed == NULL))
-    return -1;
+// Timer frequency: MCK/32 ~= 1,497,600 Hz
+#define TIMER_FREQUENCY ((uint32_t)MCK / (uint32_t)32)
+#define PULSES_PER_REV_RISING (uint32_t)180
+#define SCALE (uint32_t)1000
 
-  *pos = motor_data.motor[port].pos;
-  // Ob das reicht, ist ihre Entscheidung
-  *speed = motor_data.motor[port].speed;
+#define SPEED_CONSTANT (TIMER_FREQUENCY * SCALE / PULSES_PER_REV_RISING)
+
+int motor_get(motor_t port, uint32_t *pos, int16_t *speed) {
+  if (port > MOTOR_C)
+    return -1;
+  if (pos != NULL) {
+    *pos = motor_data.motor[port].pos;
+  }
+  if (speed != NULL) {
+    uint32_t period = motor_data.motor[port].period;
+    MOTOR_STATE state = motor_data.motor[port].state;
+    if (state == OVERFLOW_DETECTED || period == 0) {
+      *speed = 0;
+    } else {
+      int16_t calculated_speed = (int16_t)(SPEED_CONSTANT / period);
+      if (motor_data.motor[port].dir == BACKWARDS) {
+        calculated_speed = -calculated_speed;
+      }
+      *speed = calculated_speed;
+    }
+  }
 
   return 0;
 }
@@ -461,9 +480,17 @@ void motor_process(void) {
 
   // Aktuellen Motor aus UI lesen
   motor_get(motor_data.motor_aktiv, &pos, &speed);
-  trace_scope(0, (int16_t)(pos & 0xffff));
+
+  // Trace scope output:
+  // Channel 0: Power setting scaled by 40 (100% -> 4000)
+  // Channel 1: Speed in units of 1000 * rev/s
+  // Channel 2: Position in encoder counts
+  trace_scope(0, speed);
   trace_scope(1, speed);
-  trace_scope(2, (int16_t)pos);
+  trace_scope(2, speed);
+  // trace_scope(0, (int16_t)(CURRENT_MOTOR.power * 40));
+  // trace_scope(1, speed);
+  // trace_scope(2, (int16_t)pos);
 
   // Geschwindigkeitsvorgabe aus UI umsetzen
   // nxt_motor_set();
@@ -515,12 +542,24 @@ void ui_process(void) {
   }
   // Grey Released
   if (!motor_data.button_old.grey && button_new.grey) {
+    motor_data.schritt_mode =
+        motor_data.schritt_mode ? TV_MANUELL : TV_VARIABEL;
     LOG("pos: ");
     LOG_INT(CURRENT_MOTOR.pos % 720);
     LOG("\n\r");
 
-    LOG("duty: ");
-    LOG_INT(CURRENT_MOTOR.duty);
+    LOG("period: ");
+    LOG_INT(CURRENT_MOTOR.period);
+    LOG("\n\r");
+
+    LOG("mode: ");
+    LOG_INT(motor_data.schritt_mode);
+    LOG("\n\r");
+
+    LOG("speed: ");
+    int16_t speed;
+    motor_get(motor_data.motor_aktiv, NULL, &speed);
+    LOG_INT(speed);
     LOG("\n\r");
   }
 
