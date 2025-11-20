@@ -172,14 +172,20 @@ typedef enum __attribute__((packed)) {
 
 typedef enum __attribute__((packed)) {
   NORMAL = 0,
-  OVERFLOW_DETECTED = 1,
-  VALID_EDGE_DETECTED = 2
-} MOTOR_STATE;
+  OVERFLOW = 1,
+} OVERFLOW_STATE;
 
 typedef enum __attribute__((packed)) {
   FORWARDS = 0,
   BACKWARDS = 1,
 } DIRECTION;
+
+typedef enum __attribute__((packed)) {
+  LOW = 0b00,
+  RISING = 0b01,
+  FALLING = 0b10,
+  HIGH = 0b11
+} EDGE_STATE;
 
 struct {
   button_t button_old;
@@ -189,20 +195,13 @@ struct {
   SPEED speed_level;
   uint32_t cycle_progress;
   struct {
-    volatile int32_t pos;
-    volatile DIRECTION dir;
-    volatile int32_t power;
-    volatile uint32_t period;
-    volatile int32_t speed;
-    volatile MOTOR_STATE state;
-    struct {
-      volatile uint8_t curr;
-      volatile uint8_t prev;
-    } ch0;
-    struct {
-      volatile uint8_t curr;
-      volatile uint8_t prev;
-    } ch1;
+    int32_t pos;
+    int32_t power;
+    uint32_t period;
+    DIRECTION dir;
+    OVERFLOW_STATE overflow;
+    EDGE_STATE edge_c0;
+    EDGE_STATE edge_c1;
 
   } motor[3];
 } motor_data = {
@@ -212,35 +211,32 @@ struct {
     .motor[0] =
         {
             .pos = 0,
-            .dir = FORWARDS,
             .power = 0,
             .period = 0,
-            .speed = 0,
-            .state = NORMAL,
-            .ch0 = {.curr = 0, .prev = 0},
-            .ch1 = {.curr = 0, .prev = 0},
+            .dir = FORWARDS,
+            .overflow = NORMAL,
+            .edge_c0 = LOW,
+            .edge_c1 = LOW,
         },
     .motor[1] =
         {
             .pos = 0,
-            .dir = FORWARDS,
             .power = 0,
             .period = 0,
-            .speed = 0,
-            .state = NORMAL,
-            .ch0 = {.curr = 0, .prev = 0},
-            .ch1 = {.curr = 0, .prev = 0},
+            .dir = FORWARDS,
+            .overflow = NORMAL,
+            .edge_c0 = LOW,
+            .edge_c1 = LOW,
         },
     .motor[2] =
         {
             .pos = 0,
-            .dir = FORWARDS,
             .power = 0,
             .period = 0,
-            .speed = 0,
-            .state = NORMAL,
-            .ch0 = {.curr = 0, .prev = 0},
-            .ch1 = {.curr = 0, .prev = 0},
+            .dir = FORWARDS,
+            .overflow = NORMAL,
+            .edge_c0 = LOW,
+            .edge_c1 = LOW,
         },
 };
 // Timer block and individual channel references
@@ -252,16 +248,20 @@ AT91PS_TC tc_c = AT91C_BASE_TC2;
 // Anzeigen über v.view %e %spotlight motor_data
 
 // Timer overflow motor A => TC0
-void timer0_isr_entry(void) {
-  MA.state = OVERFLOW_DETECTED;
-  uint32_t pinChanges = *AT91C_TC0_SR;
-  MA.period = 0;
-  (void)pinChanges;
+void timer0_isr_entry(void) {          // 12
+  MA.overflow = OVERFLOW;              // 4
+  uint32_t pinChanges = *AT91C_TC0_SR; // 5
+  MA.period = 0;                       // 4
+  (void)pinChanges;                    // 0
 }
+//     total 25 instructions
+//
+//     25 * (1/(48 * 10^6 1/s))
+// <=> 25 * 20ns = 500ns
 
 // Timer overflow motor B => TC1
 void timer1_isr_entry(void) {
-  MB.state = OVERFLOW_DETECTED;
+  MB.overflow = OVERFLOW;
   uint32_t pinChanges = *AT91C_TC1_SR;
   MB.period = 0;
   (void)pinChanges;
@@ -269,102 +269,68 @@ void timer1_isr_entry(void) {
 
 // Timer overflow motor C => TC2
 void timer2_isr_entry(void) {
-  MC.state = OVERFLOW_DETECTED;
+  MC.overflow = OVERFLOW;
   uint32_t pinChanges = *AT91C_TC2_SR;
   MC.period = 0;
   (void)pinChanges;
 }
 
+// Shift old value to the left and set the new value
+#define GET_EDGE_STATE(old, new) ((((old) & 0b01) << 1) | (new))
 // GPIO interrupt triggerd by the edge detector
 void gpio_isr_entry(void) {
   // Read & clear PIOA ISR - tells us which pins triggered the interrupt
-  volatile uint32_t isr = *AT91C_PIOA_ISR;
-  uint32_t pin_status = *AT91C_PIOA_PDSR;
-
-  if (!(isr & ENCODER_PINS))
-    return;
+  volatile uint32_t isr = *AT91C_PIOA_ISR; // 5
+  uint32_t pin_status = *AT91C_PIOA_PDSR;  // 5
 
   // MOTOR A has changed
-  if (isr & MASKA) {
-    MA.ch0.prev = MA.ch0.curr;
-    MA.ch1.prev = MA.ch1.curr;
-    MA.ch0.curr = GET_BIT(pin_status, MA0);
-    MA.ch1.curr = GET_BIT(pin_status, MA1);
-
-    if (RISING_EDGE(MA.ch0.prev, MA.ch0.curr)) {
-      switch (MA.state) {
-      case NORMAL:
-        MA.period = tc_a->TC_CV;
-        MA.dir = MA.ch0.curr ^ MA.ch1.curr;
-        MA.pos += MA.dir ? -1 : 1;
-        break;
-      case OVERFLOW_DETECTED:
-        MA.state = VALID_EDGE_DETECTED;
-        break;
-      case VALID_EDGE_DETECTED:
-        MA.state = NORMAL;
-        break;
-      }
-      tc_a->TC_CCR = AT91C_TC_SWTRG;
-    } else if (MA.state == NORMAL) {
-      MA.pos += MA.dir ? -1 : 1;
+  if (isr & MASKA) {                                                   // 7
+    MA.edge_c0 = GET_EDGE_STATE(MA.edge_c0, GET_BIT(pin_status, MA0)); // 16
+    MA.edge_c1 = GET_EDGE_STATE(MA.edge_c1, GET_BIT(pin_status, MA1)); // 16
+    // -1 for BACKWARDS, 0 for OVERFLOW, 1 for FORWARDS
+    MA.pos += (1 - ((MA.dir << 1))) & -(MA.overflow == NORMAL); // 26
+    if (MA.edge_c0 == RISING) {                                 // 7
+      MA.period = tc_a->TC_CV;                                  // 7
+      tc_a->TC_CCR = AT91C_TC_SWTRG;                            // 6
+      MA.overflow = NORMAL;                                     // 4
+      MA.dir = (MA.edge_c0 & 1) ^ (MA.edge_c1 & 1);             // 16
     }
   }
+  // 105 instructions, if new cycle
+  // 72 instructions, if no rising edge on c0 (indicates new cycle)
+  // 7 instructions, if no change in motor
 
   // MOTOR B has changed
-  if (isr & MASKB) {
-    MB.ch0.prev = MB.ch0.curr;
-    MB.ch1.prev = MB.ch1.curr;
-    MB.ch0.curr = GET_BIT(pin_status, MB0);
-    MB.ch1.curr = GET_BIT(pin_status, MB1);
-
-    if (RISING_EDGE(MB.ch0.prev, MB.ch0.curr)) {
-      switch (MB.state) {
-      case NORMAL:
-        MB.period = tc_b->TC_CV;
-        MB.dir = MB.ch0.curr ^ MB.ch1.curr;
-        MB.pos += MB.dir ? -1 : 1;
-        break;
-      case OVERFLOW_DETECTED:
-        MB.state = VALID_EDGE_DETECTED;
-        break;
-      case VALID_EDGE_DETECTED:
-        MB.state = NORMAL;
-        break;
-      }
-      tc_b->TC_CCR = AT91C_TC_SWTRG;
-    } else if (MB.state == NORMAL) {
-      MB.pos += MB.dir ? -1 : 1;
-    }
+  if (isr & MASKB) {                                                   // 7
+    MB.edge_c0 = GET_EDGE_STATE(MB.edge_c0, GET_BIT(pin_status, MB0)); // 16
+    MB.edge_c1 = GET_EDGE_STATE(MB.edge_c1, GET_BIT(pin_status, MB1)); // 16
+    MB.pos += (1 - ((MB.dir << 1))) & -(MB.overflow == NORMAL);        // 26
+    if (MB.edge_c0 == RISING) {                                        // 7
+      MB.period = tc_b->TC_CV;                                         // 7
+      tc_b->TC_CCR = AT91C_TC_SWTRG;                                   // 6
+      MB.overflow = NORMAL;                                            // 4
+      MB.dir = (MB.edge_c0 & 1) ^ (MB.edge_c1 & 1);                    // 16
+    } // 105
   }
 
   // MOTOR C has changed
-  if (isr & MASKC) {
-    MC.ch0.prev = MC.ch0.curr;
-    MC.ch1.prev = MC.ch1.curr;
-    MC.ch0.curr = GET_BIT(pin_status, MC0);
-    MC.ch1.curr = GET_BIT(pin_status, MC1);
-
-    if (RISING_EDGE(MC.ch0.prev, MC.ch0.curr)) {
-      switch (MC.state) {
-      case NORMAL:
-        MC.period = tc_c->TC_CV;
-        MC.dir = MC.ch0.curr ^ MC.ch1.curr;
-        MC.pos += MC.dir ? -1 : 1;
-        break;
-      case OVERFLOW_DETECTED:
-        MC.state = VALID_EDGE_DETECTED;
-        break;
-      case VALID_EDGE_DETECTED:
-        MC.state = NORMAL;
-        break;
-      }
-      tc_c->TC_CCR = AT91C_TC_SWTRG;
-    } else if (MC.state == NORMAL) {
-      MC.pos += MC.dir ? -1 : 1;
-    }
+  if (isr & MASKC) {                                                   // 7
+    MC.edge_c0 = GET_EDGE_STATE(MC.edge_c0, GET_BIT(pin_status, MC0)); // 16
+    MC.edge_c1 = GET_EDGE_STATE(MC.edge_c1, GET_BIT(pin_status, MC1)); // 16
+    MC.pos += (1 - ((MC.dir << 1))) & -(MC.overflow == NORMAL);        // 26
+    if (MC.edge_c0 == RISING) {                                        // 7
+      MC.period = tc_c->TC_CV;                                         // 7
+      tc_c->TC_CCR = AT91C_TC_SWTRG;                                   // 6
+      MC.overflow = NORMAL;                                            // 4
+      MC.dir = (MC.edge_c0 & 1) ^ (MC.edge_c1 & 1);                    // 16
+    } // 105
   }
 }
+// Worst case: all 3 motors detect rising edge on ch0:
+//     instructions: 10 + 3 * 105 = 325
+//
+//     325 * (1/(48 * 10^6 1/s))
+// <=> 325 * 20ns = 6.5ms
 
 int motor_init(void) {
   // Motor PWM 'aktivieren'
@@ -456,23 +422,22 @@ int motor_init(void) {
   return 0;
 }
 
-// Timer frequency: MCK/32 ~= 1,497,600 Hz
 #define TIMER_FREQUENCY ((uint32_t)MCK / (uint32_t)32)
 #define PULSES_PER_REV_RISING (uint32_t)180
 #define SCALE (uint32_t)1000
 
 #define SPEED_CONSTANT (TIMER_FREQUENCY * SCALE / PULSES_PER_REV_RISING)
 
-int motor_get(motor_t port, uint32_t *pos, int16_t *speed) {
+int motor_get(motor_t port, int32_t *pos, int16_t *speed) {
   if (port > MOTOR_C)
     return -1;
   if (pos != NULL) {
-    *pos = motor_data.motor[port].pos;
+    *pos = motor_data.motor[port].pos % 720;
   }
   if (speed != NULL) {
     uint32_t period = motor_data.motor[port].period;
-    MOTOR_STATE state = motor_data.motor[port].state;
-    if (state == OVERFLOW_DETECTED || period == 0) {
+    OVERFLOW_STATE state = motor_data.motor[port].overflow;
+    if (state == OVERFLOW || period == 0) {
       *speed = 0;
     } else {
       int16_t calculated_speed = (int16_t)(SPEED_CONSTANT / period);
@@ -488,7 +453,7 @@ int motor_get(motor_t port, uint32_t *pos, int16_t *speed) {
 
 // Funktion wird alle 16ms aufgerufen
 void motor_process(void) {
-  uint32_t pos;
+  int32_t pos;
   int16_t speed;
 
   // Aktuellen Motor aus UI lesen
@@ -498,7 +463,6 @@ void motor_process(void) {
   if (motor_data.schritt_mode == TV_VARIABEL) {
     uint32_t cycle_duration_ms;
     cycle_duration_ms = SPEED_DURATION_MS[motor_data.speed_level];
-
     uint32_t total_steps = cycle_duration_ms >> 4;
 
     motor_data.cycle_progress++;
@@ -506,7 +470,6 @@ void motor_process(void) {
       motor_data.cycle_progress = 0;
     }
 
-    // Triangle wave: ramp up in first half, ramp down in second half
     int32_t power;
     uint32_t half_steps = total_steps >> 1;
     if (motor_data.cycle_progress < half_steps) {
@@ -537,6 +500,7 @@ void motor_process(void) {
 #define ORANGE_RELEASED (motor_data.button_old.orange && !button_new.orange)
 #define LEFT_RELEASED (motor_data.button_old.left && !button_new.left)
 #define RIGHT_RELEASED (motor_data.button_old.right && !button_new.right)
+#define GREY_RELEASED (!motor_data.button_old.grey && button_new.grey)
 void ui_process(void) {
   button_t button_new = nxt_avr_get_buttons();
 
@@ -593,7 +557,7 @@ void ui_process(void) {
     }
   }
   // Grey Released
-  if (!motor_data.button_old.grey && button_new.grey) {
+  if (GREY_RELEASED) {
     motor_data.schritt_mode =
         motor_data.schritt_mode ? TV_MANUELL : TV_VARIABEL;
     if (motor_data.schritt_mode == TV_VARIABEL) {
