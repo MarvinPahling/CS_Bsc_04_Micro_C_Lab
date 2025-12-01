@@ -41,16 +41,13 @@
 #define P3_SDA 30 // Sensor-4 DIGx0  PA30=IRQ1/NPCS2
 #define P3_SCL 2  // Sensor-4 DIGx1  PA2 =PWM2/SCK0
 
-
 const struct {
   uint32_t i2c_sda;
   uint32_t i2c_scl;
-} i2c_mask[SENSOR_MAX] = {
-  {(1 << P0_SDA), (1 << P0_SCL)},
-  {(1 << P1_SDA), (1 << P1_SCL)},
-  {(1 << P2_SDA), (1 << P2_SCL)},
-  {(1 << P3_SDA), (1 << P3_SCL)}
-};
+} i2c_mask[SENSOR_MAX] = {{(1 << P0_SDA), (1 << P0_SCL)},
+                          {(1 << P1_SDA), (1 << P1_SCL)},
+                          {(1 << P2_SDA), (1 << P2_SCL)},
+                          {(1 << P3_SDA), (1 << P3_SCL)}};
 
 #define NXT_I2C_PORT SENSOR_1
 
@@ -62,9 +59,9 @@ struct {
   unsigned char term_cnt;
   unsigned char lowbat_cnt;
 } main_data = {
-  .term_status = 0,
-  .term_cnt = 0,
-  .lowbat_cnt = 0,
+    .term_status = 0,
+    .term_cnt = 0,
+    .lowbat_cnt = 0,
 };
 
 /*****************************************************************************/
@@ -73,10 +70,11 @@ struct {
 /*****************************************************************************/
 // Routine wird von C-Lib aufgerufen (bspw. printf() abort())
 void _exit(int status) {
-  (void) status;
+  (void)status;
   // LED-Blinken lassen
   // Breakpoint setzen
-  while (1);
+  while (1)
+    ;
 }
 
 /*****************************************************************************/
@@ -153,7 +151,7 @@ int scope_init(SCOPE_MODE mode, uint32_t zyklus_us) {
     scope.idx = 0;
 
     uint32_t pinChanges = AT91C_BASE_PWMC->PWMC_ISR; // Acknowledge change
-    (void) pinChanges;
+    (void)pinChanges;
     AT91C_BASE_PWMC->PWMC_IER = 1 << 0; // Interrupt Enable Register
     AT91C_BASE_PWMC->PWMC_ENA = 1 << 0; // PWM Enalbe
   }
@@ -271,42 +269,28 @@ void I2C_delay(void) {
 // Hardware-specific support functions that MUST be customized:
 void I2C_delay(void);
 
-bool read_SCL(void); // Return current level of SCL line, 0 or 1
-bool read_SDA(void); // Return current level of SDA line, 0 or 1
-void set_SCL(void); // Do not drive SCL (set pin high-impedance)
+bool read_SCL(void);  // Return current level of SCL line, 0 or 1
+bool read_SDA(void);  // Return current level of SDA line, 0 or 1
+void set_SCL(void);   // Do not drive SCL (set pin high-impedance)
 void clear_SCL(void); // Actively drive SCL signal low
-void set_SDA(void); // Do not drive SDA (set pin high-impedance)
+void set_SDA(void);   // Do not drive SDA (set pin high-impedance)
 void clear_SDA(void); // Actively drive SDA signal low
 void arbitration_lost(void);
 
 #define I2C i2c_mask[NXT_I2C_PORT]
-bool read_SCL(void) {
-  return pio_a->PIO_PDSR & I2C.i2c_scl;
-}
+bool read_SCL(void) { return pio_a->PIO_PDSR & I2C.i2c_scl; }
 
-bool read_SDA(void) {
-  return pio_a->PIO_PDSR & I2C.i2c_sda;
-}
+bool read_SDA(void) { return pio_a->PIO_PDSR & I2C.i2c_sda; }
 
-void set_SCL(void) {
-  pio_a->PIO_SODR = I2C.i2c_scl;
-}
+void set_SCL(void) { pio_a->PIO_SODR = I2C.i2c_scl; }
 
-void clear_SCL(void) {
-  pio_a->PIO_CODR = I2C.i2c_scl;
-}
+void clear_SCL(void) { pio_a->PIO_CODR = I2C.i2c_scl; }
 
-void set_SDA(void) {
-  pio_a->PIO_SODR = I2C.i2c_sda;
-}
+void set_SDA(void) { pio_a->PIO_SODR = I2C.i2c_sda; }
 
-void clear_SDA(void) {
-  pio_a->PIO_CODR = I2C.i2c_sda;
-}
+void clear_SDA(void) { pio_a->PIO_CODR = I2C.i2c_sda; }
 
-void arbitration_lost(void) {
-  i2c_data.i2c[NXT_I2C_PORT].arbitration_lost = 1;
-}
+void arbitration_lost(void) { i2c_data.i2c[NXT_I2C_PORT].arbitration_lost = 1; }
 
 #define started i2c_data.i2c[NXT_I2C_PORT].started
 
@@ -476,7 +460,6 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
 // Common addresses: 0x20 (A2/A1/A0 = LOW), 0x27 (A2/A1/A0 = HIGH)
 // Scanner found device at 0x27! (A2/A1/A0 all HIGH)
 #define MCP2317_ADDR 0x27
-#define MCP2317_0_ADDRESS MCP2317_ADDR
 
 // Registerbeschreibung des GPIO-Portexanders
 #define MCP2317_0_IODIRA 0x00   // IO Direction (Default: 1)
@@ -517,8 +500,7 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
   0x10 // 0-> SlewRate SDA Enabled  1->SlewRate disabled
 #define MCP2317_IOCON_HAEN                                                     \
   0x08 // 0->Disable AdrressPins    1->Enable AdressPins (nur SPI)
-#define MCP2317_IOCON_ODR                                                      \
-  0x04                            // 0->Int Active Driven      1->Int Pin Open
+#define MCP2317_IOCON_ODR 0x04 // 0->Int Active Driven      1->Int Pin Open
 // Drain
 #define MCP2317_IOCON_INTPOL 0x02 // 0->Int Active Low         1->Active High
 #define MCP2317_IOCON_NC 0x01     // Unimplemented
@@ -537,49 +519,20 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
 #define LED_1_PORT 0
 
 /**
- * Scan I2C bus for MCP23017 devices (addresses 0x20-0x27)
- * Results stored in i2c_data.scan_results[]
- */
-void i2c_scan_mcp23017(void) {
-  (void)term_string("\r\nScanning I2C addresses 0x20-0x27...\r\n", ASYNCSYNC_BLOCK);
-
-  for (uint8_t addr = 0x20; addr <= 0x27; addr++) {
-    uint8_t idx = addr - 0x20;
-
-    // Try to write just the address byte with START and STOP
-    bool nack = i2c_write_byte(1, 1, (addr << 1) | 0);
-
-    i2c_data.scan_results[idx] = (nack == 0) ? 1 : 0; // 1 = ACK, 0 = NACK
-
-    (void)term_string("  0x", ASYNCSYNC_BLOCK);
-    (void)term_hex(addr, 2, ASYNCSYNC_BLOCK);
-    if (nack == 0) {
-      (void)term_string(" - ACK (device found!)\r\n", ASYNCSYNC_BLOCK);
-    } else {
-      (void)term_string(" - NACK\r\n", ASYNCSYNC_BLOCK);
-    }
-
-    // Small delay between probes
-    systick_wait_ms(10);
-  }
-
-  i2c_data.scan_complete = 1;
-  (void)term_string("Scan complete!\r\n\r\n", ASYNCSYNC_BLOCK);
-}
-
-/**
  * Write a byte to MCP23017 register
  * @param reg_addr: Register address (0x00-0x15)
  * @param value: Byte value to write
  */
 void mcp23017_write_reg(uint8_t reg_addr, uint8_t value) {
   // I2C Write Protocol:
-  // START -> [Device Addr + Write] -> ACK -> [Reg Addr] -> ACK -> [Value] -> ACK
+  // START -> [Device Addr + Write] -> ACK -> [Reg Addr] -> ACK -> [Value] ->
+  // ACK
   // -> STOP
 
-  i2c_write_byte(1, 0, (MCP2317_0_ADDRESS << 1) | 0); // START, Device address + Write
-  i2c_write_byte(0, 0, reg_addr); // Register address
-  i2c_write_byte(0, 1, value); // Data value + STOP
+  i2c_write_byte(1, 0,
+                 (MCP2317_ADDR << 1) | 0); // START, Device address + Write
+  i2c_write_byte(0, 0, reg_addr);          // Register address
+  i2c_write_byte(0, 1, value);             // Data value + STOP
 }
 
 /**
@@ -592,12 +545,14 @@ uint8_t mcp23017_read_reg(uint8_t reg_addr) {
   // START -> [Device Addr + Write] -> ACK -> [Reg Addr] -> ACK ->
   // RESTART -> [Device Addr + Read] -> ACK -> [Data] -> NACK -> STOP
 
-  i2c_write_byte(1, 0, (MCP2317_0_ADDRESS << 1) | 0); // START, Device address + Write
-  i2c_write_byte(0, 0, reg_addr); // Register address (no STOP)
+  i2c_write_byte(1, 0,
+                 (MCP2317_ADDR << 1) | 0); // START, Device address + Write
+  i2c_write_byte(0, 0, reg_addr);          // Register address (no STOP)
 
   // Restart and read
-  i2c_write_byte(1, 0, (MCP2317_0_ADDRESS << 1) | 1); // RESTART, Device address + Read
-  uint8_t data = i2c_read_byte(1, 1); // Read with NACK + STOP
+  i2c_write_byte(1, 0,
+                 (MCP2317_ADDR << 1) | 1); // RESTART, Device address + Read
+  uint8_t data = i2c_read_byte(1, 1);      // Read with NACK + STOP
 
   return data;
 }
@@ -606,10 +561,6 @@ void io_init(void) {
   i2c_init();
   i2c_data.mcp_init_complete = 0;
   i2c_data.scan_complete = 0;
-
-  // Test: Manually toggle SCL and SDA to verify pins work
-  (void)term_string("Testing GPIO pins...\r\n", ASYNCSYNC_BLOCK);
-  (void)term_string("Toggling SCL (PA18) and SDA (PA23) 10 times\r\n", ASYNCSYNC_BLOCK);
 
   for (int i = 0; i < 10; i++) {
     clear_SCL();
@@ -620,44 +571,24 @@ void io_init(void) {
     systick_wait_ms(50);
   }
 
-  (void)term_string("GPIO toggle test done. Check scope!\r\n\r\n", ASYNCSYNC_BLOCK);
-
-  // First, scan the I2C bus to find devices
-  i2c_scan_mcp23017();
-
-  (void)term_string("Init MCP23017 addr: ", ASYNCSYNC_BLOCK);
-  (void)term_hex(MCP2317_0_ADDRESS, 2, ASYNCSYNC_BLOCK);
-  (void)term_string("\r\n", ASYNCSYNC_BLOCK);
-
   // GPIO Portexander initialisieren
   // Configure I/O Direction Register A (0x00)
   // Bit 0 = 0 (GPA0 = OUTPUT for LED 0)
   // All other bits = 0 (all outputs for testing)
   mcp23017_write_reg(MCP2317_0_IODIRA, 0x00);
 
-  (void)term_string("IODIRA=0x00, Arb: ", ASYNCSYNC_BLOCK);
-  (void)term_unsigned(i2c_data.i2c[NXT_I2C_PORT].arbitration_lost, 1, ASYNCSYNC_BLOCK);
-  (void)term_string("\r\n", ASYNCSYNC_BLOCK);
-
   // Test: Turn LED ON to verify communication
   // Write 0xFF to OLATA to turn all outputs high
   mcp23017_write_reg(MCP2317_0_OLATA, 0xFF);
 
   (void)term_string("OLATA=0xFF, Arb: ", ASYNCSYNC_BLOCK);
-  (void)term_unsigned(i2c_data.i2c[NXT_I2C_PORT].arbitration_lost, 1, ASYNCSYNC_BLOCK);
+  (void)term_unsigned(i2c_data.i2c[NXT_I2C_PORT].arbitration_lost, 1,
+                      ASYNCSYNC_BLOCK);
   (void)term_string("\r\n", ASYNCSYNC_BLOCK);
 
   // Read back to verify communication - stored in i2c_data for T32 debugging
   i2c_data.mcp_iodira_readback = mcp23017_read_reg(MCP2317_0_IODIRA);
   i2c_data.mcp_olata_readback = mcp23017_read_reg(MCP2317_0_OLATA);
-
-  (void)term_string("IODIRA readback: ", ASYNCSYNC_BLOCK);
-  (void)term_hex(i2c_data.mcp_iodira_readback, 2, ASYNCSYNC_BLOCK);
-  (void)term_string(", OLATA readback: ", ASYNCSYNC_BLOCK);
-  (void)term_hex(i2c_data.mcp_olata_readback, 2, ASYNCSYNC_BLOCK);
-  (void)term_string(", Arb: ", ASYNCSYNC_BLOCK);
-  (void)term_unsigned(i2c_data.i2c[NXT_I2C_PORT].arbitration_lost, 1, ASYNCSYNC_BLOCK);
-  (void)term_string("\r\n", ASYNCSYNC_BLOCK);
 
   i2c_data.mcp_init_complete = 1;
 
@@ -769,8 +700,8 @@ int main(void) {
   /* Interrupts zu diesem Zeitpunkt disabled !!!! */
 
   /* 'Pflicht' Initialisierung, können nicht ausgelassen werden */
-  aic_init(); // Interrupt-Controller initialisieren
-  systick_init(); // System-Timer initialisieren
+  aic_init();          // Interrupt-Controller initialisieren
+  systick_init();      // System-Timer initialisieren
   interrupts_enable(); // Ohne Worte
   nxt_avr_init(8);
 #if defined(MODE_RAM) || defined(MODE_SIM)
@@ -789,21 +720,21 @@ int main(void) {
   display_update();
 
   // ANSI Escape sequences - VT100 / VT52 (see main.h)
-  (void) term_string("hallo\n\r", ASYNCSYNC_BLOCK);
-  (void) term_string(
-    "\033[2J" VT100_CURSORHOME // Move Cursor to home position (0,0)
-    VT100_DEFAULT,
-    ASYNCSYNC_BLOCK);
-  (void) term_string("Prog: " APP_NAME "\n\rVersion von: " __DATE__ " " __TIME__
-                     "\n\r",
-                     ASYNCSYNC_BLOCK);
-  (void) term_string(
-    "'Var.Watch %e %spotlight i2c_data' zur Variablendarstellung\n\r",
-    ASYNCSYNC_BLOCK);
-  (void) term_string(
-    "'v.draw %e scope.buf0 scope.buf1' zur Oszilloskopdarstellung\n\r",
-    ASYNCSYNC_BLOCK);
-  (void) term_string("Viel Erfolg!\n\r", ASYNCSYNC_BLOCK);
+  (void)term_string("hallo\n\r", ASYNCSYNC_BLOCK);
+  (void)term_string(
+      "\033[2J" VT100_CURSORHOME // Move Cursor to home position (0,0)
+          VT100_DEFAULT,
+      ASYNCSYNC_BLOCK);
+  (void)term_string("Prog: " APP_NAME "\n\rVersion von: " __DATE__ " " __TIME__
+                    "\n\r",
+                    ASYNCSYNC_BLOCK);
+  (void)term_string(
+      "'Var.Watch %e %spotlight i2c_data' zur Variablendarstellung\n\r",
+      ASYNCSYNC_BLOCK);
+  (void)term_string(
+      "'v.draw %e scope.buf0 scope.buf1' zur Oszilloskopdarstellung\n\r",
+      ASYNCSYNC_BLOCK);
+  (void)term_string("Viel Erfolg!\n\r", ASYNCSYNC_BLOCK);
 
   // Alternativ zu term_xxx() kann auch printf() oder noch besser iprintf
   // genutzt werden beide bedingen jedoch einen großen Speicherbedarf!
@@ -815,8 +746,8 @@ int main(void) {
   /* Watchdog Disable */
   /* Mode-Register kann nur einmal beschrieben werden */
   AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
-                               AT91C_WDTC_WDDBGHLT | /*Debug Halt */
-                               AT91C_WDTC_WDIDLEHLT; /*Idle Halt  */
+                               AT91C_WDTC_WDDBGHLT |      /*Debug Halt */
+                               AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
 #else
 #if 0
   /* Watchdog Enable */
@@ -824,11 +755,11 @@ int main(void) {
   /* vorhanden ist, wird von einem Watchdog Enable abgesehen  */
   /* Mit Reset wird der Wachdog aktiviert!                    */
 #else
-  /* Watchdog Disable */
-  /* Mode-Register kann nur einmal beschrieben werden */
-  AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
-                               AT91C_WDTC_WDDBGHLT | /*Debug Halt */
-                               AT91C_WDTC_WDIDLEHLT; /*Idle Halt  */
+/* Watchdog Disable */
+/* Mode-Register kann nur einmal beschrieben werden */
+AT91C_BASE_WDTC->WDTC_WDMR = 0xFFF | AT91C_WDTC_WDDIS | /*WD Disable */
+                             AT91C_WDTC_WDDBGHLT |      /*Debug Halt */
+                             AT91C_WDTC_WDIDLEHLT;      /*Idle Halt  */
 #endif
 #endif
   // Vorangegangenen Stackaufbau 'löschen'
@@ -841,28 +772,33 @@ start:
   char *task_aktiv = "";
   while (1) {
     // Warten bis zum nächsten TimeSlot
-    while ((int) (start_tick - systick_get_ms()) > 0);
+    while ((int)(start_tick - systick_get_ms()) > 0)
+      ;
     start_tick += ZYKLUS_MS;
     // Label, so das mit 'go zyklus' hierhin gesprungen werden kann
   zyklus:
     __attribute__((unused)) if ((zeitscheibe & 0b000000001) == 0b000000001) {
       task_aktiv = "32ms";
       task_32ms();
-    } else if ((zeitscheibe & 0b000000011) == 0b000000010) {
+    }
+    else if ((zeitscheibe & 0b000000011) == 0b000000010) {
       task_aktiv = "64ms";
       task_64ms();
-    } else if ((zeitscheibe & 0b000000111) == 0b000000100) {
+    }
+    else if ((zeitscheibe & 0b000000111) == 0b000000100) {
       task_aktiv = "128ms";
       task_128ms();
-    } else if ((zeitscheibe & 0b000001111) == 0b000001000) {
+    }
+    else if ((zeitscheibe & 0b000001111) == 0b000001000) {
       task_aktiv = "256ms";
       task_256ms();
-    } else if ((zeitscheibe & 0b000011111) == 0b000010000) {
+    }
+    else if ((zeitscheibe & 0b000011111) == 0b000010000) {
       task_aktiv = "512ms";
       task_512ms();
     }
     // Zeit für IDLE-Task verfügbar
-    if ((int) (start_tick - systick_get_ms()) >= IDLE_MS) {
+    if ((int)(start_tick - systick_get_ms()) >= IDLE_MS) {
       task_aktiv = "Idle";
       task_idle();
     }
@@ -885,11 +821,12 @@ start:
       if (stack_cnt == 0) {
         stack_cnt = 1;
         main_data.term_status |= term_string(
-          VT100_VORDERGRUND_ROT "Stack overflow durch '", ASYNCSYNC_NONBLOCK);
+            VT100_VORDERGRUND_ROT "Stack overflow durch '", ASYNCSYNC_NONBLOCK);
         main_data.term_status |= term_string(task_aktiv, ASYNCSYNC_NONBLOCK);
         main_data.term_status |=
             term_string("'\n\r" VT100_VORDERGRUND_DEFAULT, ASYNCSYNC_NONBLOCK);
-        while (1);
+        while (1)
+          ;
       }
     }
 
@@ -897,7 +834,8 @@ start:
     // Ggf. schlägt die Unterspannungsprüfung im Akku zuvor ein!
     if (nxt_avr_get_battery_raw() < ((2 * 3000 /*mV*/) << 10) / 14180) {
       if (main_data.lowbat_cnt++ > 100)
-        while (1);
+        while (1)
+          ;
       else if (main_data.lowbat_cnt == 10)
         main_data.term_status |=
             term_string(VT100_VORDERGRUND_ROT
@@ -913,14 +851,16 @@ start:
     overflow:
       __attribute__((unused));
 
-      (void) term_string(VT100_VORDERGRUND_ROT
-                         "\n\rTerminal Overflow\n\r" VT100_VORDERGRUND_DEFAULT,
-                         ASYNCSYNC_BLOCK);
-      while (1);
+      (void)term_string(VT100_VORDERGRUND_ROT
+                        "\n\rTerminal Overflow\n\r" VT100_VORDERGRUND_DEFAULT,
+                        ASYNCSYNC_BLOCK);
+      while (1)
+        ;
     }
   }
   // Nachfolgende Funktion wird leider nie aufgerufen!
   nxt_avr_power_down();
   systick_wait_ms(1000);
-  while (1);
+  while (1)
+    ;
 }
