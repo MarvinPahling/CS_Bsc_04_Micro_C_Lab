@@ -269,28 +269,22 @@ void I2C_delay(void) {
 // Hardware-specific support functions that MUST be customized:
 void I2C_delay(void);
 
-bool read_SCL(void);  // Return current level of SCL line, 0 or 1
-bool read_SDA(void);  // Return current level of SDA line, 0 or 1
-void set_SCL(void);   // Do not drive SCL (set pin high-impedance)
-void clear_SCL(void); // Actively drive SCL signal low
-void set_SDA(void);   // Do not drive SDA (set pin high-impedance)
-void clear_SDA(void); // Actively drive SDA signal low
-void arbitration_lost(void);
+// bool read_SCL(void);  // Return current level of SCL line, 0 or 1
+// bool read_SDA(void);  // Return current level of SDA line, 0 or 1
+// void set_SCL(void);   // Do not drive SCL (set pin high-impedance)
+// void clear_SCL(void); // Actively drive SCL signal low
+// void set_SDA(void);   // Do not drive SDA (set pin high-impedance)
+// void clear_SDA(void); // Actively drive SDA signal low
+// void arbitration_lost(void);
 
 #define I2C i2c_mask[NXT_I2C_PORT]
-bool read_SCL(void) { return pio_a->PIO_PDSR & I2C.i2c_scl; }
-
-bool read_SDA(void) { return pio_a->PIO_PDSR & I2C.i2c_sda; }
-
-void set_SCL(void) { pio_a->PIO_SODR = I2C.i2c_scl; }
-
-void clear_SCL(void) { pio_a->PIO_CODR = I2C.i2c_scl; }
-
-void set_SDA(void) { pio_a->PIO_SODR = I2C.i2c_sda; }
-
-void clear_SDA(void) { pio_a->PIO_CODR = I2C.i2c_sda; }
-
-void arbitration_lost(void) { i2c_data.i2c[NXT_I2C_PORT].arbitration_lost = 1; }
+#define read_SCL() (pio_a->PIO_PDSR & I2C.i2c_scl)
+#define read_SDA() (pio_a->PIO_PDSR & I2C.i2c_sda)
+#define set_SCL() (pio_a->PIO_SODR = I2C.i2c_scl)
+#define clear_SCL() (pio_a->PIO_CODR = I2C.i2c_scl)
+#define set_SDA() (pio_a->PIO_SODR = I2C.i2c_sda)
+#define clear_SDA() (pio_a->PIO_CODR = I2C.i2c_sda)
+#define arbitration_lost() (i2c_data.i2c[NXT_I2C_PORT].arbitration_lost = 1)
 
 #define started i2c_data.i2c[NXT_I2C_PORT].started
 
