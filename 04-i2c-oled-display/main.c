@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h> //fuer _exit()
 
 #include "AT91SAM7S64.h"
@@ -167,12 +166,8 @@ struct {
     int started;
     int arbitration_lost;
   } i2c[4];
-  // LED and interrupt status for debugging
-  uint8_t led0_state;     // Current blink LED state (0 or 1)
-  uint8_t led1_state;     // Current blink LED state (0 or 1)
-  uint8_t joystick_state; // Current joystick button state (0 or 1)
-  uint8_t int_flags;      // MCP23017 interrupt flag register (INTFA)
-  uint8_t led_output;     // Combined LED output written to OLATA
+  uint8_t int_flags;
+  uint8_t led_state;
 } i2c_data;
 
 AT91PS_PIO pio_a = AT91C_BASE_PIOA;
@@ -238,7 +233,6 @@ void I2C_delay(void) {
 // Hardware-specific support functions that MUST be customized:
 void I2C_delay(void);
 
-// Use Macros instead of functions
 // bool read_SCL(void);  // Return current level of SCL line, 0 or 1
 // bool read_SDA(void);  // Return current level of SDA line, 0 or 1
 // void set_SCL(void);   // Do not drive SCL (set pin high-impedance)
@@ -246,7 +240,6 @@ void I2C_delay(void);
 // void set_SDA(void);   // Do not drive SDA (set pin high-impedance)
 // void clear_SDA(void); // Actively drive SDA signal low
 // void arbitration_lost(void);
-
 #define I2C i2c_mask[NXT_I2C_PORT]
 #define read_SCL() (pio_a->PIO_PDSR & I2C.i2c_scl)
 #define read_SDA() (pio_a->PIO_PDSR & I2C.i2c_sda)
@@ -486,7 +479,7 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
 #define LED_1_PORT 0
 #define LED_MASK 0b00000011
 
-#define GPIO_ALL_OFF 0b00000000
+#define GPIO_ALL_OFF 0b00000011
 
 #define MCP23017_WRITE_REG(reg_addr, value)                                    \
   ({                                                                           \
@@ -515,35 +508,17 @@ void io_init(void) {
     systick_wait_ms(50);
   }
 
-  // GPIO Portexander initialisieren
-  // Configure I/O Direction Register A (0x00)
-  // Bit 7 = 1 (GPA7 = INPUT for joystick button)
-  // Bits 0-1 = 0 (GPA0/GPA1 = OUTPUT for LEDs)
+  // Joystick => IN, LED0 and LED1 => OUT
   MCP23017_WRITE_REG(MCP2317_0_IODIRA, JOYSTICK_MASK);
-
-  // Configure Input Polarity Register A (0x02)
-  // Bits 0-1 = 1 (Invert LED outputs - external pull-ups make them active-low)
-  // Now writing 1 = LED ON, writing 0 = LED OFF (natural logic!)
-  MCP23017_WRITE_REG(MCP2317_0_IPOLA, LED_MASK);
-
-  // Configure Pull-Up Register A (0x0C)
-  // Bit 7 = 1 (Enable pull-up for joystick - open switch needs it!)
-  // Bits 0-1 = 0 (Disable pull-ups for LEDs - external pull-ups present)
-  MCP23017_WRITE_REG(MCP2317_0_GPPUA, JOYSTICK_MASK);
-
-  // Configure Interrupt-on-Change Enable Register A (0x04)
-  // Bit 7 = 1 (Enable interrupt on joystick button changes)
+  // Pull Up Register => all off
+  MCP23017_WRITE_REG(MCP2317_0_GPPUA, 0b00000000);
+  // Interrupt On Change
   MCP23017_WRITE_REG(MCP2317_0_GPINTENA, JOYSTICK_MASK);
-
-  // Configure Default Compare Register A (0x06)
-  // Bit 7 = 1 (Interrupt fires when button goes LOW - button press!)
+  // Default Compare Register for Interrupt
   MCP23017_WRITE_REG(MCP2317_0_DEFVALA, JOYSTICK_MASK);
-
-  // Configure Interrupt Control Register A (0x08)
-  // Bit 7 = 1 (Compare to DEFVAL mode instead of any-change mode)
+  // Configure Interrupt Control for Pin 7
   MCP23017_WRITE_REG(MCP2317_0_INTCONA, JOYSTICK_MASK);
 
-  // Initialize outputs: Both LEDs OFF (write 0 with IPOLA configured)
   MCP23017_WRITE_REG(MCP2317_0_OLATA, GPIO_ALL_OFF);
   scope_init(SCOPE_SINGLE, 250);
 }
@@ -555,37 +530,26 @@ void io_init(void) {
 void io_update(void) {
   static uint8_t blink_counter = 0;
 
-  // Task 1: Blink LED 0 at ~1Hz
-  // Called every 128ms, so 128ms × 4 = 512ms toggle period = ~1Hz
-  blink_counter++;
-  if (blink_counter >= 4) {
-    blink_counter = 0;
-    i2c_data.led0_state ^= 1; // Toggle LED state
+  // LED 0 - Blinking
+  //                                    MOD 8
+  blink_counter = (blink_counter + 1) & 0b00000111;
+  if (!(blink_counter)) {
+    i2c_data.led_state ^= (1 << LED_0_BIT);
   }
 
-  // Task 2: Read joystick button using hardware interrupt capture (debouncing!)
-  // Check interrupt flag register - bit 7 = 1 means button interrupt occurred
+  // LED 1 - Joystick
   i2c_data.int_flags = MCP23017_READ_REG(MCP2317_0_INTFA);
-
-  i2c_data.joystick_state =
-      (i2c_data.int_flags & JOYSTICK_MASK) >> JOYSTICK_TAST_BIT;
-  if (i2c_data.joystick_state) {
-    // Interrupt detected on GPA7 (button press)!
-    // Read INTCAPA to get captured state at interrupt moment (hardware
-    // debouncing!) Reading INTCAPA also clears the interrupt flag - clean af!
+  // Clear
+  i2c_data.led_state &= ~(1 << LED_1_BIT);
+  // Set if interrupt
+  i2c_data.led_state |=
+      (((i2c_data.int_flags >> JOYSTICK_TAST_BIT) & 1) << LED_1_BIT);
+  // Read Interrupt Capture Register for reset
+  if (i2c_data.int_flags) {
     (void)MCP23017_READ_REG(MCP2317_0_INTCAPA);
   }
 
-  // Combine LED states: bit 0 = blink, bit 1 = joystick
-  // With IPOLA configured, writing 1 = LED ON (chip inverts for active-low
-  // hardware)
-  uint8_t logic_state = (i2c_data.led0_state << LED_0_BIT) |
-                        (i2c_data.joystick_state << LED_1_BIT);
-
-  i2c_data.led1_state = logic_state;
-  i2c_data.led_output = logic_state ^ LED_MASK;
-
-  MCP23017_WRITE_REG(MCP2317_0_OLATA, i2c_data.led_output);
+  MCP23017_WRITE_REG(MCP2317_0_OLATA, i2c_data.led_state ^ LED_MASK);
 }
 
 /*****************************************************************************/
