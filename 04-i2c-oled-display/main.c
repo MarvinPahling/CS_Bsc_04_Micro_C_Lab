@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h> //fuer _exit()
 
 #include "AT91SAM7S64.h"
@@ -167,60 +166,25 @@ struct {
     int started;
     int arbitration_lost;
   } i2c[4];
-  // Debug values for MCP23017
-  uint8_t mcp_iodira_readback;
-  uint8_t mcp_olata_readback;
-  uint8_t mcp_init_complete;
-  // I2C scanner results (addresses 0x20-0x27)
-  uint8_t scan_results[8]; // 1 = ACK, 0 = NACK
-  uint8_t scan_complete;
+  uint8_t int_flags;
+  uint8_t led_state;
 } i2c_data;
 
 AT91PS_PIO pio_a = AT91C_BASE_PIOA;
 
 void i2c_init(void) {
-  // I2C-Datenstruktur initialisieren
   for (int lauf = 0; lauf < 4; lauf++) {
     i2c_data.i2c[lauf] = (struct i2c){.started = 0, .arbitration_lost = 0};
 
     uint32_t pin_mask = i2c_mask[lauf].i2c_scl | i2c_mask[lauf].i2c_sda;
 
-    //- Enable PIO control of pins (not peripheral)
-    pio_a->PIO_PER = pin_mask;
-    //- Enable output
-    pio_a->PIO_OER = pin_mask;
-    //- Als OpenCollector Ausgang
-    pio_a->PIO_MDER = pin_mask;
-    //- Pull-Up Disable (external pull-ups present)
-    pio_a->PIO_PPUDR = pin_mask;
-    //- Set pins high (idle state)
-    pio_a->PIO_SODR = pin_mask;
+    pio_a->PIO_PER = pin_mask;  // PIO Enable Register
+    pio_a->PIO_OER = pin_mask;  // Output Enable Register
+    pio_a->PIO_MDER = pin_mask; // Multi-driver Enable Register (Open Collector)
+    pio_a->PIO_PPUDR = pin_mask; // Pull-up Disable Register
+    pio_a->PIO_SODR = pin_mask;  // Set Output Data Register
   }
-  // I2C Treiberroutinen konfigurieren
 }
-
-// Grundlegende I2C-Routine aus alten Wikipedia-Artikel über I2C.
-//  i2c_start_cond()
-//    Zum Senden der Start-Bedingung (Bus Arbitrierung)
-//  i2c_stop_cond()
-//    Zum Senden der Stop-Bedingung (Bus freigeben)
-//  i2c_write_bit()
-//    Zum Senden eines einzel Bits (Data oder Acknowledge)
-//  i2c_read_bit()
-//    Zum Empfangen eines einzelnen Bits (Data oder Acknowledge)
-//  i2c_write_byte()
-//    Zum Senden eines Bytes incl. Ack-Bit (optional mit Start- und
-//    Stop-Bedingung)
-//  i2c_read_byte()
-//    Zum Emfang eines Bytes incl. Ack-Bit (optional mit Stop-Bedingung)
-//  arbitration_lost()
-//    Wird aufgerufen, wenn ein I2C Protokollfehler aufgetreten ist
-//  I2C_delay()
-//    Verzögerungsfunktion, mit dessen Abstand die einzelnen Bits
-//    auf die Leitung gesetzt werden. In der Regel wird pro
-//    zu übertragenden Bit diese Funktion zweimal aufgerufen
-//    Bei einer Delay-Zeit von 100µs ergibt sich folglich eine
-//    Taktfrequenz von ~1/200µs=~5kHz
 
 // Anmerkungen
 //- arbitration_lost() sollte im Normalfall nicht
@@ -269,28 +233,21 @@ void I2C_delay(void) {
 // Hardware-specific support functions that MUST be customized:
 void I2C_delay(void);
 
-bool read_SCL(void);  // Return current level of SCL line, 0 or 1
-bool read_SDA(void);  // Return current level of SDA line, 0 or 1
-void set_SCL(void);   // Do not drive SCL (set pin high-impedance)
-void clear_SCL(void); // Actively drive SCL signal low
-void set_SDA(void);   // Do not drive SDA (set pin high-impedance)
-void clear_SDA(void); // Actively drive SDA signal low
-void arbitration_lost(void);
-
+// bool read_SCL(void);  // Return current level of SCL line, 0 or 1
+// bool read_SDA(void);  // Return current level of SDA line, 0 or 1
+// void set_SCL(void);   // Do not drive SCL (set pin high-impedance)
+// void clear_SCL(void); // Actively drive SCL signal low
+// void set_SDA(void);   // Do not drive SDA (set pin high-impedance)
+// void clear_SDA(void); // Actively drive SDA signal low
+// void arbitration_lost(void);
 #define I2C i2c_mask[NXT_I2C_PORT]
-bool read_SCL(void) { return pio_a->PIO_PDSR & I2C.i2c_scl; }
-
-bool read_SDA(void) { return pio_a->PIO_PDSR & I2C.i2c_sda; }
-
-void set_SCL(void) { pio_a->PIO_SODR = I2C.i2c_scl; }
-
-void clear_SCL(void) { pio_a->PIO_CODR = I2C.i2c_scl; }
-
-void set_SDA(void) { pio_a->PIO_SODR = I2C.i2c_sda; }
-
-void clear_SDA(void) { pio_a->PIO_CODR = I2C.i2c_sda; }
-
-void arbitration_lost(void) { i2c_data.i2c[NXT_I2C_PORT].arbitration_lost = 1; }
+#define read_SCL() (pio_a->PIO_PDSR & I2C.i2c_scl)
+#define read_SDA() (pio_a->PIO_PDSR & I2C.i2c_sda)
+#define set_SCL() (pio_a->PIO_SODR = I2C.i2c_scl)
+#define clear_SCL() (pio_a->PIO_CODR = I2C.i2c_scl)
+#define set_SDA() (pio_a->PIO_SODR = I2C.i2c_sda)
+#define clear_SDA() (pio_a->PIO_CODR = I2C.i2c_sda)
+#define arbitration_lost() (i2c_data.i2c[NXT_I2C_PORT].arbitration_lost = 1)
 
 #define started i2c_data.i2c[NXT_I2C_PORT].started
 
@@ -492,6 +449,8 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
 #define MCP2317_0_IOCONB 0x0B
 
 #define MCP2317_IOCON_BANK 0x80 // 0-> Bank 0 Selected       1->Bank 1
+//
+//
 #define MCP2317_IOCON_MIRROR                                                   \
   0x40 // 0-> InTA/IntB separat     1->INTA+INTB Connected
 #define MCP2317_IOCON_SEQOP                                                    \
@@ -508,6 +467,7 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
 // Zuordnung IO-Expander Port/Bit zur Joystick-Taste
 #define JOYSTICK_TAST_BIT 7
 #define JOYSTICK_TAST_PORT 0
+#define JOYSTICK_MASK (1 << JOYSTICK_TAST_BIT)
 // Zuordnung IO-Expander Port/Bit zur Joystick-Multiplexer (wird hier nicht
 // benötigt)
 #define JOYSTICK_MUX_BIT 6
@@ -517,50 +477,27 @@ unsigned char i2c_read_byte(bool nack, bool send_stop) {
 #define LED_0_PORT 0
 #define LED_1_BIT 1
 #define LED_1_PORT 0
+#define LED_MASK 0b00000011
 
-/**
- * Write a byte to MCP23017 register
- * @param reg_addr: Register address (0x00-0x15)
- * @param value: Byte value to write
- */
-void mcp23017_write_reg(uint8_t reg_addr, uint8_t value) {
-  // I2C Write Protocol:
-  // START -> [Device Addr + Write] -> ACK -> [Reg Addr] -> ACK -> [Value] ->
-  // ACK
-  // -> STOP
+#define GPIO_ALL_OFF 0b00000011
 
-  i2c_write_byte(1, 0,
-                 (MCP2317_ADDR << 1) | 0); // START, Device address + Write
-  i2c_write_byte(0, 0, reg_addr);          // Register address
-  i2c_write_byte(0, 1, value);             // Data value + STOP
-}
+#define MCP23017_WRITE_REG(reg_addr, value)                                    \
+  ({                                                                           \
+    i2c_write_byte(1, 0, (MCP2317_ADDR << 1) | 0);                             \
+    i2c_write_byte(0, 0, (reg_addr));                                          \
+    i2c_write_byte(0, 1, (value));                                             \
+  })
 
-/**
- * Read a byte from MCP23017 register
- * @param reg_addr: Register address (0x00-0x15)
- * @return: Byte value read from register
- */
-uint8_t mcp23017_read_reg(uint8_t reg_addr) {
-  // I2C Read Protocol:
-  // START -> [Device Addr + Write] -> ACK -> [Reg Addr] -> ACK ->
-  // RESTART -> [Device Addr + Read] -> ACK -> [Data] -> NACK -> STOP
-
-  i2c_write_byte(1, 0,
-                 (MCP2317_ADDR << 1) | 0); // START, Device address + Write
-  i2c_write_byte(0, 0, reg_addr);          // Register address (no STOP)
-
-  // Restart and read
-  i2c_write_byte(1, 0,
-                 (MCP2317_ADDR << 1) | 1); // RESTART, Device address + Read
-  uint8_t data = i2c_read_byte(1, 1);      // Read with NACK + STOP
-
-  return data;
-}
+#define MCP23017_READ_REG(reg_addr)                                            \
+  ({                                                                           \
+    i2c_write_byte(1, 0, (MCP2317_ADDR << 1) | 0);                             \
+    i2c_write_byte(0, 0, (reg_addr));                                          \
+    i2c_write_byte(1, 0, (MCP2317_ADDR << 1) | 1);                             \
+    i2c_read_byte(1, 1);                                                       \
+  })
 
 void io_init(void) {
   i2c_init();
-  i2c_data.mcp_init_complete = 0;
-  i2c_data.scan_complete = 0;
 
   for (int i = 0; i < 10; i++) {
     clear_SCL();
@@ -571,37 +508,19 @@ void io_init(void) {
     systick_wait_ms(50);
   }
 
-  // GPIO Portexander initialisieren
-  // Configure I/O Direction Register A (0x00)
-  // Bit 0 = 0 (GPA0 = OUTPUT for LED 0)
-  // All other bits = 0 (all outputs for testing)
-  mcp23017_write_reg(MCP2317_0_IODIRA, 0x00);
+  // Joystick => IN, LED0 and LED1 => OUT
+  MCP23017_WRITE_REG(MCP2317_0_IODIRA, JOYSTICK_MASK);
+  // Pull Up Register => all off
+  MCP23017_WRITE_REG(MCP2317_0_GPPUA, 0b00000000);
+  // Interrupt On Change
+  MCP23017_WRITE_REG(MCP2317_0_GPINTENA, JOYSTICK_MASK);
+  // Default Compare Register for Interrupt
+  MCP23017_WRITE_REG(MCP2317_0_DEFVALA, JOYSTICK_MASK);
+  // Configure Interrupt Control for Pin 7
+  MCP23017_WRITE_REG(MCP2317_0_INTCONA, JOYSTICK_MASK);
 
-  // Test: Turn LED ON to verify communication
-  // Write 0xFF to OLATA to turn all outputs high
-  mcp23017_write_reg(MCP2317_0_OLATA, 0xFF);
-
-  (void)term_string("OLATA=0xFF, Arb: ", ASYNCSYNC_BLOCK);
-  (void)term_unsigned(i2c_data.i2c[NXT_I2C_PORT].arbitration_lost, 1,
-                      ASYNCSYNC_BLOCK);
-  (void)term_string("\r\n", ASYNCSYNC_BLOCK);
-
-  // Read back to verify communication - stored in i2c_data for T32 debugging
-  i2c_data.mcp_iodira_readback = mcp23017_read_reg(MCP2317_0_IODIRA);
-  i2c_data.mcp_olata_readback = mcp23017_read_reg(MCP2317_0_OLATA);
-
-  i2c_data.mcp_init_complete = 1;
-
+  MCP23017_WRITE_REG(MCP2317_0_OLATA, GPIO_ALL_OFF);
   scope_init(SCOPE_SINGLE, 250);
-
-  // Zum Anschauen der I2C-Leitungen, entweder
-  //- nachfolgende Funktion mit jedem Sendevorgang starten
-  //   so dass nur eine I2C Zyklus aufgenommen wird
-  //   scope_init(SCOPE_SINGLE,250 /* Zeit in us */);
-  //- nachfolgende einmalig starten
-  //   so dass die Messwertaufnahme dauerhaft läuft
-  //   scope_init(SCOPE_CONTINUE,250 /* Zeit in us */);
-  // Darstellung v.draw %e scope.buf0 scope.buf1
 }
 
 // Funktion wird alle 128ms aufgerufen
@@ -610,18 +529,27 @@ void io_init(void) {
 //  Aufruf von io_update() nur ein I2C-Frame senden!
 void io_update(void) {
   static uint8_t blink_counter = 0;
-  static uint8_t led0_state = 0;
 
-  // Blink LED 0 at ~1Hz
-  // Called every 128ms, so 128ms × 4 = 512ms ≈ 500ms toggle period = 1Hz
-  blink_counter++;
-  if (blink_counter >= 4) {
-    blink_counter = 0;
-    led0_state ^= 1; // Toggle LED state
+  // LED 0 - Blinking
+  //                                    MOD 8
+  blink_counter = (blink_counter + 1) & 0b00000111;
+  if (!(blink_counter)) {
+    i2c_data.led_state ^= (1 << LED_0_BIT);
   }
 
-  // Write LED state to output latch (bit 0 = GPA0)
-  mcp23017_write_reg(MCP2317_0_OLATA, led0_state);
+  // LED 1 - Joystick
+  i2c_data.int_flags = MCP23017_READ_REG(MCP2317_0_INTFA);
+  // Clear
+  i2c_data.led_state &= ~(1 << LED_1_BIT);
+  // Set if interrupt
+  i2c_data.led_state |=
+      (((i2c_data.int_flags >> JOYSTICK_TAST_BIT) & 1) << LED_1_BIT);
+  // Read Interrupt Capture Register for reset
+  if (i2c_data.int_flags) {
+    (void)MCP23017_READ_REG(MCP2317_0_INTCAPA);
+  }
+
+  MCP23017_WRITE_REG(MCP2317_0_OLATA, i2c_data.led_state ^ LED_MASK);
 }
 
 /*****************************************************************************/
