@@ -96,23 +96,7 @@ void trace_scope(int channel, int16_t value) {
 /*****************************************************************************/
 /*   Ihr Programm                                                            */
 /*****************************************************************************/
-// Datenstruktur
-//            +---------+---------+---------+
-//            | G7...G0 | R7...R0 | B7...B0 |
-//            +---------+---------+---------+
-// Union
-//  Integer
-//  +---------+---------+---------+---------+
-//  |31     24 23     16 15      8 7       0|
-//  +---------+---------+---------+---------+
-//  Struct
-//  +---------+
-//  | Dummy   |
-//  +---------+
-//            +---------+
-//            | Green   |
-//            +---------+
-//                          ...............
+
 typedef union {
   struct {
     uint8_t dummy;
@@ -193,87 +177,18 @@ struct {
 #define NEOPIXEL_BUFFER_SIZE (LEDRING_LEDS * 24)
 uint8_t ws2812_buffer[NEOPIXEL_BUFFER_SIZE];
 
-// Inverted RS485 logic: Start(L->H), Stop(H->L)
-// 0: H(375ns) L(875ns) -> CPU 0xFC (00000011 inverted -> 11111100 -> Start(H)
-// 11111100 Stop(L)) Correct logic check: Wire: H (Start) D0..D7 L (Stop) We
-// need H H H L L L L L L L for '0' CPU:  0 0 0 1 1 1 1 1 1 1? No. CPU Tx:
-// Start(0), D0, D1... D7, Stop(1) Inverted Wire: H, ~D0, ~D1... ~D7, L '0'
-// Target: H, H, H, L, L, L, L, L, L, L So ~D0=H, ~D1=H -> D0=0, D1=0 ~D2..~D7=L
-// -> D2..D7=1 Byte: 0xFC (11111100) -> D0 is LSB. D0=0, D1=0, D2=10... Correct.
-// Logik fuer die RS485 Invertierung und das WS2812 Timing:
-// Das RS485-Modul invertiert das Signal: UART Start(L)->Bus High, Stop(H)->Bus
-// Low. 8MHz Baudrate -> 1 Bit = 125ns. 1 Frame (10 Bits) = 1.25us (WS2812
-// Periode). '0': 3xHigh, 7xLow -> UART: Start(L) D0(L) D1(L) D2..D7(H) Stop(H)
-// -> 0xFC. '1': 6xHigh, 4xLow -> UART: Start(L) D0..D4(L) D5..D7(H) Stop(H) ->
-// 0xE0.
+// '0': 3xHigh, 7xLow -> UART: Start(L) D0(L) D1(L) D2..D7(H) Stop(H) -> 0xFC. 
+// '1': 6xHigh, 4xLow -> UART: Start(L) D0..D4(L) D5..D7(H) Stop(H) -> 0xE0.
 #define WS2812_BYTE_0 0xFC
 #define WS2812_BYTE_1 0xE0
 
-void ws2812_init(void) {
-  // USART Clock Delivery (Stromversorgung)
-  AT91C_BASE_PMC->PMC_PCER = (1 << AT91C_ID_US0) | (1 << AT91C_ID_PIOA);
 
-  // GPIO Konfiguration
-  //  PA6 (TXD0) als Peripherie A konfigurieren (damit der USART den Pin
-  //  steuert) PA7 (RS485 Enable) als Ausgang konfigurieren PA30 (Sensor4 Data)
-  //  als Eingang konfigurieren (um Buskonflikte zu vermeiden)
-
-  AT91PS_PIO p_pio = AT91C_BASE_PIOA;
-
-  // PIO Kontrolle fuer PA6 abschalten -> Periphere Kontrolle aktivieren
-  p_pio->PIO_PDR = LEDRING_TXD_PORT;
-  p_pio->PIO_ASR = LEDRING_TXD_PORT; // Waehle Peripherie A (TXD0)
-
-  // Konfiguriere PA7 (RS485 Enable)
-  p_pio->PIO_PER = LEDRING_RS485_ENABLE;  // PIO Enable
-  p_pio->PIO_OER = LEDRING_RS485_ENABLE;  // Output Enable
-  p_pio->PIO_SODR = LEDRING_RS485_ENABLE; // Set Output Data Register (High) ->
-                                          // RS485 Senden aktiv
-
-  // Konfiguriere PA30 als Eingang (Sicherheitsmassnahme)
-  p_pio->PIO_PER = AT91C_PIO_PA30;
-  p_pio->PIO_ODR = AT91C_PIO_PA30; // Output Disable -> Input Mode
-
-  // USART Konfiguration
-  AT91PS_USART p_usart = AT91C_BASE_US0;
-
-  // Reset und Disable Receiver/Transmitter (Definierter Zustand)
-  p_usart->US_CR =
-      AT91C_US_RSTRX | AT91C_US_RSTTX | AT91C_US_RXDIS | AT91C_US_TXDIS;
-
-  // Konfiguriere Mode Register
-  // US_MODE_NORMAL: Normaler UART Betrieb
-  // US_SYNC: Synchroner Modus (wir generieren den Takt, fuer praezises Timing
-  // notwendig) 8N1: 8 Bits, No Parity, 1 Stop Bit
-  p_usart->US_MR = AT91C_US_USMODE_NORMAL | AT91C_US_CLKS_CLOCK |
-                   AT91C_US_CHRL_8_BITS | AT91C_US_PAR_NONE |
-                   AT91C_US_NBSTOP_1_BIT | AT91C_US_SYNC;
-
-  // Baudrate
-  // MCK (Systemtakt) = 47923200 Hz
-  // Ziel-Baudrate = 8.000.000 Hz (8 MHz)
-  // CD (Clock Identifier) = MCK / Baudrate = 47923200 / 8000000 = 5.9904
-  // Wir runden auf 6.
-  // Effektive Baudrate: 47923200 / 6 = 7.98 MHz (Fehler < 0.2%, sehr gut)
-  p_usart->US_BRGR = 6;
-
-  // Transmitter aktivieren
-  p_usart->US_CR = AT91C_US_TXEN;
-}
-
-// Volle Compileroptimierung einschalten
 #pragma GCC push_options
 #pragma GCC optimize("-O3")
-// Code aus dem RAM laufen lassen, welchen einen schnellere Zugriff
-// als das Flash hat, so dass die Funktion mit max. Geschwindigekit
-// ausgeführt wird
 __attribute__((section(".text.fastcode"))) void ws2812_send(void) {
-  // Konvertiere das `ledring_data.leds` Array in den `ws2812_buffer`
-  // Wir muessen jedes Farb-Bit in ein entsprechendes UART-Byte (0xE0 oder 0xFC)
-  // umwandeln.
+
   uint8_t *p_buf = ws2812_buffer;
   for (int i = 0; i < LEDRING_LEDS; i++) {
-    // Farben abholen (WS2812 erwartet GRB Format, nicht RGB!)
     uint32_t color = (ledring_data.leds[i].green << 16) |
                      (ledring_data.leds[i].red << 8) |
                      (ledring_data.leds[i].blue << 0);
@@ -288,20 +203,15 @@ __attribute__((section(".text.fastcode"))) void ws2812_send(void) {
   }
 
 #if defined SEND_THRREGISTER
-  // Sendevorgang durch direktes Schreiben in das THR-Register (Blocking Mode)
-
-  // Interrupts deaktivieren, damit das Timing nicht durch andere Tasks gestoert
-  // wird WS2812 ist timing-kritisch! werden kann
+  // Interrupts deaktivieren
   int i_state = interrupts_get_and_disable();
 
   AT91PS_USART p_usart = AT91C_BASE_US0;
   for (int i = 0; i < NEOPIXEL_BUFFER_SIZE; i++) {
-    // Wait for TXRDY
     while (!(p_usart->US_CSR & AT91C_US_TXRDY))
       ;
     p_usart->US_THR = ws2812_buffer[i];
   }
-  // Wait for complete
   while (!(p_usart->US_CSR & AT91C_US_TXEMPTY))
     ;
 
@@ -309,20 +219,13 @@ __attribute__((section(".text.fastcode"))) void ws2812_send(void) {
     interrupts_enable();
 
 #elif defined SEND_PDC
-  // Sendeovrgang  mittels PDC/DMA Datentransfer
+  // PDC/DMA 
   AT91PS_USART p_usart = AT91C_BASE_US0;
 
   // Setup PDC
   p_usart->US_TPR = (unsigned int)ws2812_buffer;
   p_usart->US_TCR = NEOPIXEL_BUFFER_SIZE;
   p_usart->US_PTCR = AT91C_PDC_TXTEN; // Enable Tx
-
-  // We don't block here?
-  // The task says "Keine blockierende Aufrufe" (No blocking calls) in main
-  // loop. But ledring_update calls this. However, for PDC, we shouldn't block.
-  // But we need to ensure previous transfer is done?
-  // Using simple approach: Assume 16ms is enough for transfer (192 bytes
-  // * 1.25us = 240us). So next call will be safe.
 
 #else
 #error Unbekannter Mode
@@ -333,10 +236,43 @@ __attribute__((section(".text.fastcode"))) void ws2812_send(void) {
 #pragma GCC pop_options
 
 void ledring_init(void) {
-  // Poti-Initialisieren
-  // Da durch AVR Prozessor erfolgt, nichts zu tun
+  // USART Clock Delivery (Stromversorgung)
+  AT91C_BASE_PMC->PMC_PCER = (1 << AT91C_ID_US0) | (1 << AT91C_ID_PIOA);
 
-  ws2812_init();
+  AT91PS_PIO p_pio = AT91C_BASE_PIOA;
+
+  // Peripherie A Kontrolle für PA6 aktivieren
+  p_pio->PIO_PDR = LEDRING_TXD_PORT;
+  p_pio->PIO_ASR = LEDRING_TXD_PORT; 
+
+  // Konfiguriere PA7 (RS485 Enable)
+  p_pio->PIO_PER = LEDRING_RS485_ENABLE; 
+  p_pio->PIO_OER = LEDRING_RS485_ENABLE; 
+  p_pio->PIO_SODR = LEDRING_RS485_ENABLE; 
+                                          
+
+  // Konfiguriere PA30 als Eingang (Sicherheitsmassnahme)
+  p_pio->PIO_PER = AT91C_PIO_PA30;
+  p_pio->PIO_ODR = AT91C_PIO_PA30;
+
+  // USART Konfiguration
+  AT91PS_USART p_usart = AT91C_BASE_US0;
+
+  // Reset und Disable Receiver/Transmitter (Definierter Zustand)
+  p_usart->US_CR =
+      AT91C_US_RSTRX | AT91C_US_RSTTX | AT91C_US_RXDIS | AT91C_US_TXDIS;
+
+  // UART Mode
+  // Synchroner Modus, 8 Bits, No Parity, 1 Stop Bit
+  p_usart->US_MR = AT91C_US_USMODE_NORMAL | AT91C_US_CLKS_CLOCK |
+                   AT91C_US_CHRL_8_BITS | AT91C_US_PAR_NONE |
+                   AT91C_US_NBSTOP_1_BIT | AT91C_US_SYNC;
+
+  // Baudrate
+  p_usart->US_BRGR = 6;
+
+  // Transmitter aktivieren
+  p_usart->US_CR = AT91C_US_TXEN;
 }
 
 void ledring_update(void) {
@@ -346,14 +282,10 @@ void ledring_update(void) {
   static uint8_t old_orange_button = 0;
   static uint32_t ms_counter = 0;
 
-  { // Taste detektieren und Mode ändern
-    //  Wir nutzen hier den Orangen Taster am NXT Baustein selbst (via nxt_avr
-    //  Library). Der externe Taster auf der Adapterplatine wird ignoriert, da
-    //  er Konflikte mit dem RS485 Bus verursachen koennte.
+  { 
 
     button_t buttons = nxt_avr_get_buttons();
     if (buttons.orange && !old_orange_button) {
-      // Rising Edge
       ledring_data.mode++;
       if (ledring_data.mode >= MODE_MAX) {
         ledring_data.mode = MODE_LAUFLICHT;
@@ -363,16 +295,12 @@ void ledring_update(void) {
   }
 
   { // Farbe in Abhängigkeit des Modes und der Geschwindigkeit setzen
-
-    // Geschwindigkeitsberechnung aus dem Poti-Wert (0..1023).
-    // Hoher Poti-Wert -> Grosse Wartezeit -> Langsame Animation.
-    // Formel: (ADC * 10000) / 8 / 1024
-    // Beispiel bei ADC=1023: 10230000 / 8 / 1024 = ca 1248ms pro LED-Schritt.
-    // Das bedeutet ca. 10 Sekunden fuer eine volle Umdrehung (8 LEDs).
+ 
+    // (ADC * 10000) / 8 / 1024
     ledring_data.speed_max =
         (nxt_avr_get_sensor_adc_raw(LEDRING_PORT) * 10000) / 8 / 1024;
     if (ledring_data.speed_max < 10)
-      ledring_data.speed_max = 10; // Min Safeguard
+      ledring_data.speed_max = 10; 
 
     ms_counter += 16;
 
@@ -391,16 +319,13 @@ void ledring_update(void) {
         color_idx = 0;
     }
 
-    // Logic depending on mode
+   
     switch (ledring_data.mode) {
     case MODE_LAUFLICHT:
       for (int i = 0; i < LEDRING_LEDS; i++) {
         if (i == pos) {
           ledring_data.leds[i] =
-              ledring_data.farbverlauf[color_idx]; // Or fixed color? Task says
-                                                   // "Farbe frei wählbar"
-          // constant red for running light for simplicity, or cycle?
-          // "Lauflicht, d.h. es leuchtet nur eine LED (Farbe frei wählbar)."
+              ledring_data.farbverlauf[color_idx]; 
           ledring_data.leds[i] = COLOR_RED;
         } else {
           ledring_data.leds[i] = COLOR_BLACK;
@@ -412,7 +337,6 @@ void ledring_update(void) {
       for (int i = 0; i < LEDRING_LEDS; i++) {
         ledring_data.leds[i] = COLOR_BLACK;
       }
-      // Simple trail
       ledring_data.leds[pos] = COLOR_BLUE;
       int p1 = (pos - 1 + 8) % 8;
       ledring_data.leds[p1] =
@@ -437,12 +361,7 @@ void ledring_update(void) {
     }
   }
 
-  {
-    // Sendevorgang ausloesen.
-    // Dies geschieht in jedem Zyklus (alle 16ms), um sicherzustellen, dass
-    // die LEDs ihren Zustand halten und Stoerungen ueberschrieben werden.
-    ws2812_send();
-  }
+  ws2812_send();
 }
 
 /*****************************************************************************/
