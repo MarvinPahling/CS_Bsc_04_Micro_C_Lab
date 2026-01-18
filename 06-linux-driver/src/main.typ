@@ -136,12 +136,29 @@
 )
 
 
+// TODO - add code snippets
+// #render-snippet("example-1")
 #pagebreak()
 // ============================================
 // Main Content
 // ============================================
 
-#render-snippet("example-1")
+= 1. Aufgabe - Peripheriezugriff
+== I2C
+#lorem(200)
+
+== GPIO
+#lorem(200)
+== ADC
+#lorem(200)
+
+#pagebreak()
+= 2. Aufgabe - AT91SAM7-Timer Schnittstellenspezifikation
+#lorem(200)
+
+#pagebreak()
+= 3. Aufgabe - I2C-Scheduling
+#lorem(200)
 
 
 #pagebreak()
