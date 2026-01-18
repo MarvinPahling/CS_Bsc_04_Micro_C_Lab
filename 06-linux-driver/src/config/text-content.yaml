@@ -1,0 +1,29 @@
+# ============================================
+# Text Content for Embedded Lab Documentation
+# ============================================
+
+document:
+  title: "Embedded Systems - Modellierung und Labor"
+  authors:
+    - name: "Marvin Pahling"
+      student_id: "70484355"
+
+title_page:
+  main_title: "Ausarbeitung (Linux Gerätetreiber)"
+  subtitle: "Peripherie unter Linux"
+  course: "Modul: Labor µC-Peripherie (WS 25/26)"
+  labels:
+    author: "Autor:"
+    student_id: "Matrikelnummer:"
+    date: "Datum:"
+  institution:
+    name: "Ostfalia Hochschule für angewandte Wissenschaften"
+    department: "Fakultät Informatik"
+
+table_of_contents:
+  title: "Inhaltsverzeignis"
+
+bibliography:
+  title: "Bibliographie"
+  file: "config/bibliography.bib"
+  style: "config/apa.csl"

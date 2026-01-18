@@ -1,0 +1,8 @@
+[
+  {
+    "id": "example-1",
+    "path": "./figures/code/00-example.c",
+    "description": "example",
+    "lang": "c"
+  }
+]
