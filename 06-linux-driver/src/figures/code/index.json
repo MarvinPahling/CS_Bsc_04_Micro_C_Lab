@@ -1,14 +1,50 @@
 [
   {
+    "id": "open",
+    "path": "./figures/code/01-open.c",
+    "description": "Open an Beispiel eines I2C Peripheriegerätes",
+    "lang": "c"
+  },
+  {
+    "id": "ioctl",
+    "path": "./figures/code/02-ioctl.c",
+    "description": "ioctl an Beispiel eines I2C Peripheriegerätes",
+    "lang": "c"
+  },
+  {
     "id": "i2c",
     "path": "./figures/code/03-i2c.c",
     "description": "Codebeispiel für einen Lesezugriff über I2C",
     "lang": "c"
   },
   {
+    "id": "i2c-msg",
+    "path": "./figures/code/030-i2c-msg.h",
+    "description": "Auszug aus linux/i2c.h ",
+    "lang": "c"
+  },
+  {
+    "id": "i2c-rdwr",
+    "path": "./figures/code/031-i2c-i2c_rdwr.h",
+    "description": "Auszug aus linux/i2c-dev.h ",
+    "lang": "c"
+  },
+  {
     "id": "gpio",
     "path": "./figures/code/04-gpio.c",
     "description": "Codebeispiel für einen Lesezugriff über GPIO",
+    "lang": "c"
+  },
+  {
+    "id": "gpio-req",
+    "path": "./figures/code/041-gpio-request.h",
+    "description": "Auszug aus linux/gpio.h - Line Requests",
+    "lang": "c"
+  },
+  {
+    "id": "gpio-event",
+    "path": "./figures/code/042-gpio-event.h",
+    "description": "Auszug aus linux/gpio.h - Events",
     "lang": "c"
   }
 ]

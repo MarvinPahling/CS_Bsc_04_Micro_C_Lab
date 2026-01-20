@@ -154,29 +154,25 @@ Das Betriebssystem ist in der Lage einzelne Prozesse zu starten und zu beenden. 
 Der Kernel stellt darüber hinaus eine Abstraktionsebene über den geteilten Memory bereit. Hierbei wird ein virtueller Adressraum für alle Prozesse bereitgestellt, welcher dann von dem Kernel auf den echten Memory abgebildet wird.
 
 === Filesystem
-Unter Linux kann fast alles als Datei behandelt werden. Die Aufgabe des entsprechenden Filesystem-Treibers ist es dann die Abstraktion über _Pfade_ und _Namen_ auf die wirkliche Hardware abzubilden. Die wichtigesten hierfür bereitzustellenden Operationen sind: _open_, _close_, _read_ und _write_.
+Unter Linux kann fast alles als Datei behandelt werden. Die Aufgabe des entsprechenden Filesystem-Treibers ist es dann die Abstraktion über _Pfade_ und _Knoten_ auf die darunterliegende phyische Struktur abzubilden.
+
+=== Netzwerk
+Netzwerkvorgänge sind selten speziefisch für einen einzelnen Prozess, weswegen hierfür ein eigenes Sub-System benötigt wird. Für den Kontext dieser Diskusion ist es aber nicht nötig uns mit Netzwerken zu beschäftigen.
 
 === Peripheriezugriff
 Die Adressierung von Peripheriegeräten erfolgt über Gerätetreiber. Die Aufgabe dieser sind es den Kernel in einer Art zu erweitern, welche es erlaubt die Funktionsweise der Peripherie auf eine oder mehere Datein innerhalbt eines Filesystems abzubilden. Diese Treiber werden dabei entweder statisch in den Kernel gelinkt oder können als Kernel-Modul dynamisch zur Laufzeit dazugeladen werden.
 
 Die phyischen Peripheriegeräte erscheinen durch die Abtraktion wie eine oder mehrere logische Datein. Dies ermöglicht es auf der Applikationsebene mit diesen mit den bekannten Dateioperationen zu interargieren.
 
-Für gewöhnlich erscheinen Peripheriegeräten dann unter _/dev_ oder _/sys_. //TODO: auf Unterschiede zwischen /dev und /sys eingegen
 
 Geräte erhalten dabei von ihrem Treiber sowohl eine _Major_- als auch eine _Minor_-Nummer. Die Major-Nummer bezieht sich hierbei auf die den jeweiligen Treiber und bildet eine logische Obergruppe über die einzelnen Geräte. Die Minor-Nummer hingegen referenziert ein speziefisches Gerät.
 
 Wichtig hierbei ist, dass dies nicht zwangsläufig heißen muss, dass es sich bei unterschiedlichen Geräten auch um unterschiedliche phyisische Peripheriegeräte handeln muss. Das von der Minor-Nummer gekennzeichnete Geräte muss in wirklichkeit nicht einmal ein phyisches Peripheriegerät sein, sondern es kann sich dabei auch um eine logische Abstraktion handeln. Ein gutes Beispiel hierfür wäre das _loopback_-Interface.
 
-
 Peripheriegeräte können dabei grob in _Character Devices_, _Block Devices_ oder _Netzwerk Devices_ unterteilt werden.
 
 _Character Devices_ lesen oder schreiben fortlaufende Folge von Datenbytes. //TODO Zitat einfügen
 Für die einfache serielle Übertragung von Daten, z.B durch _I2C_ sind diese somit prädistiniert und werden Hauptgegenstand der folgendenden Auseinandersetzunge sein. Die anderen beiden Typen lassen wir hierbei außer Acht.
-//TODO ausführlicher machen
-
-=== Netzwerk
-Netzwerkvorgänge sind selten speziefisch für einen einzelnen Prozess, weswegen hierfür ein eigenes Sub-System benötigt wird. Für den Kontext dieser Diskusion ist es aber nicht nötig uns mit Netzwerken zu beschäftigen.
-
 
 #pagebreak()
 = Aufgabe I - Peripheriezugriff
@@ -189,20 +185,50 @@ Beschreiben sie für nachfolgende Schnittstellen, wie der Zugriff/Konfiguration 
 
 Timer-Einheiten stellen in der Regel keine Funktionalitäten über das Datei-System bereit, da sie eher ähnlich dem I2C-Bus von anderen internen Treibern intern genutzt werde (bspw. Geschwindigkeitsbestimmung nutzt u.A. TimerEinheit, zyklische Funktionsaufrufe werden über Timer-IRQ's dargestellt, ...). Ähnlich wie beim I2C Bus stellen sie somit ihre Funktionalität nur kernelintern über Funktionsaufrufe bereit.
 
+== Zugriff/Konfiguration
+
+Für gewöhnlich erscheinen Peripheriegeräten unter dem pfad _/dev_ oder _/sys_, dieses beiden Subsysteme unterscheiden sich neben ihrer Verortung auch in ihrer grundlegenden Designphilosophie.
+
+=== sysfs
+_/sys_ ein einfacher weg, um mit Peripherie über eine logische ASCII-kodierte Datei zu interargieren.   Hierbei beinhaltee für gewöhnlich jede Datei nur genau eine Information. Dies ermöglicht es auch auf einfache Weise die Topologie eines Gerätes abzubilden, da hierarchische Beziehungen über den Pfad abgebildet werden können. Je nach Peripheriegerät kann der Gerätetreiber für diese logischen Datein Lese- und oder Schreibezugriff bereitstellen. Die klassischen Interaktionen sind `open()`, `close()`, `read()`, `write()`.
+
+Diese Art Schnittstelle eignet sich dadurch hervorragend für Konfiguration oder Statusabfragen von Geräten. Durch das logische Auftreten als ASCII-kodierte Textdatei lassen sich Informationen einfach über Tools wie z.B. `cat` auslesen, was es einfach macht Skripte zu erstellen.
+
+Die Schwächen dieses Systems sind jedoch, dass sich komplexere, atomare Transaktionen nur schwer abbilden lassen. Wollen wir beispielsweise über einen I2C-Bus erste eine Schreib-, gefolgt von einer Leseoperation ausführen, ohne den Bus zwischenzeitlich wieder freizugeben, ist dies über diesen Ansatz nicht möglich.
+
+=== device
+_/dev_ ist der klassische UNIX-Weg, um auf die Peripherie zuzugreifen. Das Entsprechende Gerät wird hierbei logisch als eine binäre Datei realisiert, was den entsprechenden Overhead eliminiert, den es braucht, um ASCII-kodierte Datein in Binärformat zu parsen. Der Inhalt der Datei repräsentiert hierbei den eigentlichen Datenfluss für das Gerät.
+
+Eine Besonderheit bei diesem Subsystem ist es, dass durch `ioctl()`, zusätzlich zu den bereits bekannten Operationen `open()`, `close()`, `read()`, `write()`,
+auch komplexere Informationen für die Entsprechende Transaktion mitliefern kann.
+
+#pagebreak()
+#render-snippet("open")
+#render-snippet("ioctl")
+
+Die Vorteile dieses Ansatzes sind, dass die Funktion `ioctl()` es ermöglicht sowohl ein Command-Code, sowie optional einen Zeiger zu entsprechenden Nutzdaten für die Transaktion zu übergeben. Eine entsprechende Schnittstelle kann somit eine komplexe atomare Transaktion in nur einem Funktionsaufruf abbilden.
 
 == I2C
-Vor der Interaktion mit der I2C-Schnittstelle muss zunächst, falls nicht bereits geschehen, das entsprechende Kernel-Modul geladen werde. Für Entwicklungszwecke können wir _i2c-dev_ einfach per _modprobe_ laden.
+=== Schnittstellen
+Die eben beschriebene Transaktion über den I2C-Bus wollen wir an dieser Stelle exemplarisch durchgehen. Die Schnittstellendefinition für I2C findet sich in `linux/i2c.h` sowie `linux/i2c-dev.h`
+
+#render-snippet("i2c-msg")
+
+Das gezeigte `struct` hierbei alle Informationen für einen I2C-Zugriff. Hierzu zählen die Zieladresse, die Flags /*TODO: Fachbegriff*/ die Lände der Nachricht, sowie ein Zeiger zu der Nachricht selber.
+
+#render-snippet("i2c-rdwr")
+
+
+Das Kernel-Modul `i2c-dev` ist häufig nicht standardmäßig geladen und per `modprobe` nachgeladen werden.
 ```bash
 sudo modprobe i2c-dev
 ```
 
-Nun sollten die entsprechenden Nodes, welche der I2C-Treiber bereitstellt über:
+Da es sich bei den von dem I2C bereitgestellten Geräte logisch um Datein handelt lassen sich diese einfach per `ls` und `grep` finden.
 
 ```bash
 ls -la /dev | grep i2c
 ```
-auffindbar sein. Eine beispielhafte ausgabe kann dabei wie folgt aussehen:
-
 ```
 crw-------   1 root   root    89,     0 Jan 18 19:52 i2c-0
 crw-------   1 root   root    89,     1 Jan 18 19:52 i2c-1
@@ -215,139 +241,32 @@ crw-------   1 root   root    89,     7 Jan 18 19:52 i2c-7
 crw-------   1 root   root    89,     8 Jan 18 19:52 i2c-8
 crw-------   1 root   root    89,     9 Jan 18 19:52 i2c-9
 ```
-/sys beeinhaltet häufig mehr Informationen //TODO
-
-```bash
-ls -la /sys/bus/i2c/devices/*/
-```
-Hierbei erhalten wir auch einen Blick auf möglicher Konfigurationsdatein wie beispielsweise hier an dem Gerät
-
-```
-/sys/bus/i2c/devices/i2c-6/:
-Permissions Size User Date Modified Name
-drwxr-xr-x     - root 18 Jan 20:20  i2c-dev
-drwxr-xr-x     - root 18 Jan 20:20  power
-lrwxrwxrwx     - root 18 Jan 20:20  subsystem -> ../../../../../../../bus/i2c
-.-w-------  4.1k root 18 Jan 20:20  delete_device
-.r--r--r--  4.1k root 18 Jan 20:20  name
-.-w-------  4.1k root 18 Jan 20:20  new_device
-.rw-r--r--  4.1k root 18 Jan 20:20  uevent
-```
-
-Mit dem folgenden Befehl können wir nun beispielsweise gucken, welchen Namen das entsprechende Gerät hat
-
-```bash
-cat /sys/bus/i2c/devices/i2c-6/name
-```
-In diesem konkreten Beispiel handelt es sich um die Schnittstelle des im Laptop verbauten Displays
-```
-AUX A/DDI A/PHY A
-```
-
-Das Programm `i2cdetect` aus dem Packet `i2c-tools` kann nun einen mit dem folgenen Befehl einen Überblick über die verfügbaren Adressen geben
-
-```bash
-sudo i2cdetect -y 6
-```
-
-Für das Gerät mit der Nummer 6 sind in diesem Fall die folgenden Adressen verfügbar
-
-```
-    0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
-00:                         -- -- -- -- -- -- -- --
-10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-30: -- -- -- -- -- -- -- -- 38 -- -- -- -- -- -- --
-40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-50: 50 51 52 53 54 55 56 57 58 59 5a 5b 5c 5d 5e 5f
-60: 60 61 62 63 64 65 66 67 -- -- -- -- -- -- -- --
-70: -- -- -- -- -- -- -- --
-```
-
-Nun nutzen wir das folgende C-Programm, um den Inhalt dieser Adresse auszulesen.
+Das nachfolgende C-Programm zeigt nun einen Beispielhaften Aufruf der API, um den EPROM des eines Laptopdisplays auszulesen
 #pagebreak()
 #render-snippet("i2c")
 
-Hier wird Beispielsweise das Register `0x00` and der Adresse `0x50` gelesen.
+Hier wird Beispielsweise das Register `0x00` an der Adresse `0x50` gelesen.
 
-Der Output in diesem Fall war
+Der Output sieht dann beispielsweise wie folgt aus
 
 ```
 Gelesen von Gerät 0x50 (Register 0x00):
 0x00 0xff 0xff 0xff 0xff 0xff 0xff 0x00
 ```
 
-//TODO entsprechenden Imports dokumentieren
-
-
 == GPIO
-Der Zugriff auf GPIO (General Purpose Input/Output) erfolgt unter Linux über das Character Device Interface. Die entsprechenden Gerätedateien befinden sich unter _/dev/gpiochipX_.
 
-Mit dem folgenden Befehl können wir die verfügbaren GPIO-Chips auflisten:
+Die Schnittstellendefinition für GPIO findet sich in `linux/giop.h`. Die API für GPIO unterteilt ein GPIO-Device in `chip` und `line`
+#render-snippet("gpio-req")
+Die API für die Request an eine Line des GPIO-Controllers ist in diesem Fall Umfangreicher als die Vorherige. Für den Kontext dieses Moduls sind jedoch vor allem die Flags interessant mit welchen sich beispielsweise der Pull-Up-Wiederstand oder der Edge-Detector konfigurieren lassen.
+#render-snippet("gpio-event")
+Die API für GPIO-Events gibt uns die Möglichkeit später die Möglichkeit Informationen über Änderungen am Edge-Detector zu erhalten. Aus dem Event können wir beispielsweise den Zeistempel, sowie die Art des Events auslesen.
 
-```bash
-ls -la /dev | grep gpiochip
-```
-
-Eine beispielhafte Ausgabe kann dabei wie folgt aussehen:
-
-```
-crw-------   1 root   root   254,     0 Jan 18 19:52 gpiochip0
-crw-------   1 root   root   254,     1 Jan 18 19:52 gpiochip1
-crw-------   1 root   root   254,     2 Jan 18 19:52 gpiochip2
-```
-
-Zusätzliche Informationen zu den GPIO-Chips finden sich im sysfs unter:
-
-```bash
-ls -la /sys/class/gpio/
-```
-
-Für detaillierte Informationen zu einem bestimmten Chip können wir auch die Kernel-Dokumentation über das debugfs nutzen:
-
-```bash
-cat /sys/kernel/debug/gpio
-```
-
-Hier erhalten wir eine Übersicht über alle GPIO-Controller und den aktuellen Zustand der einzelnen Lines.
-
-Das Tool `gpioinfo` aus dem Paket `gpiod` bietet einen übersichtlichen Zugang zu den verfügbaren GPIO-Lines:
-
-```bash
-sudo gpioinfo gpiochip0
-```
-
-Eine beispielhafte Ausgabe:
-
-```
-gpiochip0 - 32 lines:
-        line   0:      unnamed       unused   input  active-high
-        line   1:      unnamed       unused   input  active-high
-        ...
-        line  17:      unnamed       unused   input  active-high
-        ...
-```
-
-Nun nutzen wir das folgende C-Programm, um den Wert einer GPIO-Line über das Character Device Interface zu lesen.
+Das nun folgende C-Programm, zeigt nun ein Beispiel, wie wir einen softwareseitigen Edge-Detector in Linux zu realisieren können.
 #pagebreak()
 #render-snippet("gpio")
 
-Das Programm öffnet den GPIO-Chip, fragt Informationen zum Chip ab und liest dann den aktuellen Wert der Line 17.
-
-Der Output kann beispielsweise wie folgt aussehen:
-
-```
-GPIO Chip: gpiochip0
-Label: INT34C5:00
-Anzahl Lines: 312
-GPIO Line 17 Wert: LOW
-```
-
-Die wichtigsten ioctl-Befehle für GPIO sind:
-- `GPIO_GET_CHIPINFO_IOCTL` - Abrufen der Chip-Informationen
-- `GPIO_V2_GET_LINE_IOCTL` - Anfordern einer GPIO-Line
-- `GPIO_V2_LINE_GET_VALUES_IOCTL` - Lesen des aktuellen Wertes
-- `GPIO_V2_LINE_SET_VALUES_IOCTL` - Setzen eines Wertes (bei Output-Konfiguration)
+Das Programm Konfiguriert `line`-7 als Input und Konfiguriert den Edge-Detector, sodass er steigende und fallende Taktflanken erkennt. Über `read()` (blockierender Aufruf) können wir nun auf ein neues Event warten. Der Vorteil im Vergleich zu der Laboraufgabe ist dabei, dass in diesem Fall nur der Thread des entsprechenden Prozesses blockiert wird, jedoch der Rest des Systems weiterarbeiten kann.
 
 == ADC
 //TODO
