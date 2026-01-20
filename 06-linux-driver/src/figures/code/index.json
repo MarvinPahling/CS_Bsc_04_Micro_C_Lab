@@ -1,8 +1,14 @@
 [
   {
-    "id": "example-1",
-    "path": "./figures/code/00-example.c",
-    "description": "example",
+    "id": "i2c",
+    "path": "./figures/code/03-i2c.c",
+    "description": "Codebeispiel für einen Lesezugriff über I2C",
+    "lang": "c"
+  },
+  {
+    "id": "gpio",
+    "path": "./figures/code/04-gpio.c",
+    "description": "Codebeispiel für einen Lesezugriff über GPIO",
     "lang": "c"
   }
 ]
