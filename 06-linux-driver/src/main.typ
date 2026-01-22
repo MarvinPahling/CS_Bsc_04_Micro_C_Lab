@@ -361,10 +361,12 @@ Der erste Schritt in dieser Überlegung ist es die wichtigsten Use-Cases als Com
 
 Diese Betriebsmodie werden nun als Enum modelliert
 
+#pagebreak()
 #render-snippet("tc-mode")
 
 Nun brauchen wir zusätzlich noch einen Mechanismus mit welchem sich die verschiedenen Betriebsmodie modellieren lassen. Analog zur I2C-Schnittstelle, welche mehrere `i2c_msg` Strukturen in einer `i2c_rdwr_ioctl_data` Struktur bündelt, definieren wir für jeden Betriebsmodus eine spezialisierte Konfigurationsstruktur.
 
+#pagebreak()
 == Konfigurationsstrukturen
 
 Für jeden der vier Betriebsmodi existiert eine eigene Konfigurationsstruktur, welche die mode-spezifischen Parameter enthält:
@@ -420,6 +422,43 @@ Bei Gerätetreibern wird zwischen Block Device und Character Device unterschiede
 Für einige Treiber wurden zum vereinfachten Zugriff auf die Gerätedateien Wrapper entwickelt (z.B. i2c_smbus_read_word_data()). Diese max. am Rande beschreiben. Es gilt den direkten Zugriff zu berücksichtigen
 Ebenso bitte nicht auf das Thema Treiber Installation (z.B. insmod, modprobe), installierte Treiber überprüfen (z.B. lsmod) oder Hardwareabfrage (z.B. lsusb, lspci, lshw) eingehen
 
+== Anwendungsfall: Starvation durch Display-Treiber
+
+*Szenario:* OLED-Display und Temperatursensor teilen sich einen I2C-Bus
+
+- *Display-Treiber:*
+  - Benötigt hohe Datenrate für Framebuffer-Updates
+  - Große Transaktionen (~1KB pro Frame)
+  - Häufige Zugriffe (z.B. 30-60 FPS)
+  - Belegt Bus nahezu kontinuierlich
+
+- *Sensor-Treiber:*
+  - Benötigt nur wenige Bytes pro Abfrage
+  - Wartet lange auf Bus-Zugriff
+  - Zeitkritische Messwerte verzögert oder verloren
+
+- *Folge:* Sensor wird "ausgehungert" - seine Anfragen werden immer wieder zurückgestellt
+
+== Lösungsansatz: Fair Queuing im I2C-Subsystem
+
+*Konzept:* I2C-Adapter verwaltet Warteschlange mit Fairness-Mechanismus
+
+- *Round-Robin:*
+  - Nach jeder abgeschlossenen Transaktion wechselt der Bus zum nächsten wartenden Treiber
+  - Kein Treiber kann den Bus unbegrenzt belegen
+
+- *Zeitscheiben (Time Slicing):*
+  - Maximale Bus-Belegungszeit pro Treiber
+  - Nach Ablauf wird Transaktion unterbrochen und andere Treiber bedient
+
+- *Prioritätsstufen:*
+  - Zeitkritische Geräte (z.B. Sensoren) erhalten höhere Priorität
+  - Display-Updates können verzögert werden ohne Funktionsverlust
+
+- *Linux-Implementierung:*
+  - I2C-Adapter nutzt Mutex für Bus-Arbitrierung
+  - `i2c_transfer()` ist atomar, aber zwischen Transfers kann gewechselt werden
+  - Scheduling erfolgt auf Transaktionsebene, nicht auf Byte-Ebene
 
 #pagebreak()
 // ============================================

@@ -82,5 +82,11 @@
     "path": "./figures/code/06-timer-counter.c",
     "description": "Codebeispiel für PWM-Konfiguration",
     "lang": "c"
+  },
+  {
+    "id": "tc-header",
+    "path": "./figures/code/064-timer-counter.h",
+    "description": "Komplette Timer/Counter uAPI Header-Datei",
+    "lang": "c"
   }
 ]
