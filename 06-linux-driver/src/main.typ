@@ -361,17 +361,45 @@ Der erste Schritt in dieser Überlegung ist es die wichtigsten Use-Cases als Com
 
 Diese Betriebsmodie werden nun als Enum modelliert
 
-#zebraw(
-  raw(
-    read("./figures/code/060-timer-counter-events.h"),
-    lang: "c",
-    block: true,
-  ),
-  numbering: true,
-  header: [*timer-counter.h - mode *],
-)
+#render-snippet("tc-mode")
 
-Nun brauchen wir zusätzlich noch einen Mechanismus mit welchem sich die verschiedenen Betriebsmodie modellieren lassen //TODO: Spezifiziere wie sich dies analog zu dem Designentscheidungen der anderen beiden ioctl schnittstellen für I2C und GPIO bewerkstellingen lassen
+Nun brauchen wir zusätzlich noch einen Mechanismus mit welchem sich die verschiedenen Betriebsmodie modellieren lassen. Analog zur I2C-Schnittstelle, welche mehrere `i2c_msg` Strukturen in einer `i2c_rdwr_ioctl_data` Struktur bündelt, definieren wir für jeden Betriebsmodus eine spezialisierte Konfigurationsstruktur.
+
+== Konfigurationsstrukturen
+
+Für jeden der vier Betriebsmodi existiert eine eigene Konfigurationsstruktur, welche die mode-spezifischen Parameter enthält:
+
+#render-snippet("tc-config")
+
+Die Struktur `tc_event_count_config` konfiguriert das Zählen von externen Events auf einem der Eingangs-Pins. Der `threshold`-Wert ermöglicht eine Benachrichtigung, wenn eine bestimmte Anzahl an Events erreicht wurde.
+
+Die Struktur `tc_interval_measure_config` dient der Messung von Zeitintervallen zwischen Flanken. Hierbei wird der interne Zähler zwischen Start- und Stop-Flanke inkrementiert.
+
+Die Struktur `tc_pulse_generation_config` konfiguriert die Erzeugung eines einzelnen Pulses mit konfigurierbarer Verzögerung und Pulsbreite.
+
+Die Struktur `tc_pwm_config` ermöglicht die Konfiguration eines kontinuierlichen PWM-Signals mit Periode und Tastverhältnis.
+
+== Request-Struktur und ioctl-Kommandos
+
+Analog zu GPIO's `gpio_v2_line_request` definieren wir eine zentrale Request-Struktur, welche mehrere Kanal-Konfigurationen bündeln kann:
+
+#render-snippet("tc-request")
+
+Das zentrale ioctl-Kommando `TC_GET_CHANNEL_IOCTL` folgt dem Muster von `GPIO_V2_GET_LINE_IOCTL`. Nach erfolgreichem Aufruf enthält das `fd`-Feld einen File-Deskriptor über welchen Events gelesen werden können.
+
+== Event-Struktur
+
+Für das Auslesen von Events und Messwerten definieren wir analog zu `gpio_v2_line_event`:
+
+#render-snippet("tc-event")
+
+== Beispiel: PWM-Konfiguration
+
+Das folgende Beispiel zeigt die Konfiguration einer PWM-Ausgabe mit 1kHz und 50% Tastverhältnis:
+
+#render-snippet("tc-example")
+
+Der Ablauf entspricht dem GPIO-Beispiel: Nach dem Öffnen des Gerätes wird eine Request-Struktur konfiguriert und über `ioctl()` an den Treiber übergeben. Der zurückgegebene File-Deskriptor kann für weitere Steuerkommandos und das Auslesen von Events genutzt werden.
 
 #pagebreak()
 = Aufgabe III - I2C-Scheduling

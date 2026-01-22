@@ -53,11 +53,34 @@
     "description": "Codebeispiel für Sensorauslese über sysfs",
     "lang": "c"
   },
-
   {
-    "id": "timer",
-    "path": "./figures/code/060-timer-counter.h",
-    "description": "API-Spezifikation für timer-counter.h",
+    "id": "tc-mode",
+    "path": "./figures/code/060-timer-counter-events.h",
+    "description": "Timer-Counter Modi und Event-Typen",
+    "lang": "c"
+  },
+  {
+    "id": "tc-config",
+    "path": "./figures/code/061-timer-counter-config.h",
+    "description": "Mode-spezifische Konfigurationsstrukturen",
+    "lang": "c"
+  },
+  {
+    "id": "tc-request",
+    "path": "./figures/code/062-timer-counter-request.h",
+    "description": "Request-Struktur und ioctl-Kommandos",
+    "lang": "c"
+  },
+  {
+    "id": "tc-event",
+    "path": "./figures/code/063-timer-counter-event.h",
+    "description": "Event-Struktur für Messwerte",
+    "lang": "c"
+  },
+  {
+    "id": "tc-example",
+    "path": "./figures/code/06-timer-counter.c",
+    "description": "Codebeispiel für PWM-Konfiguration",
     "lang": "c"
   }
 ]

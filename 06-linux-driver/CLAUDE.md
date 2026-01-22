@@ -4,55 +4,61 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Typst-based academic documentation project for a Linux device driver lab assignment (Ostfalia University, µC-Peripherie course). The document covers Linux peripheral access via I2C, GPIO, and ADC interfaces.
+This is a university coursework project (Labor µC-Peripherie, WS 2025/26) documenting Linux peripheral device interfaces (I2C, GPIO, ADC, Timer/Counter). The documentation is written in German using Typst markup.
 
 ## Build Commands
 
+### Document Compilation (Typst)
 ```bash
-# Compile the document once
-make compile
-
-# Watch for changes and auto-compile
-make watch
-
-# Open PDF viewer (zathura)
-make show
-
-# Compile, show, and watch
-make all
+make compile    # Compile Typst document to PDF (dist/main.pdf)
+make watch      # Watch for changes and auto-recompile
+make show       # Open PDF in zathura viewer
+make all        # Compile, show, and watch
 ```
 
-Output is generated to `./dist/main.pdf` from `./src/main.typ`.
-
-### Code Examples (in src/figures/code/)
-
+### C Code Examples
+Located in `src/figures/code/`:
 ```bash
-# Compile and run libgpiod example
-make -C src/figures/code 01-compile
-make -C src/figures/code 01-run
+cd src/figures/code
+gcc 03-i2c.c -o ./out/i2c_example    # Compile specific example
+./out/i2c_example                     # Run compiled example
+```
 
-# Compile and run fan control example (requires sudo)
-make -C src/figures/code 02-compile
-make -C src/figures/code 02-run
+Or use the Makefile (edit EXAMPLE and APP_NAME variables first):
+```bash
+make compile    # Compile example
+make run        # Run compiled binary
 ```
 
 ## Architecture
 
 ### Document Structure
-- `src/main.typ` - Main Typst document with all content
-- `src/config/text-content.yaml` - Document metadata (title, authors, labels)
-- `src/config/bibliography.bib` - Bibliography entries
-- `src/figures/code/` - C code examples for embedding in document
-- `src/figures/code/index.json` - Code snippet registry (id, path, description, lang)
+- `src/main.typ` - Main Typst document (465 lines)
+- `src/config/text-content.yaml` - Document metadata
+- `src/config/bibliography.bib` - References
+- `src/figures/code/index.json` - Code snippet registry for `#render-snippet()` function
 
-### Code Snippet System
-The document uses a custom `render-snippet(id)` function to embed code examples. Snippets are registered in `index.json` and referenced by ID. To add a new snippet:
-1. Add the C file to `src/figures/code/`
-2. Register it in `src/figures/code/index.json`
-3. Use `#render-snippet("your-id")` in main.typ
+### Code Examples (src/figures/code/)
+| File | Purpose |
+|------|---------|
+| 01-open.c | Device file opening via `open()` |
+| 02-ioctl.c | ioctl configuration commands |
+| 03-i2c.c | I2C read transaction with `I2C_RDWR` |
+| 04-gpio.c | GPIO edge event monitoring |
+| 05-adc.c | ADC temperature reading via sysfs |
 
-### Typst Packages Used
-- `finite` - Automaton diagrams
-- `glossarium` - Glossary management
-- `circuiteria` - Circuit diagrams
-- `zebraw` - Code block styling with line numbers
+Header files (030-*.h, 041-*.h, etc.) contain Linux kernel structure definitions for documentation purposes.
+
+### Peripheral Interfaces Documented
+- **I2C**: Character device `/dev/i2c-X` with ioctl
+- **GPIO**: Character device `/dev/gpiochip0` with V2 line API
+- **ADC**: sysfs interface `/sys/class/hwmon/hwmonX/`
+- **Timer/Counter**: Data structures defined (TODO: implementation)
+
+## Key Patterns
+
+The project demonstrates the Linux two-interface approach:
+- **sysfs (`/sys`)**: Simple text-based access (e.g., ADC)
+- **devfs (`/dev`)**: Binary data and ioctl for complex operations (e.g., I2C, GPIO)
+
+Code snippets are embedded in Typst via `#render-snippet("snippet-id")` using the index.json registry.
