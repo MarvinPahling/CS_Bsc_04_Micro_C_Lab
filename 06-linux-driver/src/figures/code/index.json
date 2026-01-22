@@ -46,5 +46,18 @@
     "path": "./figures/code/042-gpio-event.h",
     "description": "Auszug aus linux/gpio.h - Events",
     "lang": "c"
+  },
+  {
+    "id": "adc",
+    "path": "./figures/code/05-adc.c",
+    "description": "Codebeispiel für Sensorauslese über sysfs",
+    "lang": "c"
+  },
+
+  {
+    "id": "timer",
+    "path": "./figures/code/060-timer-counter.h",
+    "description": "API-Spezifikation für timer-counter.h",
+    "lang": "c"
   }
 ]

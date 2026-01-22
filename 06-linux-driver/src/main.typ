@@ -269,19 +269,119 @@ Das nun folgende C-Programm, zeigt nun ein Beispiel, wie wir einen softwareseiti
 Das Programm Konfiguriert `line`-7 als Input und Konfiguriert den Edge-Detector, sodass er steigende und fallende Taktflanken erkennt. Über `read()` (blockierender Aufruf) können wir nun auf ein neues Event warten. Der Vorteil im Vergleich zu der Laboraufgabe ist dabei, dass in diesem Fall nur der Thread des entsprechenden Prozesses blockiert wird, jedoch der Rest des Systems weiterarbeiten kann.
 
 == ADC
-//TODO
+
+Im Gegensatz zu I2C und GPIO, die über `/dev/`-Gerätedateien mit binären `ioctl()`-Aufrufen angesprochen werden, nutzen ADC- und Sensordaten typischerweise das *sysfs*-Interface. Das `hwmon`-Subsystem (Hardware Monitoring) stellt Sensordaten als ASCII-Textdateien unter `/sys/class/hwmon/` bereit.
+
+Verfügbare Sensoren lassen sich einfach mit `grep` finden, da es in den meisten Fällen eine `name`-Datei gibt:
+
+Ein solcher Aufruf könnte dabei z.B. so aussehen
+```
+$ grep . /sys/class/hwmon/hwmon*/name
+/sys/class/hwmon/hwmon0/name:AC
+/sys/class/hwmon/hwmon1/name:acpitz
+/sys/class/hwmon/hwmon2/name:BAT0
+/sys/class/hwmon/hwmon3/name:nvme
+/sys/class/hwmon/hwmon4/name:thinkpad
+/sys/class/hwmon/hwmon5/name:pch_cannonlake
+/sys/class/hwmon/hwmon6/name:coretemp
+/sys/class/hwmon/hwmon7/name:iwlwifi_1
+/sys/class/hwmon/hwmon8/name:ucsi_source_psy_USBC000:001
+/sys/class/hwmon/hwmon9/name:ucsi_source_psy_USBC000:002
+```
+Da sich in solchen Fällen die API-Spezifikation häufig aus der Struktur ergibt, kann es ratsam sein sich die entsprechende Schnittstelle mit `tree` einmal genauer anzugucken. Ein Aufruf könnte z.B. so aussseh.
+
+
+```
+$ tree /sys/class/hwmon/hwmon6
+/sys/class/hwmon/hwmon6
+├── device -> ../../../coretemp.0
+├── name
+├── power
+│   ├── autosuspend_delay_ms
+│   ├── control
+│   ├── runtime_active_time
+│   ├── runtime_status
+│   └── runtime_suspended_time
+├── subsystem -> ../../../../../class/hwmon
+├── temp1_crit
+├── temp1_crit_alarm
+├── temp1_input
+├── temp1_label
+├── temp1_max
+├── temp2_crit
+├── temp2_crit_alarm
+├── temp2_input
+├── temp2_label
+├── temp2_max
+├── temp3_crit
+├── temp3_crit_alarm
+├── temp3_input
+├── temp3_label
+├── temp3_max
+├── temp4_crit
+├── temp4_crit_alarm
+├── temp4_input
+├── temp4_label
+├── temp4_max
+├── temp5_crit
+├── temp5_crit_alarm
+├── temp5_input
+├── temp5_label
+├── temp5_max
+└── uevent
+
+4 directories, 32 files
+```
+Da es sich hierbei logisch um ASCII-kodierte Datein handel, können wir diese einfach mit `cat` auslesen.
+
+Ein solcher Aufruf könnte z.B. so aussehen:
+```
+cat /sys/class/hwmon/hwmon6/temp1_input
+61000
+```
+
+Ein entsprechendes C-Programm, welches die Temperaturen aller CPU-Kerne ausliest und den Durchschnitt ausgibt, könnte so z.B. wie folgt aussehen.
+
+#pagebreak()
+#render-snippet("adc")
+Im Gegensatz zu dem I2C- und GPIO-Beispiel wird hier kein `ioctl()` benötigt, sondern nur die Standard-POSIX-Funktionen `open()` aus `<fcntl.h>` und `read()` aus `<unistd.h>`.
+
 #pagebreak()
 = Aufgabe II - AT91SAM7-Timer Schnittstellenspezifikation
 
 Überlegen sie eine Schnittstellespezifikation, wie möglichst viele Funktionalitäten des AT91SAM7-Timers über eine der beiden Datei-Schnittstellen bereitgestellt werden können.
 
+Die Timer-Couter-Einheit des AT91SAM7 kann auf jedem seiner 3 Channel eine Vielzahl an verschiedenen Operationen ausführen. Für die meisten dieser Betriebsmodie ist es nötig den Chip an mehreren Stellen zu konfigurieren. Aus diesem Grund wird in diesem Fall die Schnittstelle über `/dev` für den Zugriff über `ioctl()` modelliert.
+
+Der erste Schritt in dieser Überlegung ist es die wichtigsten Use-Cases als Commands abzubilden. Für die Timer-Couter-Einheit sind es in diesem Fall:
+- Event Counting
+- Intervall Measurement
+- Pulse Generation
+- Pulse Width Modulation
+
+Diese Betriebsmodie werden nun als Enum modelliert
+
+#zebraw(
+  raw(
+    read("./figures/code/060-timer-counter-events.h"),
+    lang: "c",
+    block: true,
+  ),
+  numbering: true,
+  header: [*timer-counter.h - mode *],
+)
+
+Nun brauchen wir zusätzlich noch einen Mechanismus mit welchem sich die verschiedenen Betriebsmodie modellieren lassen //TODO: Spezifiziere wie sich dies analog zu dem Designentscheidungen der anderen beiden ioctl schnittstellen für I2C und GPIO bewerkstellingen lassen
+
+#pagebreak()
+= Aufgabe III - I2C-Scheduling
+
 I2C Scheduling (gilt auch für anderen Bussysteme wie USB,…)
 
 Am I2C Bus können mehrere Devices angeschlossen sein. Aus Sicht des Gerätetreibers sind somit 2 Gerätetreiber zuständig. Einer für den I2C-Bus zum Senden und Empfangen von I2C Nachrichten und einer für das am I2C-Bus angeschlossene Device, wobei der Anwender dann nur mit dem Gerätetreiber des Devices direkt interagiert. Wenn jetzt ein Anwender intensiv mit 'seinem' Device interagiert, so besteht die Gefahr, dass andere Devices 'ausgehungert' werden. Der I2C-Treiber beinhaltet somit nicht nur den Treiber zum Senden und Empfangen von Nachrichten, sondern sorgt auch für eine faire Zuteilung.
 
-#pagebreak()
-= Aufgabe III - I2C-Scheduling
 Bearbeiten sie folgende Punkte zum Thema I2C-Scheduling
+
 
 Skizzieren sie einen Anwendungsfall, bei welchen ein Devicetreiber (z.B. Displaytreiber) einen anderen Devicetreiber aushungern kann.
 Überlegen und begründen sie eine Möglichkeit, wie dies vermieden werden kann

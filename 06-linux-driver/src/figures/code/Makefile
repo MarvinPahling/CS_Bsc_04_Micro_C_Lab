@@ -1,5 +1,5 @@
-EXAMPLE = "./04-gpio.c"
-APP_NAME = gpio_example
+EXAMPLE = "./05-adc.c"
+APP_NAME = adc_example
 compile:
 	gcc $(EXAMPLE) -o ./out/$(APP_NAME)
 run:
