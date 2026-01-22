@@ -145,34 +145,33 @@
 
 = Systemarchitektur von Linux
 == Aufgaben des Linuxkernel
-Im Vergleich zu der
 Die wichtigsten Aufgaben des Linux-Kernels sind:
 === Process Management
-Das Betriebssystem ist in der Lage einzelne Prozesse zu starten und zu beenden. Darüber hinaus werden Input und Output sowie die Kommunikation zwischen den verschiedenen Prozessen von dem Kernel übernommen. Da sich in der Regel mehrere Prozesse eine CPU teilen, ist der Kerel auch für das Sheduling der Rechenzeit der geteilten CPU verantwortlich.
+Das Betriebssystem ist in der Lage, einzelne Prozesse zu starten und zu beenden. Darüber hinaus werden Input und Output sowie die Kommunikation zwischen den verschiedenen Prozessen von dem Kernel übernommen. Da sich in der Regel mehrere Prozesse eine CPU teilen, ist der Kernel auch für das Scheduling der Rechenzeit der geteilten CPU verantwortlich.
 
 === Memory Management
 Der Kernel stellt darüber hinaus eine Abstraktionsebene über den geteilten Memory bereit. Hierbei wird ein virtueller Adressraum für alle Prozesse bereitgestellt, welcher dann von dem Kernel auf den echten Memory abgebildet wird.
 
 === Filesystem
-Unter Linux kann fast alles als Datei behandelt werden. Die Aufgabe des entsprechenden Filesystem-Treibers ist es dann die Abstraktion über _Pfade_ und _Knoten_ auf die darunterliegende phyische Struktur abzubilden.
+Unter Linux kann fast alles als Datei behandelt werden. Die Aufgabe des entsprechenden Filesystem-Treibers ist es dann die Abstraktion über `Pfade` und `Knoten` auf die darunterliegende physische Struktur abzubilden.
 
 === Netzwerk
-Netzwerkvorgänge sind selten speziefisch für einen einzelnen Prozess, weswegen hierfür ein eigenes Sub-System benötigt wird. Für den Kontext dieser Diskusion ist es aber nicht nötig uns mit Netzwerken zu beschäftigen.
+Netzwerkvorgänge sind selten spezifisch für einen einzelnen Prozess, weswegen hierfür ein eigenes Sub-System benötigt wird. Für den Kontext dieser Diskussion ist es aber nicht nötig uns mit Netzwerken zu beschäftigen.
 
 === Peripheriezugriff
-Die Adressierung von Peripheriegeräten erfolgt über Gerätetreiber. Die Aufgabe dieser sind es den Kernel in einer Art zu erweitern, welche es erlaubt die Funktionsweise der Peripherie auf eine oder mehere Datein innerhalbt eines Filesystems abzubilden. Diese Treiber werden dabei entweder statisch in den Kernel gelinkt oder können als Kernel-Modul dynamisch zur Laufzeit dazugeladen werden.
+Die Adressierung von Peripheriegeräten erfolgt über Gerätetreiber. Die Aufgabe dieser sind es den Kernel in einer Art zu erweitern, welche es erlaubt die Funktionsweise der Peripherie auf eine oder mehrere Dateien innerhalb eines Filesystems abzubilden. Diese Treiber werden dabei entweder statisch in den Kernel gelinkt oder können als Kernel-Modul dynamisch zur Laufzeit dazugeladen werden.
 
-Die phyischen Peripheriegeräte erscheinen durch die Abtraktion wie eine oder mehrere logische Datein. Dies ermöglicht es auf der Applikationsebene mit diesen mit den bekannten Dateioperationen zu interargieren.
+Die physischen Peripheriegeräte erscheinen durch die Abstraktion wie eine oder mehrere logische Dateien. Dies ermöglicht es auf der Applikationsebene mit diesen mit den bekannten Dateioperationen zu interagieren.
 
 
-Geräte erhalten dabei von ihrem Treiber sowohl eine _Major_- als auch eine _Minor_-Nummer. Die Major-Nummer bezieht sich hierbei auf die den jeweiligen Treiber und bildet eine logische Obergruppe über die einzelnen Geräte. Die Minor-Nummer hingegen referenziert ein speziefisches Gerät.
+Geräte erhalten dabei von ihrem Treiber sowohl eine `Major`- als auch eine `Minor`-Nummer. Die Major-Nummer bezieht sich hierbei auf den jeweiligen Treiber und bildet eine logische Obergruppe über die einzelnen Geräte. Die Minor-Nummer hingegen referenziert ein spezifisches Gerät.
 
-Wichtig hierbei ist, dass dies nicht zwangsläufig heißen muss, dass es sich bei unterschiedlichen Geräten auch um unterschiedliche phyisische Peripheriegeräte handeln muss. Das von der Minor-Nummer gekennzeichnete Geräte muss in wirklichkeit nicht einmal ein phyisches Peripheriegerät sein, sondern es kann sich dabei auch um eine logische Abstraktion handeln. Ein gutes Beispiel hierfür wäre das _loopback_-Interface.
+Wichtig hierbei ist, dass dies nicht zwangsläufig heißen muss, dass es sich bei unterschiedlichen Geräten auch um unterschiedliche physische Peripheriegeräte handeln muss. Das von der Minor-Nummer gekennzeichnete Gerät muss in Wirklichkeit nicht einmal ein physisches Peripheriegerät sein, sondern es kann sich dabei auch um eine logische Abstraktion handeln. Ein gutes Beispiel hierfür wäre das `loopback`-Interface.
 
-Peripheriegeräte können dabei grob in _Character Devices_, _Block Devices_ oder _Netzwerk Devices_ unterteilt werden.
+Peripheriegeräte können dabei grob in `Character Devices`, `Block Devices` oder `Netzwerk Devices` unterteilt werden.
 
-_Character Devices_ lesen oder schreiben fortlaufende Folge von Datenbytes. //TODO Zitat einfügen
-Für die einfache serielle Übertragung von Daten, z.B durch _I2C_ sind diese somit prädistiniert und werden Hauptgegenstand der folgendenden Auseinandersetzunge sein. Die anderen beiden Typen lassen wir hierbei außer Acht.
+`Character Devices` lesen oder schreiben fortlaufende Folge von Datenbytes. //TODO Zitat einfügen
+Für die einfache serielle Übertragung von Daten, z.B. durch `I2C` sind diese somit prädestiniert und werden Hauptgegenstand der folgenden Auseinandersetzungen sein. Die anderen beiden Typen lassen wir hierbei außer Acht.
 
 #pagebreak()
 = Aufgabe I - Peripheriezugriff
@@ -183,24 +182,24 @@ Beschreiben sie für nachfolgende Schnittstellen, wie der Zugriff/Konfiguration 
 - GPIO
 - ADC
 
-Timer-Einheiten stellen in der Regel keine Funktionalitäten über das Datei-System bereit, da sie eher ähnlich dem I2C-Bus von anderen internen Treibern intern genutzt werde (bspw. Geschwindigkeitsbestimmung nutzt u.A. TimerEinheit, zyklische Funktionsaufrufe werden über Timer-IRQ's dargestellt, ...). Ähnlich wie beim I2C Bus stellen sie somit ihre Funktionalität nur kernelintern über Funktionsaufrufe bereit.
+Timer-Einheiten stellen in der Regel keine Funktionalitäten über das Datei-System bereit, da sie eher ähnlich dem I2C-Bus von anderen internen Treibern intern genutzt werden (bspw. Geschwindigkeitsbestimmung nutzt u.A. Timer-Einheit, zyklische Funktionsaufrufe werden über Timer-IRQs dargestellt, ...). Ähnlich wie beim I2C-Bus stellen sie somit ihre Funktionalität nur kernelintern über Funktionsaufrufe bereit.
 
 == Zugriff/Konfiguration
 
-Für gewöhnlich erscheinen Peripheriegeräten unter dem pfad _/dev_ oder _/sys_, dieses beiden Subsysteme unterscheiden sich neben ihrer Verortung auch in ihrer grundlegenden Designphilosophie.
+Für gewöhnlich erscheinen Peripheriegeräte unter dem Pfad `/dev` oder `/sys`, diese beiden Subsysteme unterscheiden sich neben ihrer Verortung auch in ihrer grundlegenden Designphilosophie.
 
 === sysfs
-_/sys_ ein einfacher weg, um mit Peripherie über eine logische ASCII-kodierte Datei zu interargieren.   Hierbei beinhaltee für gewöhnlich jede Datei nur genau eine Information. Dies ermöglicht es auch auf einfache Weise die Topologie eines Gerätes abzubilden, da hierarchische Beziehungen über den Pfad abgebildet werden können. Je nach Peripheriegerät kann der Gerätetreiber für diese logischen Datein Lese- und oder Schreibezugriff bereitstellen. Die klassischen Interaktionen sind `open()`, `close()`, `read()`, `write()`.
+`/sys` ist ein einfacher Weg, um mit Peripherie über eine logische ASCII-kodierte Datei zu interagieren. Hierbei beinhaltet für gewöhnlich jede Datei nur genau eine Information. Dies ermöglicht es auch auf einfache Weise die Topologie eines Gerätes abzubilden, da hierarchische Beziehungen über den Pfad abgebildet werden können. Je nach Peripheriegerät kann der Gerätetreiber für diese logischen Dateien Lese- und oder Schreibzugriff bereitstellen. Die klassischen Interaktionen sind `open()`, `close()`, `read()`, `write()`.
 
 Diese Art Schnittstelle eignet sich dadurch hervorragend für Konfiguration oder Statusabfragen von Geräten. Durch das logische Auftreten als ASCII-kodierte Textdatei lassen sich Informationen einfach über Tools wie z.B. `cat` auslesen, was es einfach macht Skripte zu erstellen.
 
 Die Schwächen dieses Systems sind jedoch, dass sich komplexere, atomare Transaktionen nur schwer abbilden lassen. Wollen wir beispielsweise über einen I2C-Bus erste eine Schreib-, gefolgt von einer Leseoperation ausführen, ohne den Bus zwischenzeitlich wieder freizugeben, ist dies über diesen Ansatz nicht möglich.
 
 === device
-_/dev_ ist der klassische UNIX-Weg, um auf die Peripherie zuzugreifen. Das Entsprechende Gerät wird hierbei logisch als eine binäre Datei realisiert, was den entsprechenden Overhead eliminiert, den es braucht, um ASCII-kodierte Datein in Binärformat zu parsen. Der Inhalt der Datei repräsentiert hierbei den eigentlichen Datenfluss für das Gerät.
+`/dev` ist der klassische UNIX-Weg, um auf die Peripherie zuzugreifen. Das entsprechende Gerät wird hierbei logisch als eine binäre Datei realisiert, was den entsprechenden Overhead eliminiert, den es braucht, um ASCII-kodierte Dateien in Binärformat zu parsen. Der Inhalt der Datei repräsentiert hierbei den eigentlichen Datenfluss für das Gerät.
 
 Eine Besonderheit bei diesem Subsystem ist es, dass durch `ioctl()`, zusätzlich zu den bereits bekannten Operationen `open()`, `close()`, `read()`, `write()`,
-auch komplexere Informationen für die Entsprechende Transaktion mitliefern kann.
+auch komplexere Informationen für die entsprechende Transaktion mitgeliefert werden können.
 
 #pagebreak()
 #render-snippet("open")
@@ -214,17 +213,17 @@ Die eben beschriebene Transaktion über den I2C-Bus wollen wir an dieser Stelle 
 
 #render-snippet("i2c-msg")
 
-Das gezeigte `struct` hierbei alle Informationen für einen I2C-Zugriff. Hierzu zählen die Zieladresse, die Flags /*TODO: Fachbegriff*/ die Lände der Nachricht, sowie ein Zeiger zu der Nachricht selber.
+Das gezeigte `struct` enthält hierbei alle Informationen für einen I2C-Zugriff. Hierzu zählen die Zieladresse, die Flags, die Länge der Nachricht, sowie ein Zeiger zu der Nachricht selber.
 
 #render-snippet("i2c-rdwr")
 
 
-Das Kernel-Modul `i2c-dev` ist häufig nicht standardmäßig geladen und per `modprobe` nachgeladen werden.
+Das Kernel-Modul `i2c-dev` ist häufig nicht standardmäßig geladen und muss per `modprobe` nachgeladen werden.
 ```bash
 sudo modprobe i2c-dev
 ```
 
-Da es sich bei den von dem I2C bereitgestellten Geräte logisch um Datein handelt lassen sich diese einfach per `ls` und `grep` finden.
+Da es sich bei den von dem I2C bereitgestellten Geräten logisch um Dateien handelt, lassen sich diese einfach per `ls` und `grep` finden.
 
 ```bash
 ls -la /dev | grep i2c
@@ -258,15 +257,15 @@ Gelesen von Gerät 0x50 (Register 0x00):
 
 Die Schnittstellendefinition für GPIO findet sich in `linux/giop.h`. Die API für GPIO unterteilt ein GPIO-Device in `chip` und `line`
 #render-snippet("gpio-req")
-Die API für die Request an eine Line des GPIO-Controllers ist in diesem Fall Umfangreicher als die Vorherige. Für den Kontext dieses Moduls sind jedoch vor allem die Flags interessant mit welchen sich beispielsweise der Pull-Up-Wiederstand oder der Edge-Detector konfigurieren lassen.
+Die API für die Request an eine Line des GPIO-Controllers ist in diesem Fall umfangreicher als die vorherige. Für den Kontext dieses Moduls sind jedoch vor allem die Flags interessant, mit welchen sich beispielsweise der Pull-Up-Widerstand oder der Edge-Detector konfigurieren lassen.
 #render-snippet("gpio-event")
-Die API für GPIO-Events gibt uns die Möglichkeit später die Möglichkeit Informationen über Änderungen am Edge-Detector zu erhalten. Aus dem Event können wir beispielsweise den Zeistempel, sowie die Art des Events auslesen.
+Die API für GPIO-Events gibt uns später die Möglichkeit, Informationen über Änderungen am Edge-Detector zu erhalten. Aus dem Event können wir beispielsweise den Zeitstempel sowie die Art des Events auslesen.
 
-Das nun folgende C-Programm, zeigt nun ein Beispiel, wie wir einen softwareseitigen Edge-Detector in Linux zu realisieren können.
+Das nun folgende C-Programm zeigt ein Beispiel, wie wir einen softwareseitigen Edge-Detector in Linux realisieren können.
 #pagebreak()
 #render-snippet("gpio")
 
-Das Programm Konfiguriert `line`-7 als Input und Konfiguriert den Edge-Detector, sodass er steigende und fallende Taktflanken erkennt. Über `read()` (blockierender Aufruf) können wir nun auf ein neues Event warten. Der Vorteil im Vergleich zu der Laboraufgabe ist dabei, dass in diesem Fall nur der Thread des entsprechenden Prozesses blockiert wird, jedoch der Rest des Systems weiterarbeiten kann.
+Das Programm konfiguriert `line`-7 als Input und konfiguriert den Edge-Detector, sodass er steigende und fallende Taktflanken erkennt. Über `read()` (blockierender Aufruf) können wir nun auf ein neues Event warten. Der Vorteil im Vergleich zu der Laboraufgabe ist dabei, dass in diesem Fall nur der Thread des entsprechenden Prozesses blockiert wird, jedoch der Rest des Systems weiterarbeiten kann.
 
 == ADC
 
@@ -288,7 +287,7 @@ $ grep . /sys/class/hwmon/hwmon*/name
 /sys/class/hwmon/hwmon8/name:ucsi_source_psy_USBC000:001
 /sys/class/hwmon/hwmon9/name:ucsi_source_psy_USBC000:002
 ```
-Da sich in solchen Fällen die API-Spezifikation häufig aus der Struktur ergibt, kann es ratsam sein sich die entsprechende Schnittstelle mit `tree` einmal genauer anzugucken. Ein Aufruf könnte z.B. so aussseh.
+Da sich in solchen Fällen die API-Spezifikation häufig aus der Struktur ergibt, kann es ratsam sein, sich die entsprechende Schnittstelle mit `tree` einmal genauer anzugucken. Ein Aufruf könnte z.B. so aussehen.
 
 
 ```
@@ -332,7 +331,7 @@ $ tree /sys/class/hwmon/hwmon6
 
 4 directories, 32 files
 ```
-Da es sich hierbei logisch um ASCII-kodierte Datein handel, können wir diese einfach mit `cat` auslesen.
+Da es sich hierbei logisch um ASCII-kodierte Dateien handelt, können wir diese einfach mit `cat` auslesen.
 
 Ein solcher Aufruf könnte z.B. so aussehen:
 ```
@@ -349,17 +348,17 @@ Im Gegensatz zu dem I2C- und GPIO-Beispiel wird hier kein `ioctl()` benötigt, s
 #pagebreak()
 = Aufgabe II - AT91SAM7-Timer Schnittstellenspezifikation
 
-Überlegen sie eine Schnittstellespezifikation, wie möglichst viele Funktionalitäten des AT91SAM7-Timers über eine der beiden Datei-Schnittstellen bereitgestellt werden können.
+Überlegen Sie eine Schnittstellenspezifikation, wie möglichst viele Funktionalitäten des AT91SAM7-Timers über eine der beiden Datei-Schnittstellen bereitgestellt werden können.
 
-Die Timer-Couter-Einheit des AT91SAM7 kann auf jedem seiner 3 Channel eine Vielzahl an verschiedenen Operationen ausführen. Für die meisten dieser Betriebsmodie ist es nötig den Chip an mehreren Stellen zu konfigurieren. Aus diesem Grund wird in diesem Fall die Schnittstelle über `/dev` für den Zugriff über `ioctl()` modelliert.
+Die Timer-Counter-Einheit des AT91SAM7 kann auf jedem seiner 3 Channel eine Vielzahl an verschiedenen Operationen ausführen. Für die meisten dieser Betriebsmodi ist es nötig, den Chip an mehreren Stellen zu konfigurieren. Aus diesem Grund wird in diesem Fall die Schnittstelle über `/dev` für den Zugriff über `ioctl()` modelliert.
 
-Der erste Schritt in dieser Überlegung ist es die wichtigsten Use-Cases als Commands abzubilden. Für die Timer-Couter-Einheit sind es in diesem Fall:
+Der erste Schritt in dieser Überlegung ist es, die wichtigsten Use-Cases als Commands abzubilden. Für die Timer-Counter-Einheit sind es in diesem Fall:
 - Event Counting
 - Intervall Measurement
 - Pulse Generation
 - Pulse Width Modulation
 
-Diese Betriebsmodie werden nun als Enum modelliert
+Diese Betriebsmodi werden nun als Enum modelliert
 
 #pagebreak()
 #render-snippet("tc-mode")
@@ -470,10 +469,10 @@ Ebenso bitte nicht auf das Thema Treiber Installation (z.B. insmod, modprobe), i
 Damit das Betriebssystem mit der Hardware kommunizieren kann (vereinfacht ausgedrückt), wird in Linux (wie in den meisten anderen Betriebssystemen auch) ein Gerätetreiber dafür verwendet. Unter Linux ist dieser Treiber immer ein Teil des Kernels und kann entweder statisch hinzugelinkt oder auf Anfrage als Kernel-Modul nachgeladen werden. Da ein Gerätetreiber ein Teil des Kernels ist, kann aus Sicherheitsgründen nicht direkt darauf mit einem normal laufenden Prozess zugegriffen werden. Um aber jetzt dennoch auf Hardware-Komponenten wie u. a. Festplatte, CD-ROM, Soundkarte oder der seriellen bzw. parallelen Schnittstelle zugreifen zu können, wurde unter UNIX ein Mechanismus eingeführt, womit recht problemlos mit einem Gerätetreiber über eine Hardware-Gerätedatei kommuniziert werden kann. Diese »Datei« können Sie mit einem gewöhnlichen Prozess öffnen und auf sie lesend und schreibend zugreifen – sprich, Sie können über normale Datei-E/A-Operationen mit dem Gerätetreiber dank dieser »Datei« so kommunizieren, als handle es sich um eine gewöhnliche Datei.
 
 - Treiber sind Teil des Kernels
-  - Entweder statisch gelikt oder dynamisch als Kernel-Modul nachgeladen
+  - Entweder statisch gelinkt oder dynamisch als Kernel-Modul nachgeladen
 
 === Die Gerätedateitypen
-Die Einträge der Gerätedateien – auch als Devices bekannt – finden Sie im Verzeichnis '/dev'. Ein ls -l /dev verschafft Ihnen einen ersten Überblick und stiftet vielleicht zugleich auch ein wenig Verwirrung über diese Gerätedateien, die es zu entflechten gilt. Es wird hierbei zwischen zwei Devices-Typen unterschieden – zu erkennen am ersten Buchstaben der Auflistung der Gerätedatei(en) (b oder c):
+Die Einträge der Gerätedateien – auch als Devices bekannt – finden Sie im Verzeichnis `/dev`. Ein `ls -l /dev` verschafft Ihnen einen ersten Überblick und stiftet vielleicht zugleich auch ein wenig Verwirrung über diese Gerätedateien, die es zu entflechten gilt. Es wird hierbei zwischen zwei Devices-Typen unterschieden – zu erkennen am ersten Buchstaben der Auflistung der Gerätedatei(en) (b oder c):
 
 
 
@@ -497,7 +496,7 @@ Kernel <=> Kernel IO Subsystem <=> Treiber <=> Controller <=> Hardware
 
 == Overview
 In UNIX, hardware devices are accessed by the user through special device files.
-These files are grouped into the _/dev_ directory, and system calls _open, read, write, close, lseek, mmap_ etc. are redirected by the operating system to the device driver associated with the physical device.
+These files are grouped into the `/dev` directory, and system calls `open`, `read`, `write`, `close`, `lseek`, `mmap` etc. are redirected by the operating system to the device driver associated with the physical device.
 
 The device driver is a kernel component (usually a module) that interacts with a hardware device.
 
