@@ -88,5 +88,17 @@
     "path": "./figures/code/064-timer-counter.h",
     "description": "Komplette Timer/Counter uAPI Header-Datei",
     "lang": "c"
+  },
+  {
+    "id": "i2c-transfer",
+    "path": "./figures/code/070-i2c-transaction.c",
+    "description": "Auszug aus drivers/i2c/i2c-core-base.c",
+    "lang": "c"
+  },
+  {
+    "id": "i2c-lock",
+    "path": "./figures/code/071-i2c-lock.c",
+    "description": "I2C Bus-Locking mit RT-Mutex",
+    "lang": "c"
   }
 ]

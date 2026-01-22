@@ -146,6 +146,7 @@
 = Systemarchitektur von Linux
 == Aufgaben des Linuxkernel
 Die wichtigsten Aufgaben des Linux-Kernels sind:
+
 === Process Management
 Das Betriebssystem ist in der Lage, einzelne Prozesse zu starten und zu beenden. Darüber hinaus werden Input und Output sowie die Kommunikation zwischen den verschiedenen Prozessen von dem Kernel übernommen. Da sich in der Regel mehrere Prozesse eine CPU teilen, ist der Kernel auch für das Scheduling der Rechenzeit der geteilten CPU verantwortlich.
 
@@ -159,10 +160,18 @@ Unter Linux kann fast alles als Datei behandelt werden. Die Aufgabe des entsprec
 Netzwerkvorgänge sind selten spezifisch für einen einzelnen Prozess, weswegen hierfür ein eigenes Sub-System benötigt wird. Für den Kontext dieser Diskussion ist es aber nicht nötig uns mit Netzwerken zu beschäftigen.
 
 === Peripheriezugriff
+#figure(
+  quote(
+    "Device drivers take on a special role in the Linux kernel. They are distinct “black
+boxes” that make a particular piece of hardware respond to a well-defined internal
+programming interface; they hide completely the details of how the device works.",
+  ),
+  caption: [Aus: "Linux Device Drivers", @ldd3],
+)
+
 Die Adressierung von Peripheriegeräten erfolgt über Gerätetreiber. Die Aufgabe dieser sind es den Kernel in einer Art zu erweitern, welche es erlaubt die Funktionsweise der Peripherie auf eine oder mehrere Dateien innerhalb eines Filesystems abzubilden. Diese Treiber werden dabei entweder statisch in den Kernel gelinkt oder können als Kernel-Modul dynamisch zur Laufzeit dazugeladen werden.
 
 Die physischen Peripheriegeräte erscheinen durch die Abstraktion wie eine oder mehrere logische Dateien. Dies ermöglicht es auf der Applikationsebene mit diesen mit den bekannten Dateioperationen zu interagieren.
-
 
 Geräte erhalten dabei von ihrem Treiber sowohl eine `Major`- als auch eine `Minor`-Nummer. Die Major-Nummer bezieht sich hierbei auf den jeweiligen Treiber und bildet eine logische Obergruppe über die einzelnen Geräte. Die Minor-Nummer hingegen referenziert ein spezifisches Gerät.
 
@@ -170,19 +179,11 @@ Wichtig hierbei ist, dass dies nicht zwangsläufig heißen muss, dass es sich be
 
 Peripheriegeräte können dabei grob in `Character Devices`, `Block Devices` oder `Netzwerk Devices` unterteilt werden.
 
-`Character Devices` lesen oder schreiben fortlaufende Folge von Datenbytes. //TODO Zitat einfügen
+`Character Devices` lesen oder schreiben fortlaufende Folge von Datenbytes.
 Für die einfache serielle Übertragung von Daten, z.B. durch `I2C` sind diese somit prädestiniert und werden Hauptgegenstand der folgenden Auseinandersetzungen sein. Die anderen beiden Typen lassen wir hierbei außer Acht.
 
 #pagebreak()
 = Aufgabe I - Peripheriezugriff
-
-Beschreiben sie für nachfolgende Schnittstellen, wie der Zugriff/Konfiguration dieser Schnittstellen funktioniert (über welche Schnittstelle werden diese bedient, welche Zugriffe bewirken was, wie sieht ein typischer Zugriff aus)
-
-- I2C
-- GPIO
-- ADC
-
-Timer-Einheiten stellen in der Regel keine Funktionalitäten über das Datei-System bereit, da sie eher ähnlich dem I2C-Bus von anderen internen Treibern intern genutzt werden (bspw. Geschwindigkeitsbestimmung nutzt u.A. Timer-Einheit, zyklische Funktionsaufrufe werden über Timer-IRQs dargestellt, ...). Ähnlich wie beim I2C-Bus stellen sie somit ihre Funktionalität nur kernelintern über Funktionsaufrufe bereit.
 
 == Zugriff/Konfiguration
 
@@ -198,7 +199,7 @@ Die Schwächen dieses Systems sind jedoch, dass sich komplexere, atomare Transak
 === device
 `/dev` ist der klassische UNIX-Weg, um auf die Peripherie zuzugreifen. Das entsprechende Gerät wird hierbei logisch als eine binäre Datei realisiert, was den entsprechenden Overhead eliminiert, den es braucht, um ASCII-kodierte Dateien in Binärformat zu parsen. Der Inhalt der Datei repräsentiert hierbei den eigentlichen Datenfluss für das Gerät.
 
-Eine Besonderheit bei diesem Subsystem ist es, dass durch `ioctl()`, zusätzlich zu den bereits bekannten Operationen `open()`, `close()`, `read()`, `write()`,
+Eine Besonderheit bei diesem Subsystem ist es, dass durch `ioctl()` @glibc_ioctl_h, zusätzlich zu den bereits bekannten Operationen `open()`, `close()`, `read()`, `write()` @glibc_fcntl_h,
 auch komplexere Informationen für die entsprechende Transaktion mitgeliefert werden können.
 
 #pagebreak()
@@ -209,7 +210,7 @@ Die Vorteile dieses Ansatzes sind, dass die Funktion `ioctl()` es ermöglicht so
 
 == I2C
 === Schnittstellen
-Die eben beschriebene Transaktion über den I2C-Bus wollen wir an dieser Stelle exemplarisch durchgehen. Die Schnittstellendefinition für I2C findet sich in `linux/i2c.h` sowie `linux/i2c-dev.h`
+Die eben beschriebene Transaktion über den I2C-Bus wollen wir an dieser Stelle exemplarisch durchgehen. Die Schnittstellendefinition für I2C findet sich in `linux/i2c.h` @linux_i2c_h sowie `linux/i2c-dev.h` @linux_i2c_dev_h.
 
 #render-snippet("i2c-msg")
 
@@ -255,7 +256,7 @@ Gelesen von Gerät 0x50 (Register 0x00):
 
 == GPIO
 
-Die Schnittstellendefinition für GPIO findet sich in `linux/giop.h`. Die API für GPIO unterteilt ein GPIO-Device in `chip` und `line`
+Die Schnittstellendefinition für GPIO findet sich in `linux/gpio.h` @linux_gpio_h. Die API für GPIO unterteilt ein GPIO-Device in `chip` und `line`.
 #render-snippet("gpio-req")
 Die API für die Request an eine Line des GPIO-Controllers ist in diesem Fall umfangreicher als die vorherige. Für den Kontext dieses Moduls sind jedoch vor allem die Flags interessant, mit welchen sich beispielsweise der Pull-Up-Widerstand oder der Edge-Detector konfigurieren lassen.
 #render-snippet("gpio-event")
@@ -348,8 +349,6 @@ Im Gegensatz zu dem I2C- und GPIO-Beispiel wird hier kein `ioctl()` benötigt, s
 #pagebreak()
 = Aufgabe II - AT91SAM7-Timer Schnittstellenspezifikation
 
-Überlegen Sie eine Schnittstellenspezifikation, wie möglichst viele Funktionalitäten des AT91SAM7-Timers über eine der beiden Datei-Schnittstellen bereitgestellt werden können.
-
 Die Timer-Counter-Einheit des AT91SAM7 kann auf jedem seiner 3 Channel eine Vielzahl an verschiedenen Operationen ausführen. Für die meisten dieser Betriebsmodi ist es nötig, den Chip an mehreren Stellen zu konfigurieren. Aus diesem Grund wird in diesem Fall die Schnittstelle über `/dev` für den Zugriff über `ioctl()` modelliert.
 
 Der erste Schritt in dieser Überlegung ist es, die wichtigsten Use-Cases als Commands abzubilden. Für die Timer-Counter-Einheit sind es in diesem Fall:
@@ -372,13 +371,13 @@ Für jeden der vier Betriebsmodi existiert eine eigene Konfigurationsstruktur, w
 
 #render-snippet("tc-config")
 
-Die Struktur `tc_event_count_config` konfiguriert das Zählen von externen Events auf einem der Eingangs-Pins. Der `threshold`-Wert ermöglicht eine Benachrichtigung, wenn eine bestimmte Anzahl an Events erreicht wurde.
+Das struct `tc_event_count_config` konfiguriert das Zählen von externen Events. Der `threshold`-Wert ermöglicht eine Benachrichtigung, wenn eine bestimmte Anzahl an Events erreicht wurde.
 
-Die Struktur `tc_interval_measure_config` dient der Messung von Zeitintervallen zwischen Flanken. Hierbei wird der interne Zähler zwischen Start- und Stop-Flanke inkrementiert.
+Das struct `tc_interval_measure_config` dient der Messung von Zeitintervallen zwischen Flanken.
 
-Die Struktur `tc_pulse_generation_config` konfiguriert die Erzeugung eines einzelnen Pulses mit konfigurierbarer Verzögerung und Pulsbreite.
+Das struct `tc_pulse_generation_config` konfiguriert die Erzeugung eines einzelnen Pulses mit konfigurierbarer Verzögerung und Pulsbreite.
 
-Die Struktur `tc_pwm_config` ermöglicht die Konfiguration eines kontinuierlichen PWM-Signals mit Periode und Tastverhältnis.
+Das struct `tc_pwm_config` ermöglicht die Konfiguration eines kontinuierlichen PWM-Signals mit Periode und Tastverhältnis.
 
 == Request-Struktur und ioctl-Kommandos
 
@@ -386,7 +385,7 @@ Analog zu GPIO's `gpio_v2_line_request` definieren wir eine zentrale Request-Str
 
 #render-snippet("tc-request")
 
-Das zentrale ioctl-Kommando `TC_GET_CHANNEL_IOCTL` folgt dem Muster von `GPIO_V2_GET_LINE_IOCTL`. Nach erfolgreichem Aufruf enthält das `fd`-Feld einen File-Deskriptor über welchen Events gelesen werden können.
+Der zentrale ioctl-Command `TC_GET_CHANNEL_IOCTL` folgt dem Muster von `GPIO_V2_GET_LINE_IOCTL`. Nach erfolgreichem Aufruf enthält das `fd`-Feld einen File-Deskriptor über welchen Events gelesen werden können.
 
 == Event-Struktur
 
@@ -400,47 +399,39 @@ Das folgende Beispiel zeigt die Konfiguration einer PWM-Ausgabe mit 1kHz und 50%
 
 #render-snippet("tc-example")
 
-Der Ablauf entspricht dem GPIO-Beispiel: Nach dem Öffnen des Gerätes wird eine Request-Struktur konfiguriert und über `ioctl()` an den Treiber übergeben. Der zurückgegebene File-Deskriptor kann für weitere Steuerkommandos und das Auslesen von Events genutzt werden.
+Der Ablauf entspricht dem GPIO-Beispiel: Nach dem Öffnen des Gerätes wird eine Request-Struktur konfiguriert und über `ioctl()` an den Treiber übergeben. Der zurückgegebene File-Deskriptor kann für weitere Commands und zum Auslesen von Events genutzt werden.
 
 #pagebreak()
 = Aufgabe III - I2C-Scheduling
 
-I2C Scheduling (gilt auch für anderen Bussysteme wie USB,…)
-
-Am I2C Bus können mehrere Devices angeschlossen sein. Aus Sicht des Gerätetreibers sind somit 2 Gerätetreiber zuständig. Einer für den I2C-Bus zum Senden und Empfangen von I2C Nachrichten und einer für das am I2C-Bus angeschlossene Device, wobei der Anwender dann nur mit dem Gerätetreiber des Devices direkt interagiert. Wenn jetzt ein Anwender intensiv mit 'seinem' Device interagiert, so besteht die Gefahr, dass andere Devices 'ausgehungert' werden. Der I2C-Treiber beinhaltet somit nicht nur den Treiber zum Senden und Empfangen von Nachrichten, sondern sorgt auch für eine faire Zuteilung.
-
-Bearbeiten sie folgende Punkte zum Thema I2C-Scheduling
-
-
-Skizzieren sie einen Anwendungsfall, bei welchen ein Devicetreiber (z.B. Displaytreiber) einen anderen Devicetreiber aushungern kann.
-Überlegen und begründen sie eine Möglichkeit, wie dies vermieden werden kann
-
-Hinweis:
-
-Bei Gerätetreibern wird zwischen Block Device und Character Device unterschieden. Die im Rahmen der Vorlesung behandelten Peripherieelemente sind typischerweise Character Devices, so dass sie nur diese betrachten müssen
-Für einige Treiber wurden zum vereinfachten Zugriff auf die Gerätedateien Wrapper entwickelt (z.B. i2c_smbus_read_word_data()). Diese max. am Rande beschreiben. Es gilt den direkten Zugriff zu berücksichtigen
-Ebenso bitte nicht auf das Thema Treiber Installation (z.B. insmod, modprobe), installierte Treiber überprüfen (z.B. lsmod) oder Hardwareabfrage (z.B. lsusb, lspci, lshw) eingehen
-
 == Anwendungsfall: Starvation durch Display-Treiber
-
-*Szenario:* OLED-Display und Temperatursensor teilen sich einen I2C-Bus
-
-- *Display-Treiber:*
-  - Benötigt hohe Datenrate für Framebuffer-Updates
-  - Große Transaktionen (~1KB pro Frame)
-  - Häufige Zugriffe (z.B. 30-60 FPS)
-  - Belegt Bus nahezu kontinuierlich
-
-- *Sensor-Treiber:*
-  - Benötigt nur wenige Bytes pro Abfrage
-  - Wartet lange auf Bus-Zugriff
-  - Zeitkritische Messwerte verzögert oder verloren
-
-- *Folge:* Sensor wird "ausgehungert" - seine Anfragen werden immer wieder zurückgestellt
+Man stelle sich folgendes Szenario vor: Ein Display und ein Temperatursensor sind beide über einen gemeinamen I2C-Bus verbunden. Je nach Bildschirmwiederholfrequenz und Auflösung(wirkt sich auf die Größe des zu übertragenden Daten aus) kann es nun sein, dass der Display-Treiber den I2C-Bus mehrfach pro Sekunde anfragt und somit die Leitung dauerhaft belegt. Der Treiber für den Temperatursensor könnte nun die währendessen die ganze Zeit darauf warten, dass der Bus wieder frei ist, um den aktuellen Messwert über den Bus zu schicken. In diesem Fall kann es sein, dass Messwerte verzögert oder gar nicht ankommen, was für zeitkritische Anwendungen katastrophale Konsequenzen haben kann.
 
 == Lösungsansatz: Fair Queuing im I2C-Subsystem
 
 *Konzept:* I2C-Adapter verwaltet Warteschlange mit Fairness-Mechanismus
+
+Wie in dem I2C-Beispiel bereits behandelt, gruppiert der I2C-Treiber eine oder mehrere Zugriffe in eine Transaktion. Zu Begin einer jeden Transaktion wird `__i2c_lock_bus_helper()` aufgerufen, um den Bus für diese Transaktion zu blockieren @linux_i2c_core.
+
+#render-snippet("i2c-transfer")
+
+#quote(block: true, attribution: [Kommentar in `i2c_transfer()` @linux_i2c_core])[REVISIT the fault reporting model here is weak: When we get a NAK after transmitting N bytes to a slave, there is no way to report "N".]
+
+=== Mutex und RT-Mutex
+
+#quote(block: true, attribution: [Linux Kernel Documentation @kernel_mutex_design])[In the Linux kernel, mutexes refer to a particular locking primitive that enforces serialization on shared memory systems, and not only to the generic term referring to 'mutual exclusion' found in academia or similar theoretical text books.]
+
+Das I2C-Subsystem verwendet einen *RT-Mutex* (Real-Time Mutex), der Wartende nach Task-Priorität sortiert (via Red-Black Tree) anstatt in FIFO-Reihenfolge. Das Bus-Locking geschieht über `rt_mutex_lock_nested()` @linux_i2c_core:
+
+#render-snippet("i2c-lock")
+
+Der RT-Mutex implementiert zusätzlich *Priority Inheritance*: Wenn ein hochpriorer Task auf einen Mutex wartet, wird die Priorität des haltenden Tasks temporär angehoben. Dies verhindert *Priority Inversion*, bei der ein mittelpriorer Task den hochprioren indirekt blockieren könnte.
+
+==== Bedeutung für I2C
+
+Der I2C-Treiber verwendet keinen eigenen Scheduling-Algorithmus, sondern verlässt sich vollständig auf den RT-Mutex. Die Priorität einer I2C-Transaktion entspricht der Priorität des aufrufenden Kernel-Threads (`task->prio`). Um einem Treiber höhere Priorität zu geben, muss dessen Thread mit entsprechender Scheduling-Policy konfiguriert werden (z.B. `SCHED_FIFO` via `sched_setscheduler()`).
+
+Um jedoch zu verhindern, dass sich API-Aufrufe gegenseitig blockieren, wird ein Queuing-System verwendet. Dieses organisiert Aufrufe während eines blockierten Busses. Sobald der Bus wieder freigegeben wurde, wird die am höchsten positionierte Transaktion in der Queu ausgeführt. Die Positionsvergabe geschieht dabei grundlegend nach dem FIFO-Prinzip, jedoch mit einem zusätzlichen Prioritätssystem, welches es erlaubt dringende Aufgaben anteilig höher in der Warteschlange einzuorden. Nach diesem Prinzip könnte ein Sensor z.B. eine höhere Priorität bekommen, was eine reinkommende Transaktion weiter nach Vorne in die Warteschlange stellt.
 
 - *Round-Robin:*
   - Nach jeder abgeschlossenen Transaktion wechselt der Bus zum nächsten wartenden Treiber
