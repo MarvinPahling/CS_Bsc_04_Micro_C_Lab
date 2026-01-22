@@ -7,10 +7,90 @@
 // Glossary
 #let entry-list = (
   (
-    key: "lorme",
-    short: "l",
-    long: "lorem",
-    description: "lorem",
+    key: "i2c",
+    short: "I2C",
+    long: "Inter-Integrated Circuit",
+    description: "Ein serieller Zweidraht-Bus, entwickelt von Philips (heute NXP), für die Kommunikation zwischen integrierten Schaltkreisen. Verwendet eine Datenleitung (SDA) und eine Taktleitung (SCL).",
+  ),
+  (
+    key: "gpio",
+    short: "GPIO",
+    long: "General Purpose Input/Output",
+    description: "Universelle digitale Ein-/Ausgabe-Pins eines Mikrocontrollers oder SoCs, die zur Laufzeit als Eingang oder Ausgang konfiguriert werden können.",
+  ),
+  (
+    key: "adc",
+    short: "ADC",
+    long: "Analog-to-Digital Converter",
+    description: "Wandelt analoge Signale (z.B. Spannungen) in digitale Werte um. Die Auflösung wird in Bit angegeben (z.B. 10-Bit ADC).",
+  ),
+  (
+    key: "fifo",
+    short: "FIFO",
+    long: "First In, First Out",
+    description: "Warteschlangen-Prinzip, bei dem das zuerst eingefügte Element auch zuerst entnommen wird. Häufig als Hardware-Puffer in Kommunikationsschnittstellen verwendet.",
+  ),
+  (
+    key: "ioctl",
+    short: "ioctl",
+    long: "Input/Output Control",
+    description: "POSIX-Systemaufruf zur gerätespezifischen Steuerung, der nicht durch Standard-Dateioperationen abgedeckt wird. Ermöglicht komplexe, atomare Transaktionen.",
+  ),
+  (
+    key: "sysfs",
+    short: "sysfs",
+    long: "System Filesystem",
+    description: "Virtuelles Dateisystem unter `/sys`, das Kernel-Objekte als ASCII-kodierte Dateien exportiert. Jede Datei repräsentiert typischerweise einen einzelnen Wert.",
+  ),
+  (
+    key: "devfs",
+    short: "devfs",
+    long: "Device Filesystem",
+    description: "Dateisystem unter `/dev` für Gerätedateien. Ermöglicht Zugriff auf Character- und Block-Devices über binäre Dateioperationen.",
+  ),
+  (
+    key: "pwm",
+    short: "PWM",
+    long: "Pulse Width Modulation",
+    description: "Modulationsverfahren, bei dem die Pulsbreite eines rechteckigen Signals variiert wird, um einen Mittelwert zu erzeugen. Wird häufig zur Motorsteuerung oder LED-Dimmung verwendet.",
+  ),
+  (
+    key: "mutex",
+    short: "Mutex",
+    long: "Mutual Exclusion",
+    description: "Synchronisationsmechanismus, der sicherstellt, dass nur ein Thread gleichzeitig auf eine gemeinsame Ressource zugreifen kann.",
+  ),
+  (
+    key: "rtmutex",
+    short: "RT-Mutex",
+    long: "Real-Time Mutex",
+    description: [Spezielle Mutex-Implementierung im Linux-Kernel mit Priority Inheritance, die Priority Inversion verhindert und Wartende nach Task-Priorität sortiert. @kernel_rtmutex],
+  ),
+  (
+    key: "chardev",
+    short: "Character Device",
+    description: "Gerätetyp, der Daten als fortlaufende Folge von Bytes liest oder schreibt. Beispiele: serielle Schnittstellen, Terminals, Soundkarten.",
+  ),
+  (
+    key: "blockdev",
+    short: "Block Device",
+    description: "Gerätetyp, der Daten in festen Blöcken liest oder schreibt. Beispiele: Festplatten, SSDs, CD-ROM-Laufwerke.",
+  ),
+  (
+    key: "major",
+    short: "Major Number",
+    description: "Identifiziert den Gerätetreiber im Linux-Kernel. Geräte mit gleicher Major-Nummer werden vom selben Treiber verwaltet.",
+  ),
+  (
+    key: "minor",
+    short: "Minor Number",
+    description: "Identifiziert ein spezifisches Gerät innerhalb eines Treibers. Ermöglicht es einem Treiber, mehrere Geräte zu verwalten.",
+  ),
+  (
+    key: "hwmon",
+    short: "hwmon",
+    long: "Hardware Monitoring",
+    description: "Linux-Kernel-Subsystem zur Überwachung von Hardware-Sensoren (Temperatur, Spannung, Lüftergeschwindigkeit). Daten werden über sysfs bereitgestellt.",
   ),
 )
 
@@ -173,14 +253,14 @@ Die Adressierung von Peripheriegeräten erfolgt über Gerätetreiber. Die Aufgab
 
 Die physischen Peripheriegeräte erscheinen durch die Abstraktion wie eine oder mehrere logische Dateien. Dies ermöglicht es auf der Applikationsebene mit diesen mit den bekannten Dateioperationen zu interagieren.
 
-Geräte erhalten dabei von ihrem Treiber sowohl eine `Major`- als auch eine `Minor`-Nummer. Die Major-Nummer bezieht sich hierbei auf den jeweiligen Treiber und bildet eine logische Obergruppe über die einzelnen Geräte. Die Minor-Nummer hingegen referenziert ein spezifisches Gerät.
+Geräte erhalten dabei von ihrem Treiber sowohl eine #gls("major") als auch eine #gls("minor"). Die #gls("major") bezieht sich hierbei auf den jeweiligen Treiber und bildet eine logische Obergruppe über die einzelnen Geräte. Die #gls("minor") hingegen referenziert ein spezifisches Gerät.
 
-Wichtig hierbei ist, dass dies nicht zwangsläufig heißen muss, dass es sich bei unterschiedlichen Geräten auch um unterschiedliche physische Peripheriegeräte handeln muss. Das von der Minor-Nummer gekennzeichnete Gerät muss in Wirklichkeit nicht einmal ein physisches Peripheriegerät sein, sondern es kann sich dabei auch um eine logische Abstraktion handeln. Ein gutes Beispiel hierfür wäre das `loopback`-Interface.
+Wichtig hierbei ist, dass dies nicht zwangsläufig heißen muss, dass es sich bei unterschiedlichen Geräten auch um unterschiedliche physische Peripheriegeräte handeln muss. Das von der #gls("minor") gekennzeichnete Gerät muss in Wirklichkeit nicht einmal ein physisches Peripheriegerät sein, sondern es kann sich dabei auch um eine logische Abstraktion handeln. Ein gutes Beispiel hierfür wäre das `loopback`-Interface.
 
-Peripheriegeräte können dabei grob in `Character Devices`, `Block Devices` oder `Netzwerk Devices` unterteilt werden.
+Peripheriegeräte können dabei grob in #gls("chardev"), #gls("blockdev") oder Netzwerk Devices unterteilt werden.
 
-`Character Devices` lesen oder schreiben fortlaufende Folge von Datenbytes.
-Für die einfache serielle Übertragung von Daten, z.B. durch `I2C` sind diese somit prädestiniert und werden Hauptgegenstand der folgenden Auseinandersetzungen sein. Die anderen beiden Typen lassen wir hierbei außer Acht.
+#glspl("chardev") lesen oder schreiben fortlaufende Folge von Datenbytes.
+Für die einfache serielle Übertragung von Daten, z.B. durch #gls("i2c") sind diese somit prädestiniert und werden Hauptgegenstand der folgenden Auseinandersetzungen sein. Die anderen beiden Typen lassen wir hierbei außer Acht.
 
 #pagebreak()
 = Aufgabe I - Peripheriezugriff
@@ -194,27 +274,27 @@ Für gewöhnlich erscheinen Peripheriegeräte unter dem Pfad `/dev` oder `/sys`,
 
 Diese Art Schnittstelle eignet sich dadurch hervorragend für Konfiguration oder Statusabfragen von Geräten. Durch das logische Auftreten als ASCII-kodierte Textdatei lassen sich Informationen einfach über Tools wie z.B. `cat` auslesen, was es einfach macht Skripte zu erstellen.
 
-Die Schwächen dieses Systems sind jedoch, dass sich komplexere, atomare Transaktionen nur schwer abbilden lassen. Wollen wir beispielsweise über einen I2C-Bus erste eine Schreib-, gefolgt von einer Leseoperation ausführen, ohne den Bus zwischenzeitlich wieder freizugeben, ist dies über diesen Ansatz nicht möglich.
+Die Schwächen dieses Systems sind jedoch, dass sich komplexere, atomare Transaktionen nur schwer abbilden lassen. Wollen wir beispielsweise über einen #gls("i2c")-Bus erste eine Schreib-, gefolgt von einer Leseoperation ausführen, ohne den Bus zwischenzeitlich wieder freizugeben, ist dies über diesen Ansatz nicht möglich.
 
 === device
 `/dev` ist der klassische UNIX-Weg, um auf die Peripherie zuzugreifen. Das entsprechende Gerät wird hierbei logisch als eine binäre Datei realisiert, was den entsprechenden Overhead eliminiert, den es braucht, um ASCII-kodierte Dateien in Binärformat zu parsen. Der Inhalt der Datei repräsentiert hierbei den eigentlichen Datenfluss für das Gerät.
 
-Eine Besonderheit bei diesem Subsystem ist es, dass durch `ioctl()` @glibc_ioctl_h, zusätzlich zu den bereits bekannten Operationen `open()`, `close()`, `read()`, `write()` @glibc_fcntl_h,
+Eine Besonderheit bei diesem Subsystem ist es, dass durch #gls("ioctl") @glibc_ioctl_h, zusätzlich zu den bereits bekannten Operationen `open()`, `close()`, `read()`, `write()` @glibc_fcntl_h,
 auch komplexere Informationen für die entsprechende Transaktion mitgeliefert werden können.
 
 #pagebreak()
 #render-snippet("open")
 #render-snippet("ioctl")
 
-Die Vorteile dieses Ansatzes sind, dass die Funktion `ioctl()` es ermöglicht sowohl ein Command-Code, sowie optional einen Zeiger zu entsprechenden Nutzdaten für die Transaktion zu übergeben. Eine entsprechende Schnittstelle kann somit eine komplexe atomare Transaktion in nur einem Funktionsaufruf abbilden.
+Die Vorteile dieses Ansatzes sind, dass die Funktion #gls("ioctl") es ermöglicht sowohl ein Command-Code, sowie optional einen Zeiger zu entsprechenden Nutzdaten für die Transaktion zu übergeben. Eine entsprechende Schnittstelle kann somit eine komplexe atomare Transaktion in nur einem Funktionsaufruf abbilden.
 
 == I2C
 === Schnittstellen
-Die eben beschriebene Transaktion über den I2C-Bus wollen wir an dieser Stelle exemplarisch durchgehen. Die Schnittstellendefinition für I2C findet sich in `linux/i2c.h` @linux_i2c_h sowie `linux/i2c-dev.h` @linux_i2c_dev_h.
+Die eben beschriebene Transaktion über den #gls("i2c")-Bus wollen wir an dieser Stelle exemplarisch durchgehen. Die Schnittstellendefinition für #gls("i2c") findet sich in `linux/i2c.h` @linux_i2c_h sowie `linux/i2c-dev.h` @linux_i2c_dev_h.
 
 #render-snippet("i2c-msg")
 
-Das gezeigte `struct` enthält hierbei alle Informationen für einen I2C-Zugriff. Hierzu zählen die Zieladresse, die Flags, die Länge der Nachricht, sowie ein Zeiger zu der Nachricht selber.
+Das gezeigte `struct` enthält hierbei alle Informationen für einen #gls("i2c")-Zugriff. Hierzu zählen die Zieladresse, die Flags, die Länge der Nachricht, sowie ein Zeiger zu der Nachricht selber.
 
 #render-snippet("i2c-rdwr")
 
@@ -224,7 +304,7 @@ Das Kernel-Modul `i2c-dev` ist häufig nicht standardmäßig geladen und muss pe
 sudo modprobe i2c-dev
 ```
 
-Da es sich bei den von dem I2C bereitgestellten Geräten logisch um Dateien handelt, lassen sich diese einfach per `ls` und `grep` finden.
+Da es sich bei den von dem #gls("i2c") bereitgestellten Geräten logisch um Dateien handelt, lassen sich diese einfach per `ls` und `grep` finden.
 
 ```bash
 ls -la /dev | grep i2c
@@ -256,11 +336,11 @@ Gelesen von Gerät 0x50 (Register 0x00):
 
 == GPIO
 
-Die Schnittstellendefinition für GPIO findet sich in `linux/gpio.h` @linux_gpio_h. Die API für GPIO unterteilt ein GPIO-Device in `chip` und `line`.
+Die Schnittstellendefinition für #gls("gpio") findet sich in `linux/gpio.h` @linux_gpio_h. Die API für #gls("gpio") unterteilt ein #gls("gpio")-Device in `chip` und `line`.
 #render-snippet("gpio-req")
-Die API für die Request an eine Line des GPIO-Controllers ist in diesem Fall umfangreicher als die vorherige. Für den Kontext dieses Moduls sind jedoch vor allem die Flags interessant, mit welchen sich beispielsweise der Pull-Up-Widerstand oder der Edge-Detector konfigurieren lassen.
+Die API für die Request an eine Line des #gls("gpio")-Controllers ist in diesem Fall umfangreicher als die vorherige. Für den Kontext dieses Moduls sind jedoch vor allem die Flags interessant, mit welchen sich beispielsweise der Pull-Up-Widerstand oder der Edge-Detector konfigurieren lassen.
 #render-snippet("gpio-event")
-Die API für GPIO-Events gibt uns später die Möglichkeit, Informationen über Änderungen am Edge-Detector zu erhalten. Aus dem Event können wir beispielsweise den Zeitstempel sowie die Art des Events auslesen.
+Die API für #gls("gpio")-Events gibt uns später die Möglichkeit, Informationen über Änderungen am Edge-Detector zu erhalten. Aus dem Event können wir beispielsweise den Zeitstempel sowie die Art des Events auslesen.
 
 Das nun folgende C-Programm zeigt ein Beispiel, wie wir einen softwareseitigen Edge-Detector in Linux realisieren können.
 #pagebreak()
@@ -270,7 +350,7 @@ Das Programm konfiguriert `line`-7 als Input und konfiguriert den Edge-Detector,
 
 == ADC
 
-Im Gegensatz zu I2C und GPIO, die über `/dev/`-Gerätedateien mit binären `ioctl()`-Aufrufen angesprochen werden, nutzen ADC- und Sensordaten typischerweise das *sysfs*-Interface. Das `hwmon`-Subsystem (Hardware Monitoring) stellt Sensordaten als ASCII-Textdateien unter `/sys/class/hwmon/` bereit.
+Im Gegensatz zu #gls("i2c") und #gls("gpio"), die über `/dev/`-Gerätedateien mit binären #gls("ioctl")-Aufrufen angesprochen werden, nutzen #gls("adc")- und Sensordaten typischerweise das #gls("sysfs")-Interface. Das #gls("hwmon")-Subsystem stellt Sensordaten als ASCII-Textdateien unter `/sys/class/hwmon/` bereit.
 
 Verfügbare Sensoren lassen sich einfach mit `grep` finden, da es in den meisten Fällen eine `name`-Datei gibt:
 
@@ -344,25 +424,25 @@ Ein entsprechendes C-Programm, welches die Temperaturen aller CPU-Kerne ausliest
 
 #pagebreak()
 #render-snippet("adc")
-Im Gegensatz zu dem I2C- und GPIO-Beispiel wird hier kein `ioctl()` benötigt, sondern nur die Standard-POSIX-Funktionen `open()` aus `<fcntl.h>` und `read()` aus `<unistd.h>`.
+Im Gegensatz zu dem #gls("i2c")- und #gls("gpio")-Beispiel wird hier kein #gls("ioctl") benötigt, sondern nur die Standard-POSIX-Funktionen `open()` aus `<fcntl.h>` und `read()` aus `<unistd.h>`.
 
 #pagebreak()
 = Aufgabe II - AT91SAM7-Timer Schnittstellenspezifikation
 
-Die Timer-Counter-Einheit des AT91SAM7 kann auf jedem seiner 3 Channel eine Vielzahl an verschiedenen Operationen ausführen. Für die meisten dieser Betriebsmodi ist es nötig, den Chip an mehreren Stellen zu konfigurieren. Aus diesem Grund wird in diesem Fall die Schnittstelle über `/dev` für den Zugriff über `ioctl()` modelliert.
+Die Timer-Counter-Einheit des AT91SAM7 kann auf jedem seiner 3 Channel eine Vielzahl an verschiedenen Operationen ausführen. Für die meisten dieser Betriebsmodi ist es nötig, den Chip an mehreren Stellen zu konfigurieren. Aus diesem Grund wird in diesem Fall die Schnittstelle über `/dev` für den Zugriff über #gls("ioctl") modelliert.
 
 Der erste Schritt in dieser Überlegung ist es, die wichtigsten Use-Cases als Commands abzubilden. Für die Timer-Counter-Einheit sind es in diesem Fall:
 - Event Counting
 - Intervall Measurement
 - Pulse Generation
-- Pulse Width Modulation
+- #gls("pwm")
 
 Diese Betriebsmodi werden nun als Enum modelliert
 
 #pagebreak()
 #render-snippet("tc-mode")
 
-Nun brauchen wir zusätzlich noch einen Mechanismus mit welchem sich die verschiedenen Betriebsmodie modellieren lassen. Analog zur I2C-Schnittstelle, welche mehrere `i2c_msg` Strukturen in einer `i2c_rdwr_ioctl_data` Struktur bündelt, definieren wir für jeden Betriebsmodus eine spezialisierte Konfigurationsstruktur.
+Nun brauchen wir zusätzlich noch einen Mechanismus mit welchem sich die verschiedenen Betriebsmodie modellieren lassen. Analog zur #gls("i2c")-Schnittstelle, welche mehrere `i2c_msg` Strukturen in einer `i2c_rdwr_ioctl_data` Struktur bündelt, definieren wir für jeden Betriebsmodus eine spezialisierte Konfigurationsstruktur.
 
 #pagebreak()
 == Konfigurationsstrukturen
@@ -377,15 +457,15 @@ Das struct `tc_interval_measure_config` dient der Messung von Zeitintervallen zw
 
 Das struct `tc_pulse_generation_config` konfiguriert die Erzeugung eines einzelnen Pulses mit konfigurierbarer Verzögerung und Pulsbreite.
 
-Das struct `tc_pwm_config` ermöglicht die Konfiguration eines kontinuierlichen PWM-Signals mit Periode und Tastverhältnis.
+Das struct `tc_pwm_config` ermöglicht die Konfiguration eines kontinuierlichen #gls("pwm")-Signals mit Periode und Tastverhältnis.
 
 == Request-Struktur und ioctl-Kommandos
 
-Analog zu GPIO's `gpio_v2_line_request` definieren wir eine zentrale Request-Struktur, welche mehrere Kanal-Konfigurationen bündeln kann:
+Analog zu #gls("gpio")'s `gpio_v2_line_request` definieren wir eine zentrale Request-Struktur, welche mehrere Kanal-Konfigurationen bündeln kann:
 
 #render-snippet("tc-request")
 
-Der zentrale ioctl-Command `TC_GET_CHANNEL_IOCTL` folgt dem Muster von `GPIO_V2_GET_LINE_IOCTL`. Nach erfolgreichem Aufruf enthält das `fd`-Feld einen File-Deskriptor über welchen Events gelesen werden können.
+Der zentrale #gls("ioctl")-Command `TC_GET_CHANNEL_IOCTL` folgt dem Muster von `GPIO_V2_GET_LINE_IOCTL`. Nach erfolgreichem Aufruf enthält das `fd`-Feld einen File-Deskriptor über welchen Events gelesen werden können.
 
 == Event-Struktur
 
@@ -393,120 +473,66 @@ Für das Auslesen von Events und Messwerten definieren wir analog zu `gpio_v2_li
 
 #render-snippet("tc-event")
 
-== Beispiel: PWM-Konfiguration
+== Beispiel: #gls("pwm")-Konfiguration
 
-Das folgende Beispiel zeigt die Konfiguration einer PWM-Ausgabe mit 1kHz und 50% Tastverhältnis:
+Das folgende Beispiel zeigt die Konfiguration einer #gls("pwm")-Ausgabe mit 1kHz und 50% Tastverhältnis:
 
 #render-snippet("tc-example")
 
-Der Ablauf entspricht dem GPIO-Beispiel: Nach dem Öffnen des Gerätes wird eine Request-Struktur konfiguriert und über `ioctl()` an den Treiber übergeben. Der zurückgegebene File-Deskriptor kann für weitere Commands und zum Auslesen von Events genutzt werden.
+Der Ablauf entspricht dem #gls("gpio")-Beispiel: Nach dem Öffnen des Gerätes wird eine Request-Struktur konfiguriert und über #gls("ioctl") an den Treiber übergeben. Der zurückgegebene File-Deskriptor kann für weitere Commands und zum Auslesen von Events genutzt werden.
 
 #pagebreak()
 = Aufgabe III - I2C-Scheduling
 
+Mehrere Threads, welche auf beschränke Ressourcen zugreifen wollen, ist ein Problem, welches essentiell für ein Betriebssystem ist. Linux verwendet dafür einen Scheduler, welcher jeder Task, eine Prioriät zuordnet und für alle anderen Tasks mittels eines #gls("mutex") den Zugriff auf diese Ressource verweigert.
+
+#quote(
+  block: true,
+  attribution: [Linux Kernel Documentation @kernel_mutex_design],
+)[In the Linux kernel, mutexes refer to a particular locking primitive that enforces serialization on shared memory systems, and not only to the generic term referring to 'mutual exclusion' found in academia or similar theoretical text books.]
+
+Ein Mutex ist vereinfacht gesagt nur ein Schloss, welches den Zugriff auf eine Ressource einschränkt. Ist eine Task geblockt ist.
+
 == Anwendungsfall: Starvation durch Display-Treiber
-Man stelle sich folgendes Szenario vor: Ein Display und ein Temperatursensor sind beide über einen gemeinamen I2C-Bus verbunden. Je nach Bildschirmwiederholfrequenz und Auflösung(wirkt sich auf die Größe des zu übertragenden Daten aus) kann es nun sein, dass der Display-Treiber den I2C-Bus mehrfach pro Sekunde anfragt und somit die Leitung dauerhaft belegt. Der Treiber für den Temperatursensor könnte nun die währendessen die ganze Zeit darauf warten, dass der Bus wieder frei ist, um den aktuellen Messwert über den Bus zu schicken. In diesem Fall kann es sein, dass Messwerte verzögert oder gar nicht ankommen, was für zeitkritische Anwendungen katastrophale Konsequenzen haben kann.
+Man stelle sich folgendes Szenario vor: Ein Display und ein Temperatursensor sind beide über einen gemeinamen #gls("i2c")-Bus verbunden. Je nach Bildschirmwiederholfrequenz und Auflösung(wirkt sich auf die Größe des zu übertragenden Daten aus) kann es nun sein, dass der Display-Treiber den #gls("i2c")-Bus mehrfach pro Sekunde anfragt und somit die Leitung dauerhaft belegt.
 
-== Lösungsansatz: Fair Queuing im I2C-Subsystem
+Wenn die Task des Treiber für den Temperatursensor nun eine geringere Priorität hat kann es sein, dass diese Task nie Zugriff auf die Ressource erhält, weil die Tasks des #gls("i2c")-Treibers vorrang bekommen. Der Bus würde so diese Task eventuell nie, oder für eine Echtzeitanwendung zu selten, für die Übertragung des neuen Temperaturmesswertes freigebenen werden.
 
-*Konzept:* I2C-Adapter verwaltet Warteschlange mit Fairness-Mechanismus
+Dieses Problem heißt "Unbounded Priority Inversion".
 
-Wie in dem I2C-Beispiel bereits behandelt, gruppiert der I2C-Treiber eine oder mehrere Zugriffe in eine Transaktion. Zu Begin einer jeden Transaktion wird `__i2c_lock_bus_helper()` aufgerufen, um den Bus für diese Transaktion zu blockieren @linux_i2c_core.
-
+Werfen wir nun einen Blick auf die Implementierung des #gls("i2c")-Treibers
+#pagebreak()
 #render-snippet("i2c-transfer")
 
-#quote(block: true, attribution: [Kommentar in `i2c_transfer()` @linux_i2c_core])[REVISIT the fault reporting model here is weak: When we get a NAK after transmitting N bytes to a slave, there is no way to report "N".]
+Zu Begin einer jeden Transaktion wird `__i2c_lock_bus_helper()` aufgerufen, um den Bus für diese Transaktion zu blockieren @linux_i2c_core.
 
-=== Mutex und RT-Mutex
+Werfen wir nun auch einen Blick auf diese Funktion:
 
-#quote(block: true, attribution: [Linux Kernel Documentation @kernel_mutex_design])[In the Linux kernel, mutexes refer to a particular locking primitive that enforces serialization on shared memory systems, and not only to the generic term referring to 'mutual exclusion' found in academia or similar theoretical text books.]
-
-Das I2C-Subsystem verwendet einen *RT-Mutex* (Real-Time Mutex), der Wartende nach Task-Priorität sortiert (via Red-Black Tree) anstatt in FIFO-Reihenfolge. Das Bus-Locking geschieht über `rt_mutex_lock_nested()` @linux_i2c_core:
-
+#pagebreak()
 #render-snippet("i2c-lock")
 
-Der RT-Mutex implementiert zusätzlich *Priority Inheritance*: Wenn ein hochpriorer Task auf einen Mutex wartet, wird die Priorität des haltenden Tasks temporär angehoben. Dies verhindert *Priority Inversion*, bei der ein mittelpriorer Task den hochprioren indirekt blockieren könnte.
+Das #gls("i2c")-Subsystem verwendet dabei das #gls("rtmutex")-System von Linux.
 
-==== Bedeutung für I2C
 
-Der I2C-Treiber verwendet keinen eigenen Scheduling-Algorithmus, sondern verlässt sich vollständig auf den RT-Mutex. Die Priorität einer I2C-Transaktion entspricht der Priorität des aufrufenden Kernel-Threads (`task->prio`). Um einem Treiber höhere Priorität zu geben, muss dessen Thread mit entsprechender Scheduling-Policy konfiguriert werden (z.B. `SCHED_FIFO` via `sched_setscheduler()`).
+#quote(
+  block: true,
+  attribution: [Linux Kernel Documentation @kernel_rtmutex],
+)[
+  RT-mutexes extend the semantics of simple mutexes by the priority inheritance protocol.
 
-Um jedoch zu verhindern, dass sich API-Aufrufe gegenseitig blockieren, wird ein Queuing-System verwendet. Dieses organisiert Aufrufe während eines blockierten Busses. Sobald der Bus wieder freigegeben wurde, wird die am höchsten positionierte Transaktion in der Queu ausgeführt. Die Positionsvergabe geschieht dabei grundlegend nach dem FIFO-Prinzip, jedoch mit einem zusätzlichen Prioritätssystem, welches es erlaubt dringende Aufgaben anteilig höher in der Warteschlange einzuorden. Nach diesem Prinzip könnte ein Sensor z.B. eine höhere Priorität bekommen, was eine reinkommende Transaktion weiter nach Vorne in die Warteschlange stellt.
+  A low priority owner of a rt-mutex inherits the priority of a higher priority waiter until the rt-mutex is released. If the temporarily boosted owner blocks on a rt-mutex itself it propagates the priority boosting to the owner of the other rt_mutex it gets blocked on. The priority boosting is immediately removed once the rt_mutex has been unlocked.
 
-- *Round-Robin:*
-  - Nach jeder abgeschlossenen Transaktion wechselt der Bus zum nächsten wartenden Treiber
-  - Kein Treiber kann den Bus unbegrenzt belegen
+  This approach allows us to shorten the block of high-prio tasks on mutexes which protect shared resources. Priority inheritance is not a magic bullet for poorly designed applications, but it allows well-designed applications to use userspace locks in critical parts of an high priority thread, without losing determinism.
+]
 
-- *Zeitscheiben (Time Slicing):*
-  - Maximale Bus-Belegungszeit pro Treiber
-  - Nach Ablauf wird Transaktion unterbrochen und andere Treiber bedient
+Der #gls("rtmutex") implementiert zusätzlich *Priority Inheritance*: Wenn ein hochpriorer Task auf einen #gls("mutex") wartet, wird die Priorität des haltenden Tasks temporär angehoben. Dies verhindert *Priority Inversion*, bei der ein mittelpriorer Task den hochprioren indirekt blockieren könnte.
 
-- *Prioritätsstufen:*
-  - Zeitkritische Geräte (z.B. Sensoren) erhalten höhere Priorität
-  - Display-Updates können verzögert werden ohne Funktionsverlust
-
-- *Linux-Implementierung:*
-  - I2C-Adapter nutzt Mutex für Bus-Arbitrierung
-  - `i2c_transfer()` ist atomar, aber zwischen Transfers kann gewechselt werden
-  - Scheduling erfolgt auf Transaktionsebene, nicht auf Byte-Ebene
+Der #gls("i2c")-Treiber verwendet keinen eigenen Scheduling-Algorithmus, sondern verlässt sich vollständig auf den #gls("rtmutex"), um zu verhindern, dass das Tasks mit mittlerer Priorität ausgehungert werden.
 
 #pagebreak()
 // ============================================
 // Appendex
 // ============================================
-= Research Copy and Pase (TODO: REMOVE LATER)
-
-== Devices – eine einfache Verbindung zur Hardware
-Damit das Betriebssystem mit der Hardware kommunizieren kann (vereinfacht ausgedrückt), wird in Linux (wie in den meisten anderen Betriebssystemen auch) ein Gerätetreiber dafür verwendet. Unter Linux ist dieser Treiber immer ein Teil des Kernels und kann entweder statisch hinzugelinkt oder auf Anfrage als Kernel-Modul nachgeladen werden. Da ein Gerätetreiber ein Teil des Kernels ist, kann aus Sicherheitsgründen nicht direkt darauf mit einem normal laufenden Prozess zugegriffen werden. Um aber jetzt dennoch auf Hardware-Komponenten wie u. a. Festplatte, CD-ROM, Soundkarte oder der seriellen bzw. parallelen Schnittstelle zugreifen zu können, wurde unter UNIX ein Mechanismus eingeführt, womit recht problemlos mit einem Gerätetreiber über eine Hardware-Gerätedatei kommuniziert werden kann. Diese »Datei« können Sie mit einem gewöhnlichen Prozess öffnen und auf sie lesend und schreibend zugreifen – sprich, Sie können über normale Datei-E/A-Operationen mit dem Gerätetreiber dank dieser »Datei« so kommunizieren, als handle es sich um eine gewöhnliche Datei.
-
-- Treiber sind Teil des Kernels
-  - Entweder statisch gelinkt oder dynamisch als Kernel-Modul nachgeladen
-
-=== Die Gerätedateitypen
-Die Einträge der Gerätedateien – auch als Devices bekannt – finden Sie im Verzeichnis `/dev`. Ein `ls -l /dev` verschafft Ihnen einen ersten Überblick und stiftet vielleicht zugleich auch ein wenig Verwirrung über diese Gerätedateien, die es zu entflechten gilt. Es wird hierbei zwischen zwei Devices-Typen unterschieden – zu erkennen am ersten Buchstaben der Auflistung der Gerätedatei(en) (b oder c):
-
-
-
-==== character device (c)
-hierbei handelt es sich um Hardwaregeräte (… man kann allerdings mit einem Character Device auch eine Software-Lösung realisieren, z. B. ttyrpld (http://linux01.org:2222/prog-ttyrpld.php)), mit der eine fortlaufende Folge von Datenbytes gelesen oder geschrieben wird. Dies sind Hardware-Komponenten wie Soundkarte, Tapes, Terminalgeräte, serielle oder parallele Schnittstelle(n), Maus, USB-Schnittstelle usw.
-gp
-
-In the first category, there are slow devices, which manage a small amount of data, and access to data does not require frequent seek queries. Examples are devices such as keyboard, mouse, serial ports, sound card, joystick. In general, operations with these devices (read, write) are performed sequentially byte by byte.
-
-==== block device (b)
-Blockgeräte sind Devices, mit denen feste ganze Blöcke (anstatt Bytes) gelesen oder geschrieben werden können. Dabei wird erst ein Puffer aufgefüllt, bevor der ganze Datenblock an den Treiber gesendet wird. Daher sind blockorientierte Geräte auch meistens etwas schneller als zeichenorientierte, da gewartet werden muss, bis ein Block voll ist. Zu den Blockgeräten gehören z. B. die Festplatte, Diskette oder das CD-ROM-/DVD-Laufwerk. Ein zeichenorientiertes Gerät hat mehr Aufwand, weil nach jedem read/write bereits eine Art flush stattfindet.
-
-The second category includes devices where data volume is large, data is organized on blocks, and search is common. Examples of devices that fall into this category are hard drives, cdroms, ram disks, magnetic tape drives. For these devices, reading and writing is done at the data block level.
-
-For the two types of device drivers, the Linux kernel offers different APIs. If for character devices system calls go directly to device drivers, in case of block devices, the drivers do not work directly with system calls. In the case of block devices, communication between the user-space and the block device driver is mediated by the file management subsystem and the block device subsystem. The role of these subsystems is to prepare the device driver's necessary resources (buffers), to keep the recently read data in the cache buffer, and to order the read and write operations for performance reasons.
-
-== Kernel-Modul
-
-== Architektur
-Kernel <=> Kernel IO Subsystem <=> Treiber <=> Controller <=> Hardware
-
-== Overview
-In UNIX, hardware devices are accessed by the user through special device files.
-These files are grouped into the `/dev` directory, and system calls `open`, `read`, `write`, `close`, `lseek`, `mmap` etc. are redirected by the operating system to the device driver associated with the physical device.
-
-The device driver is a kernel component (usually a module) that interacts with a hardware device.
-
-In the UNIX world there are two categories of device files and thus device drivers: character and block. This division is done by the speed, volume and way of organizing the data to be transferred from the device to the system and vice versa.
-
-== Character Devices
-== Block devices
-
-== Major and Minor
-In UNIX, the devices traditionally had a unique, fixed identifier associated with them. This tradition is preserved in Linux, although identifiers can be dynamically allocated (for compatibility reasons, most drivers still use static identifiers).
-The identifier consists of two parts: major and minor.
-=== Major
-The first part identifies the device type (IDE disk, SCSI disk, serial port, etc.) and
-Most times, the major identifies the driver
-=== Minor
-the second one identifies the device (first disk, second serial port, etc.).  Most of the times the minor identifies each physical device served by the driver. In general, a driver will have a major associate and will be responsible for all minors associated with that major.
-
-
-
 = Glossar
 #print-glossary(
   entry-list,
